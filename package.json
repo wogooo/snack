@@ -1,0 +1,23 @@
+{
+  "name": "coolcool",
+  "version": "0.0.0",
+  "description": "coolcool ========",
+  "main": "index.js",
+  "dependencies": {
+    "rethinkdb": "~1.10.0-0",
+    "hapi": "~1.16.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mshick/coolcool.git"
+  },
+  "author": "Michael Shick",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mshick/coolcool/issues"
+  }
+}

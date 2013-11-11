@@ -5,7 +5,10 @@
   "main": "index.js",
   "dependencies": {
     "rethinkdb": "~1.10.0-0",
-    "hapi": "~1.16.1"
+    "hapi": "~1.16.1",
+    "consoleplusplus": "~1.2.0",
+    "lodash": "~2.2.1",
+    "generic-pool": "~2.0.4"
   },
   "devDependencies": {},
   "scripts": {

@@ -7,8 +7,7 @@ require('consoleplusplus');
 var config = require('./config');
 
 // Set log level
-var logConfig = config.log || {};
-var logLevel = logConfig.level ? logConfig.level.toUpperCase() : 'ERROR';
+var logLevel = config.server.logLevel ? config.server.logLevel.toUpperCase() : 'ERROR';
 console.setLevel(console.LEVELS[logLevel]);
 
 // The server

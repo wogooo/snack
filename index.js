@@ -3,9 +3,6 @@
 // Better console
 require('consoleplusplus');
 
-// Core
-var cluster = require('cluster');
-
 // Config exports
 var config = require('./config');
 
@@ -18,4 +15,4 @@ console.setLevel(console.LEVELS[logLevel]);
 var server = require('./lib/server');
 
 // Init the server
-server.init(cluster, config);
+server.init(config);

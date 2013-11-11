@@ -1,0 +1,54 @@
+{
+  "name": "furball",
+  "description": "Plugin utilities and endpoints",
+  "version": "0.3.3",
+  "author": {
+    "name": "Eran Hammer",
+    "email": "eran@hueniverse.com",
+    "url": "http://hueniverse.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/spumko/furball"
+  },
+  "main": "index",
+  "keywords": [
+    "hapi",
+    "helpers",
+    "plugin"
+  ],
+  "engines": {
+    "node": "0.10.x"
+  },
+  "dependencies": {
+    "hoek": "0.9.x"
+  },
+  "peerDependencies": {
+    "hapi": "1.x.x"
+  },
+  "devDependencies": {
+    "hapi": "1.x.x",
+    "lab": "0.1.x",
+    "complexity-report": "0.x.x"
+  },
+  "scripts": {
+    "test": "make test-cov"
+  },
+  "licenses": [
+    {
+      "type": "BSD",
+      "url": "http://github.com/spumko/furball/raw/master/LICENSE"
+    }
+  ],
+  "readme": "<a href=\"https://github.com/spumko\"><img src=\"https://raw.github.com/spumko/spumko/master/images/from.png\" align=\"right\" /></a>\r\n![furball Logo](https://raw.github.com/spumko/furball/master/images/furball.png)\r\n\r\n[**hapi**](https://github.com/spumko/hapi) plugin utilities and endpoints\r\n\r\n[![Build Status](https://secure.travis-ci.org/spumko/furball.png)](http://travis-ci.org/spumko/furball)\r\n\r\n**furball** provides a basic set of endpoints for **hapi**-based servers. Once registered, the plugin adds two endpoints:\r\n- __/version__ - the version number of the current root module.\r\n- __/plugins__ - a list of the plugins loaded in the server with their versions.\r\n\r\nThe main purpose of **furball** is to provide a template for writing other **hapi** plugins.\r\n\r\nBoth endpints can be disabled or the path customized:\r\n```javascript\r\nvar options = {\r\n  plugin: {\r\n    version: { path: '/VERSION' },\r\n    plugins: false\r\n  }\r\n};\r\n\r\nvar server = new Hapi.Server();\r\nserver.plugin().register('furball', options, function (err) { });\r\n```\r\n\r\nThe module also registers the _'plugins()'_ API method:\r\n```javascript\r\nconsole.log(server.api.furball.plugins(server));\r\n```\r\n\r\n",
+  "readmeFilename": "README.md",
+  "bugs": {
+    "url": "https://github.com/spumko/furball/issues"
+  },
+  "_id": "furball@0.3.3",
+  "dist": {
+    "shasum": "40d37f9baad154dd9021fd7ddf62a7a0b0998267"
+  },
+  "_from": "furball@",
+  "_resolved": "https://registry.npmjs.org/furball/-/furball-0.3.3.tgz"
+}

@@ -1,0 +1,44 @@
+{
+  "name": "sample",
+  "description": "Sample CRUD API HAPI pack based on RethinkDB",
+  "version": "0.0.0",
+  "author": {
+    "name": "Michael Shick",
+    "email": "me@michaelshick.com",
+    "url": "http://michaelshick.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mshick/coolcool"
+  },
+  "main": "index",
+  "keywords": [
+    "hapi",
+    "plugin"
+  ],
+  "engines": {
+    "node": "0.10.x"
+  },
+  "dependencies": {
+    "rethinkdb": "~1.10.0-0",
+    "lodash": "~2.2.1",
+    "generic-pool": "~2.0.4",
+    "hoek": "0.9.x"
+  },
+  "peerDependencies": {
+    "hapi": "1.x.x"
+  },
+  "devDependencies": {
+    "hapi": "1.x.x",
+    "lab": "0.1.x",
+    "complexity-report": "0.x.x"
+  },
+  "scripts": {
+    "test": "make test-cov"
+  },
+  "author": "Michael Shick",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mshick/coolcool/issues"
+  }
+}

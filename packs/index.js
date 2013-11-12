@@ -2,9 +2,15 @@
 
 var resolve = require('path').resolve;
 
+var _ = require('lodash');
+
+var config = require('../config');
+
+
 // If path is omitted, it is presumed to be in node_modules,
 // or some other path that work with `require('KEYNAME')`
-module.exports = {
+
+var packs = {
 
     'furball': {
         'permissions': {
@@ -42,3 +48,7 @@ module.exports = {
         'path': resolve(__dirname, 'sample')
     }
 };
+
+packs.sample.options = _.extend(packs.sample.options || {}, config);
+
+module.exports = packs;

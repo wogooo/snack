@@ -1,6 +1,15 @@
 path = require('path');
 
 module.exports = {
+    'db': {
+        engine: 'rethinkdb',
+        host: 'localhost',
+        port: 28015,
+        database: 'test',
+        maxConnections: 10,
+        minConnections: 2,
+        connectionIdle: 30000
+    },
     cache: {
         engine: 'redis',
         host: 'localhost',
@@ -12,7 +21,7 @@ module.exports = {
     },
     server: {
         host: '0.0.0.0',
-        port: 8880,
+        port: 8008,
         securePort: 8433,
         cluster: true,
         workerCount: 2,

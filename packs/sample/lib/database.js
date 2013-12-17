@@ -185,6 +185,7 @@ internals.Database.prototype.getWithRelations = function (id, tableName, callbac
         self.get(id, tableName, function (err, post) {
 
             var index = 'postId';
+            pool.release(connection);
 
             self.getAll(id, index, 'relation', function (err, relations) {
 

@@ -9,7 +9,7 @@ module.exports = {
         maxConnections: 10,
         minConnections: 2,
         connectionIdle: 30000,
-        authKey: 'cialater'
+        authKey: 'test'
     },
     cache: {
         engine: 'redis',

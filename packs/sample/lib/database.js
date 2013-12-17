@@ -1,6 +1,8 @@
 'use strict';
 
 // Contrib modules
+var async = require('async');
+var _ = require('lodash');
 var r = require('rethinkdb');
 var genericPool = require('generic-pool');
 
@@ -38,7 +40,8 @@ internals.Database.prototype.connect = function (callback) {
     r.connect({
         host: settings.host,
         port: settings.port,
-        db: settings.database
+        db: settings.database,
+        authKey: settings.authKey
     }, function (err, conn) {
 
         conn = conn || {};
@@ -98,19 +101,128 @@ internals.Database.prototype.get = function (id, tableName, callback) {
     pool.acquire(function (err, connection) {
         if (err) {
 
-            if (err) throw err;
+            return callback(err);
 
         } else {
 
             r.table(tableName)
                 .get(id)
                 .run(connection, function (err, result) {
-                    if (err) throw err;
+
+                    if (err) {
+                        return callback(err);
+                    }
 
                     callback(err, result);
                     pool.release(connection);
                 });
         }
+    });
+};
+
+internals.Database.prototype.getAll = function (id, index, tableName, callback) {
+
+    var pool = this.pool;
+
+    var secondaryIndex = {
+        index: 'id'
+    };
+
+    if (index) {
+        secondaryIndex = {
+            index: index
+        };
+    }
+
+    var args = [];
+
+    if (!_.isArray(id)) {
+        args.push(id);
+    } else {
+        args = args.concat(id);
+    }
+
+    args.push(secondaryIndex);
+
+    pool.acquire(function (err, connection) {
+        if (err) {
+
+            return callback(err);
+
+        } else {
+
+            var table = r.table(tableName);
+            table
+                .getAll
+                .apply(table, args)
+                .run(connection, function (err, cursor) {
+
+                    if (err) {
+                        return callback(err);
+                    }
+
+                    cursor.toArray(function (err, result) {
+
+                        if (err) {
+                            return callback(err);
+                        }
+
+                        callback(err, result);
+                        pool.release(connection);
+                    });
+                });
+        }
+    });
+};
+
+internals.Database.prototype.getWithRelations = function (id, tableName, callback) {
+
+    var self = this;
+    var pool = this.pool;
+
+    pool.acquire(function (err, connection) {
+
+        self.get(id, tableName, function (err, post) {
+
+            var index = 'postId';
+
+            self.getAll(id, index, 'relation', function (err, relations) {
+
+                var relationItems = [];
+                var relationTable;
+
+                relations.forEach(function (row) {
+                    var prop;
+                    for (prop in row) {
+                        if (prop.substr(-2) === 'Id' && prop !== index) {
+
+                            relationTable = prop.substr(0, prop.length - 2);
+
+                            post[relationTable] = post[relationTable] || {
+                                items: []
+                            };
+
+                            relationItems.push({
+                                table: relationTable,
+                                id: row[prop]
+                            });
+                        }
+                    }
+                });
+
+                async.each(relationItems,
+                    function (item, cb) {
+                        self.get(item.id, item.table, function (err, relationItem) {
+                            post[item.table].items.push(relationItem);
+                            cb(err);
+                        });
+                    },
+                    function (err) {
+                        callback(err, post);
+                    }
+                );
+            });
+        });
     });
 };
 
@@ -120,16 +232,24 @@ internals.Database.prototype.list = function (tableName, callback) {
 
     pool.acquire(function (err, connection) {
         if (err) {
-            // handle error - this is generally the err from your
-            // factory.create function
+
+            return callback(err);
+
         } else {
 
             r.table(tableName)
                 .run(connection, function (err, cursor) {
-                    if (err) throw err;
+
+                    if (err) {
+                        return callback(err);
+                    }
 
                     cursor.toArray(function (err, result) {
-                        if (err) throw err;
+
+                        if (err) {
+                            return callback(err);
+                        }
+
                         callback(err, result);
                         pool.release(connection);
                     });
@@ -144,16 +264,23 @@ internals.Database.prototype.create = function (data, tableName, callback) {
 
     pool.acquire(function (err, connection) {
         if (err) {
-            // handle error - this is generally the err from your
-            // factory.create function
+
+            return callback(err);
+
         } else {
 
             r.table(tableName)
                 .insert(data)
                 .run(connection, function (err, result) {
-                    if (err) throw err;
 
-                    callback(err, result);
+                    if (err) {
+                        return callback(err);
+                    }
+
+                    if (typeof (callback) === 'function') {
+                        callback(err, result);
+                    }
+
                     pool.release(connection);
                 });
         }
@@ -166,15 +293,19 @@ internals.Database.prototype.destroy = function (id, tableName, callback) {
 
     pool.acquire(function (err, connection) {
         if (err) {
-            // handle error - this is generally the err from your
-            // factory.create function
+
+            return callback(err);
+
         } else {
 
             r.table(tableName)
                 .get(id)
                 .delete()
                 .run(connection, function (err, result) {
-                    if (err) throw err;
+
+                    if (err) {
+                        return callback(err);
+                    }
 
                     callback(err, result);
                     pool.release(connection);
@@ -189,15 +320,19 @@ internals.Database.prototype.update = function (id, data, tableName, callback) {
 
     pool.acquire(function (err, connection) {
         if (err) {
-            // handle error - this is generally the err from your
-            // factory.create function
+
+            return callback(err);
+
         } else {
 
             r.table(tableName)
                 .get(id)
                 .update(data)
                 .run(connection, function (err, result) {
-                    if (err) throw err;
+
+                    if (err) {
+                        return callback(err);
+                    }
 
                     callback(err, result);
                     pool.release(connection);

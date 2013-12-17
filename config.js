@@ -3,12 +3,13 @@ path = require('path');
 module.exports = {
     'db': {
         engine: 'rethinkdb',
-        host: 'localhost',
+        host: 'rethinkdb.fastcompany.com',
         port: 28015,
         database: 'test',
         maxConnections: 10,
         minConnections: 2,
-        connectionIdle: 30000
+        connectionIdle: 30000,
+        authKey: 'cialater'
     },
     cache: {
         engine: 'redis',
@@ -23,8 +24,8 @@ module.exports = {
         host: '0.0.0.0',
         port: 8008,
         securePort: 8433,
-        cluster: true,
-        workerCount: 2,
+        cluster: false,
+        workerCount: 3,
         logLevel: 'debug'
         // distFolder: path.resolve(__dirname, '../client/dist'),
         // viewsFolder: path.resolve(__dirname, './views'),

@@ -12,13 +12,6 @@ var config = require('../config');
 
 var packs = {
 
-    'furball': {
-        'permissions': {
-            'views': true
-        },
-        'options': {}
-    },
-
     'lout': {
         'permissions': {
             'views': true,
@@ -28,11 +21,17 @@ var packs = {
             'endpoint': '/docs'
         }
     },
-
+    // 'consumer': {
+    //     'path': resolve(__dirname, 'consumer')
+    // },
+    // 'messageQueue': {
+    //     'path': resolve(__dirname, 'message_queue')
+    // },
     'sample': {
         'permissions': {
             'views': true,
-            'routes': true
+            'routes': true,
+            'ext': true
         },
         'options': {
             'db': {

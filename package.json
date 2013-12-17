@@ -7,12 +7,11 @@
     "start": "nodemon index.js"
   },
   "dependencies": {
-    "hapi": "~1.16.1",
-    "consoleplusplus": "~1.2.0",
-    "lodash": "~2.2.1",
-    "lout": "~0.5.0",
-    "handlebars": "~1.1.2",
-    "furball": "~0.3.3"
+    "hapi": "2.x.x",
+    "lout": "1.x.x",
+    "consoleplusplus": "1.x.x",
+    "lodash": "2.x.x",
+    "handlebars": "1.x.x"
   },
   "devDependencies": {},
   "repository": {

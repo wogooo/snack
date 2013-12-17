@@ -1,7 +1,7 @@
 {
-  "name": "sample",
+  "name": "eventHub",
   "description": "Sample CRUD API HAPI pack based on RethinkDB",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "author": "Michael Shick",
   "repository": {
     "type": "git",
@@ -15,22 +15,9 @@
   "engines": {
     "node": "0.10.x"
   },
-  "dependencies": {
-    "rethinkdb": "1.x.x",
-    "lodash": "2.x.x",
-    "async": "0.2.x",
-    "generic-pool": "2.x.x",
-    "hoek": "1.x.x",
-    "jugglingdb": "~0.2.4",
-    "jugglingdb-rethink": "~1.1.2",
-    "handlebars": "~1.1.2"
-  },
+  "dependencies": {},
   "peerDependencies": {
-    "hapi": ">= 1.16.x",
-    "event_hub": "0.x.x"
-  },
-  "devDependencies": {
-    "lab": "1.x.x"
+    "hapi": ">= 1.16.x"
   },
   "scripts": {
     "test": "make test-cov"

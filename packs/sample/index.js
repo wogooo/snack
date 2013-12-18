@@ -94,8 +94,8 @@ exports.register = function (plugin, options, next) {
     plugin.route({
         method: 'GET',
         path: '/create',
-        handler: function (request) {
-            request.reply.view('form', {
+        handler: function (request, reply) {
+            reply.view('form', {
                 title: 'SAMPLE FORM',
                 isCreate: true,
                 message: 'Hello World!\n'
@@ -106,10 +106,10 @@ exports.register = function (plugin, options, next) {
     plugin.route({
         method: 'GET',
         path: '/list',
-        handler: function (request) {
+        handler: function (request, reply) {
             db.list('post', function (err, result) {
 
-                request.reply.view('page', {
+                reply.view('page', {
                     title: 'SAMPLE LIST',
                     isList: true,
                     page: {
@@ -172,9 +172,9 @@ exports.register = function (plugin, options, next) {
     plugin.route({
         method: 'GET',
         path: '/api/v1/posts',
-        handler: function (request) {
+        handler: function (request, reply) {
             db.list('post', function (err, result) {
-                request.reply(result);
+                reply(result);
             });
             // post.all(function (err, result) {
             //     request.reply(result);
@@ -185,12 +185,12 @@ exports.register = function (plugin, options, next) {
     plugin.route({
         method: 'GET',
         path: '/api/v1/posts/{id}',
-        handler: function (request) {
+        handler: function (request, reply) {
 
             var id = request.params.id;
 
             db.getWithRelations(id, 'post', function (err, result) {
-                request.reply(result);
+                reply(result);
             });
         }
     });
@@ -198,7 +198,7 @@ exports.register = function (plugin, options, next) {
     plugin.route({
         method: 'POST',
         path: '/api/v1/posts',
-        handler: function (request) {
+        handler: function (request, reply) {
 
             var fields = request.payload.fields;
             delete request.payload.fields;
@@ -207,7 +207,7 @@ exports.register = function (plugin, options, next) {
 
                 var postId = result.generated_keys[0];
 
-                request.reply.view('page', {
+                reply.view('page', {
                     title: 'SAMPLE RESPONSE',
                     page: {
                         name: 'Results',
@@ -277,7 +277,7 @@ exports.register = function (plugin, options, next) {
     plugin.route({
         method: 'GET',
         path: '/api/v1/test',
-        handler: function (request) {
+        handler: function (request, reply) {
                     var authorIds = [
                         '12a5f5e5-ce55-4122-b669-8aa8fd06c582',
                         'c3f972ca-59a4-4479-8308-ce10122cb81c'
@@ -293,7 +293,7 @@ exports.register = function (plugin, options, next) {
                             });
                         });
 
-                        request.reply(authorRelations);
+                        reply(authorRelations);
                     });
 
 

@@ -3,7 +3,7 @@ path = require('path');
 module.exports = {
     'db': {
         engine: 'rethinkdb',
-        host: 'rethinkdb.fastcompany.com',
+        host: 'rethinkdb.f-st.co',
         port: 28015,
         database: 'test',
         maxConnections: 10,

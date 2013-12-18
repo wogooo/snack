@@ -7,11 +7,11 @@
     "start": "nodemon index.js"
   },
   "dependencies": {
-    "hapi": "2.x.x",
     "lout": "1.x.x",
     "consoleplusplus": "1.x.x",
     "lodash": "2.x.x",
-    "handlebars": "1.x.x"
+    "handlebars": "1.x.x",
+    "hapi": "git://github.com/spumko/hapi"
   },
   "devDependencies": {},
   "repository": {

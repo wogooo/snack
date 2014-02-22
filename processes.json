@@ -5,7 +5,7 @@
   "instances": "2",
   "error_file": "./logs/snack-app-err.log",
   "out_file": "./logs/snack-app-out.log",
-  "pid_file": "./run/snack-app.pid",
+  "pid_file": "./pids/snack-app.pid",
   "exec_mode": "cluster_mode",
   "port": 8008,
   "env": {
@@ -18,7 +18,7 @@
   "instances": "2",
   "error_file": "./logs/snack-demon-err.log",
   "out_file": "./logs/snack-demon-out.log",
-  "pid_file": "./run/snack-demon.pid",
+  "pid_file": "./pids/snack-demon.pid",
   "exec_mode": "cluster_mode",
   "env": {
     "NODE_ENV": "production"

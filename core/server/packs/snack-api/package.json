@@ -1,7 +1,7 @@
 {
-  "name": "consumer",
+  "name": "snack-api",
   "description": "Sample CRUD API HAPI pack based on RethinkDB",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "author": "Michael Shick",
   "repository": {
     "type": "git",
@@ -15,10 +15,19 @@
   "engines": {
     "node": "0.10.x"
   },
-  "dependencies": {},
+  "dependencies": {
+    "lodash": "2.x.x",
+    "hoek": "~1.4.1",
+    "jugglingdb": "git+ssh://git@github.com:mshick/jugglingdb.git",
+    "jugglingdb-rethink": "git+ssh://git@github.com:mshick/jugglingdb-rethink.git",
+    "utile": "~0.2.1"
+  },
   "peerDependencies": {
-    "hapi": ">= 1.16.x",
-    "sample": "0.1.x"
+    "hapi": ">= 2.1.x",
+    "handlebars": ">= 1.1.x"
+  },
+  "devDependencies": {
+    "lab": "1.x.x"
   },
   "scripts": {
     "test": "make test-cov"

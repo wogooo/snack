@@ -1,86 +1,77 @@
-'use strict';
-
-// Core modules
-var cluster = require('cluster');
-
-// Contrib modules
-var hapi = require('hapi');
-var _ = require('lodash');
+var Cluster = require('cluster');
+var Hapi = require('hapi');
+var Utils = Hapi.utils;
+var Config = require('./config')();
+var Packs = require('./packs');
 
 // Declare internals
 var internals = {};
 
-internals.Worker = function (config) {
+internals.Snack = function () {};
 
-    this.config = config;
-};
-
-internals.Worker.prototype.start = function () {
+internals.Snack.prototype.start = function () {
 
     var server = this.server;
 
     server.start(function () {
-        var workerId = 0;
 
-        if (cluster.isWorker) {
-            workerId = cluster.worker.id;
-        }
-
-        console.info('Worker %s: Started on port %s', workerId, server.info.port);
+        console.info('Listening at %s:%s', server.info.host, server.info.port);
     });
 };
 
-internals.Worker.prototype.init = function () {
+internals.Snack.prototype.init = function () {
 
     var self = this;
-    var config = this.config;
 
     var options = {
         views: {
-            engines: { html: 'handlebars' },
+            engines: {
+                html: 'handlebars'
+            },
             path: __dirname + '/templates'
-        }
+        },
+        labels: ['snack-app']
     };
 
-    var server = hapi.createServer(config.server.host, config.server.port, options);
+    var server = Hapi.createServer(Config.server.host, Config.server.port, options);
 
     this.server = server;
 
     this.errorHandling();
 
     this.loadPacks(function (err) {
+
         if (err) {
             console.error('Failed loading plugins');
         }
+
         self.start();
     });
 };
 
 // Load packs from /packs dir
-internals.Worker.prototype.loadPacks = function (callback) {
+internals.Snack.prototype.loadPacks = function (callback) {
 
     var server = this.server;
 
-    var packsPath = '../packs';
-    var packs = require(packsPath);
-
     var loadPacks = {};
-    var packPath;
+    var pack, packPath;
 
-    _.each(packs, function (packOpts, packName) {
-
-        packPath = packOpts.path || packName;
-        loadPacks[packPath] = [ packOpts.permissions, packOpts.options ];
-    });
-
+    for (var name in Packs) {
+        pack = Packs[name];
+        packPath = pack.path || name;
+        loadPacks[packPath] = pack.options;
+    }
 
     server.pack.require(loadPacks, callback);
 };
 
-internals.Worker.prototype.errorHandling = function () {
+internals.Snack.prototype.errorHandling = function () {
 
     var self = this;
     var server = this.server;
+
+    // TODO: Is this compatible with PM2??
 
     server.on('internalError', function (request, err) {
         if (err.data.domainThrown) {
@@ -100,8 +91,8 @@ internals.Worker.prototype.errorHandling = function () {
                 // Let the master know we're dead.  This will trigger a
                 // 'disconnect' in the cluster master, and then it will fork
                 // a new worker.
-                if (cluster.isWorker) {
-                    cluster.worker.disconnect();
+                if (Cluster.isWorker) {
+                    Cluster.worker.disconnect();
                 } else {
                     self.start();
                 }
@@ -113,12 +104,12 @@ internals.Worker.prototype.errorHandling = function () {
     });
 };
 
-internals.Worker.init = function (config) {
+internals.Snack.createServer = function () {
 
-    var worker = new internals.Worker(config);
-    worker.init();
+    var snack = new internals.Snack();
+    snack.init();
 
-    return worker;
+    return snack;
 };
 
-module.exports = internals.Worker;
+module.exports = internals.Snack.createServer;

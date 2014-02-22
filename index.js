@@ -1,17 +1,7 @@
-'use strict';
+var argv = require('minimist')(process.argv.slice(2));
 
-// Better console
-require('consoleplusplus');
+var snack = require('./core');
 
-// Config exports
-var config = require('./config');
-
-// Set log level
-var logLevel = config.server.logLevel ? config.server.logLevel.toUpperCase() : 'ERROR';
-console.setLevel(console.LEVELS[logLevel]);
-
-// The server
-var server = require('./lib/server');
-
-// Init the server
-server.init(config);
+snack({
+    load: argv._
+});

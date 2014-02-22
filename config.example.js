@@ -16,12 +16,7 @@ config = {
             connectionIdle: 30000,
             authKey: 'test'
         },
-        queue: {
-            kue: {
-                host: 'localhost',
-                port: 6379
-            }
-        },
+
         cache: {
             engine: 'redis',
             host: 'localhost',
@@ -34,7 +29,8 @@ config = {
         server: {
             host: '0.0.0.0',
             port: 8008,
-            securePort: 8433
+            securePort: 8433,
+            logLevel: 'debug'
             // distFolder: path.resolve(__dirname, '../client/dist'),
             // viewsFolder: path.resolve(__dirname, './views'),
             // staticUrl: '/static',
@@ -50,8 +46,8 @@ config = {
                 clientSecret: 'xxx'
             }
         },
-        logging: {
-            level: 'DEBUG'
+        log: {
+            level: 'debug'
         }
     },
 
@@ -67,12 +63,6 @@ config = {
             minConnections: 2,
             connectionIdle: 30000,
             authKey: 'test'
-        },
-        queue: {
-            kue: {
-                host: 'localhost',
-                port: 6379
-            }
         },
         cache: {
             engine: 'redis',
@@ -103,8 +93,8 @@ config = {
                 clientSecret: 'xxx'
             }
         },
-        logging: {
-            level: 'DEBUG'
+        log: {
+            level: 'debug'
         }
     }
 };

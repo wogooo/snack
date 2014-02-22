@@ -1,2 +1,2 @@
-coolcool
-========
+Snack CMS
+=========

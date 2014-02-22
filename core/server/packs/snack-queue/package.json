@@ -1,11 +1,11 @@
 {
-  "name": "messageQueue",
-  "description": "Sample CRUD API HAPI pack based on RethinkDB",
+  "name": "snack-queue",
+  "description": "Simple job queue for Snack using the Kue module.",
   "version": "0.0.0",
   "author": "Michael Shick",
   "repository": {
     "type": "git",
-    "url": "git://github.com/mshick/coolcool"
+    "url": "git://github.com/mshick/Snack"
   },
   "main": "index",
   "keywords": [
@@ -16,17 +16,16 @@
     "node": "0.10.x"
   },
   "dependencies": {
-    "axon": "1.x.x",
-    "strong-mq": "0.0.7"
+    "kue": "~0.7.5"
   },
   "peerDependencies": {
-    "hapi": ">= 1.16.x"
+    "hapi": "~2.4"
   },
   "scripts": {
     "test": "make test-cov"
   },
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/mshick/coolcool/issues"
+    "url": "https://github.com/mshick/Snack/issues"
   }
 }

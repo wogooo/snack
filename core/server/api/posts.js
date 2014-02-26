@@ -57,7 +57,7 @@ posts.update = function update(args, done) {
             }
         }
 
-        if (query.clearQueue === 'true') {
+        if (query['clear-queue'] === 'true') {
 
             // Pass in the private queue clearing flag
             post.__data.clearQueue = true;

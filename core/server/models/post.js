@@ -95,6 +95,10 @@ internals.register = function (model, next) {
 
     Post.afterCreate = function (next) {
 
+        var self = this;
+
+        var apiUrl = this.getApiUrl();
+
         var task = {
             type: 'post.created',
             data: {
@@ -104,8 +108,7 @@ internals.register = function (model, next) {
         };
 
         server.methods.snackQueue('createJob', task, function (err, result) {
-
-            this.updateAttributes({
+            self.updateAttributes({
                     queue: result.endpoint
                 },
                 function (err) {
@@ -119,8 +122,6 @@ internals.register = function (model, next) {
         // Private data
         var _data = this.__data;
 
-        console.log('private data', _data);
-
         // Always set a new timestsamp
         data.timestamp = Date.now();
 
@@ -128,11 +129,20 @@ internals.register = function (model, next) {
 
             // Clearing the queue
             data.queue = null;
-            next();
+        }
 
-        } else if (!this.queue) {
+        next();
+    };
 
-            // If there is no queue, set up a task
+    Post.afterUpdate = function (next) {
+
+        var self = this;
+
+        // Private data
+        var _data = this.__data;
+
+        if (!this.queue && _data.clearQueue !== true) {
+
             var apiUrl = this.getApiUrl();
 
             var task = {
@@ -146,46 +156,18 @@ internals.register = function (model, next) {
 
             server.methods.snackQueue('createJob', task, function (err, result) {
 
-                data.queue = result.endpoint;
-                next();
+                self.updateAttributes({
+                        queue: result.endpoint
+                    },
+                    function (err) {
+                        next(err);
+                    });
             });
 
         } else {
 
             next();
         }
-    };
-
-    Post.afterUpdate = function (next) {
-
-        next();
-        // if (!this.queue) {
-        //     console.log('no queue!');
-
-        //     var apiUrl = this.getApiUrl();
-
-        //     var task = {
-        //         type: 'post.updated',
-        //         data: {
-        //             id: this.id,
-        //             cleanup: true,
-        //             endpoint: apiUrl
-        //         }
-        //     };
-
-        //     server.methods.snackQueue('createJob', task, function (err, result) {
-
-        //         console.log('job created!', result);
-
-        //         this.updateAttributes({
-        //                 queue: result.endpoint
-        //             },
-        //             function (err) {
-        //                 console.log('attrs updated!');
-        //                 next(err);
-        //             });
-        //     });
-        // }
     };
 
     Post.beforeDestroy = function (next) {

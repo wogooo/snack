@@ -101,13 +101,17 @@ internals.Demon.prototype._processHandlers = function () {
 
                 if (job.data && job.data.cleanup) {
 
+                    console.log('job done, cleaning up');
+
                     Request.put({
                         url: job.data.endpoint,
                         qs: {
-                            clearQueue: true,
-                            jobId: job.id
+                            'clear-queue': true,
+                            'job-id': job.id
                         }
                     }, function (err, response, body) {
+
+                        console.log('cleanup response');
                         done(err);
                     });
 

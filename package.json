@@ -14,9 +14,11 @@
     "async": "~0.2.10",
     "kue": "~0.7.5",
     "request": "~2.34.0",
-    "hapi": "git+ssh://git@github.com:spumko/hapi.git",
     "moment": "~2.5.1",
-    "minimist": "0.0.8"
+    "minimist": "0.0.8",
+    "hapi": "git+ssh://git@github.com:spumko/hapi.git",
+    "jugglingdb": "git+ssh://git@github.com:mshick/jugglingdb.git",
+    "jugglingdb-rethink": "git+ssh://git@github.com:mshick/jugglingdb-rethink.git"
   },
   "devDependencies": {},
   "repository": {

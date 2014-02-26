@@ -1,10 +1,14 @@
 var Schema = require('jugglingdb').Schema;
 
-var model = {};
+var internals = {};
 
-model.dependencies = [];
+internals.dependencies = [];
 
-model.register = function (schema, models, options, next) {
+internals.register = function (model, next) {
+
+    var server = model.server;
+    var schema = model.schema;
+    var models = model.models;
 
     var User = schema.define('User', {
         id: {
@@ -26,4 +30,4 @@ model.register = function (schema, models, options, next) {
     next();
 };
 
-module.exports = model;
+module.exports = internals;

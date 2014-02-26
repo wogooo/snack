@@ -10,7 +10,7 @@ function startServer() {
 }
 
 function startDemon() {
-    var Demon = require('./server/demon');
+    var Demon = require('./demon');
     Demon();
 }
 

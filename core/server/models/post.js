@@ -1,13 +1,19 @@
+var Hapi = require('hapi');
+var Utils = Hapi.utils;
 var Schema = require('jugglingdb').Schema;
-var utile = require('utile');
 var _ = require('lodash');
 
+var Config = require('../config');
 
-var model = {};
+var internals = {};
 
-model.dependencies = ['User'];
+internals.dependencies = ['User'];
 
-model.register = function (schema, models, options, next) {
+internals.register = function (model, next) {
+
+    var server = model.server;
+    var schema = model.schema;
+    var models = model.models;
 
     var Post = schema.define('Post', {
         id: {
@@ -24,7 +30,7 @@ model.register = function (schema, models, options, next) {
         date: {
             type: Date,
             default: function () {
-                return new Date;
+                return new Date();
             }
         },
         timestamp: {
@@ -35,6 +41,11 @@ model.register = function (schema, models, options, next) {
             type: Boolean,
             default: false,
             index: true
+        },
+        queue: {
+            type: String,
+            length: 2000,
+            default: null
         }
     });
 
@@ -42,11 +53,13 @@ model.register = function (schema, models, options, next) {
         model: models.User
     });
 
-    Post.getAll = function(fields, options, callback) {
+    Post.getAll = function (fields, options, callback) {
         fields = fields || [];
         options = options || {};
 
-        this.all({ include: fields }, function(err, results) {
+        this.all({
+            include: fields
+        }, function (err, results) {
 
             if (err) {
                 return callback(err);
@@ -67,9 +80,132 @@ model.register = function (schema, models, options, next) {
         });
     };
 
+    Post.prototype.getApiUrl = function () {
+
+        var apiUrl = Config.urlFor('api', {
+            api: {
+                model: 'posts',
+                version: 1,
+                id: this.id
+            }
+        }, true);
+
+        return apiUrl;
+    };
+
+    Post.afterCreate = function (next) {
+
+        var task = {
+            type: 'post.created',
+            data: {
+                id: this.id,
+                cleanup: true
+            }
+        };
+
+        server.methods.snackQueue('createJob', task, function (err, result) {
+
+            this.updateAttributes({
+                    queue: result.endpoint
+                },
+                function (err) {
+                    next(err);
+                });
+        });
+    };
+
+    Post.beforeUpdate = function (next, data) {
+
+        // Private data
+        var _data = this.__data;
+
+        console.log('private data', _data);
+
+        // Always set a new timestsamp
+        data.timestamp = Date.now();
+
+        if (_data.clearQueue === true) {
+
+            // Clearing the queue
+            data.queue = null;
+            next();
+
+        } else if (!this.queue) {
+
+            // If there is no queue, set up a task
+            var apiUrl = this.getApiUrl();
+
+            var task = {
+                type: 'post.updated',
+                data: {
+                    id: this.id,
+                    cleanup: true,
+                    endpoint: apiUrl
+                }
+            };
+
+            server.methods.snackQueue('createJob', task, function (err, result) {
+
+                data.queue = result.endpoint;
+                next();
+            });
+
+        } else {
+
+            next();
+        }
+    };
+
+    Post.afterUpdate = function (next) {
+
+        next();
+        // if (!this.queue) {
+        //     console.log('no queue!');
+
+        //     var apiUrl = this.getApiUrl();
+
+        //     var task = {
+        //         type: 'post.updated',
+        //         data: {
+        //             id: this.id,
+        //             cleanup: true,
+        //             endpoint: apiUrl
+        //         }
+        //     };
+
+        //     server.methods.snackQueue('createJob', task, function (err, result) {
+
+        //         console.log('job created!', result);
+
+        //         this.updateAttributes({
+        //                 queue: result.endpoint
+        //             },
+        //             function (err) {
+        //                 console.log('attrs updated!');
+        //                 next(err);
+        //             });
+        //     });
+        // }
+    };
+
+    Post.beforeDestroy = function (next) {
+
+        var task = {
+            type: 'post.destroying',
+            data: {
+                id: this.id,
+                cleanup: false
+            }
+        };
+
+        server.methods.snackQueue('createJob', task, function (err, result) {
+            next();
+        });
+    };
+
     models.Post = Post;
 
     next();
 };
 
-module.exports = model;
+module.exports = internals;

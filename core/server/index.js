@@ -1,8 +1,12 @@
 var Cluster = require('cluster');
+var Async = require('async');
 var Hapi = require('hapi');
 var Utils = Hapi.utils;
 var Config = require('./config')();
 var Packs = require('./packs');
+var Routes = require('./routes');
+var Api = require('./api');
+var Models = require('./models');
 
 // Declare internals
 var internals = {};
@@ -15,7 +19,7 @@ internals.Snack.prototype.start = function () {
 
     server.start(function () {
 
-        console.info('Listening at %s:%s', server.info.host, server.info.port);
+        console.info('🍪  Snack App listening! %s:%s', server.info.host, server.info.port);
     });
 };
 
@@ -36,6 +40,14 @@ internals.Snack.prototype.init = function () {
     var server = Hapi.createServer(Config.server.host, Config.server.port, options);
 
     this.server = server;
+
+    Models.init(self, function () {
+        Api.init(self, function () {
+            Routes.init(self, function () {
+                console.log('all set!');
+            });
+        });
+    });
 
     this.errorHandling();
 

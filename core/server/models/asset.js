@@ -1,8 +1,12 @@
-var model = {};
+var internals = {};
 
-model.dependencies = [ 'Post' ];
+internals.dependencies = [ 'Post' ];
 
-model.register = function (schema, models, options, next) {
+internals.register = function (model, next) {
+
+    var server = model.server;
+    var schema = model.schema;
+    var models = model.models;
 
     var Asset = schema.define('Asset', {
         id: {
@@ -24,4 +28,4 @@ model.register = function (schema, models, options, next) {
     next();
 };
 
-module.exports = model;
+module.exports = internals;

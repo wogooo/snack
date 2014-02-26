@@ -1,18 +1,11 @@
-var path = require('path');
-var utile = require('utile');
-var async = utile.async;
-
+var Hapi = require('hapi');
+var Utils = Hapi.utils;
+var Async = require('async');
 var Schema = require('jugglingdb').Schema;
 
+var Config = require('../config')();
+
 var internals = {};
-
-internals.models = {};
-
-internals.getModels = function () {
-    return internals.models;
-};
-
-exports.getModels = internals.getModels;
 
 internals.loadOrder = function (models) {
 
@@ -60,27 +53,34 @@ internals.loadOrder = function (models) {
     return loadOrder;
 };
 
-internals.load = function (settings, callback) {
+internals.init = function (snack, callback) {
 
-    var db = settings.db;
+    var db = Config.db;
     var schema = new Schema(db.engine, db);
 
-    var requires = utile.requireDir(path.resolve(__dirname, '../models'));
+    var requires = {};
+    Utils.loadDirModules(__dirname, ['index'], requires);
+
     var loadOrder = internals.loadOrder(requires);
 
-    var models = internals.models;
+    var root = {};
+    root.snack = snack;
+    root.server = snack.server;
+    root.models = exports.models;
+    root.schema = schema;
 
-    async.eachSeries(loadOrder, function (loadItem, next) {
+    Async.eachSeries(loadOrder, function (loadItem, next) {
 
-        requires[loadItem].register(schema, models, {}, next);
+        requires[loadItem].register(root, next);
 
     }, function (err) {
 
         schema.autoupdate(function () {
 
-            callback(err, models);
+            callback(err, exports.models);
         });
     });
 };
 
-exports.load = internals.load;
+exports.init = internals.init;
+exports.models = {};

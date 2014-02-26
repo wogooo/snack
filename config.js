@@ -52,7 +52,11 @@ config = {
         },
         logging: {
             level: 'DEBUG'
-        }
+        },
+        demons: [
+            'search-indexing',
+            'open-calais'
+        ]
     },
 
     production: {

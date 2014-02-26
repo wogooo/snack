@@ -4,6 +4,7 @@ var Kue = require('kue'),
     Job = Kue.Job;
 
 var defaults = {
+    basePath: '/api/v1/',
     kue: {
         host: 'localhost',
         port: 6379,
@@ -17,16 +18,36 @@ internals.SnackQueue = function (plugin, options) {
 
     var Hapi = plugin.hapi;
 
-    options = Hapi.utils.applyToDefaults(defaults, options);
-
-    this._settings = {};
+    this._settings = Hapi.utils.applyToDefaults(defaults, options);
 
     this.plugin = plugin;
     this.hapi = Hapi;
-    this.queue = Kue.createQueue(options.kue);
+    this.queue = Kue.createQueue(this._settings.kue);
+
+    this.debug();
+};
+
+internals.SnackQueue.prototype.debug = function () {
+    this.queue.on('job complete', function (id) {
+        console.log('this job finished', id);
+        // Job.get(id, function (err, job) {
+        //     if (err) return;
+        //     job.remove(function (err) {
+        //         if (err) throw err;
+        //         console.log('removed completed job #%d', job.id);
+        //     });
+        // });
+    });
+
+    this.queue.on('job progress', function (progress, id) {
+        console.log('this job progress', progress, id);
+    });
 };
 
 internals.SnackQueue.prototype.createJob = function (task, done) {
+
+    var settings = this._settings;
+    var basePath = settings.basePath;
 
     if (!task.type) {
         return done(new Error('Must provide job type'));
@@ -46,7 +67,8 @@ internals.SnackQueue.prototype.createJob = function (task, done) {
 
         done(null, {
             message: 'job created',
-            id: job.id
+            id: job.id,
+            endpoint: basePath + 'queue/job/' + job.id
         });
     });
 };
@@ -119,27 +141,6 @@ internals.SnackQueue.prototype.registerMethods = function () {
             sq[method](obj, next);
         }
     });
-
-    plugin.method({
-        name: 'sqCreateJob',
-        fn: function (task, next) {
-            sq.createJob(task, next);
-        }
-    });
-
-    plugin.method({
-        name: 'sqRemoveJob',
-        fn: function (id, next) {
-            sq.removeJob(id, next);
-        }
-    });
-
-    plugin.method({
-        name: 'sqGetJob',
-        fn: function (id, next) {
-            sq.getJob(id, next);
-        }
-    });
 };
 
 internals.SnackQueue.prototype.registerRoutes = function () {
@@ -148,16 +149,18 @@ internals.SnackQueue.prototype.registerRoutes = function () {
 
     var Hapi = this.hapi;
     var plugin = this.plugin;
+    var settings = this._settings;
+    var basePath = settings.basePath;
 
     plugin.route({
         method: 'GET',
-        path: '/api/v1/queue/stats',
+        path: basePath + 'queue/stats',
         handler: function (request, reply) {
-            sq.stats(function (error, result) {
+            sq.stats(function (err, result) {
                 if (error) {
                     return reply({
-                        error: error.name,
-                        message: error.message
+                        error: err.name,
+                        message: err.message
                     }).code(500);
                 }
 
@@ -168,7 +171,7 @@ internals.SnackQueue.prototype.registerRoutes = function () {
 
     plugin.route({
         method: 'GET',
-        path: '/api/v1/queue/job/{id}',
+        path: basePath + 'queue/job/{id}',
         config: {
             validate: {
                 path: {
@@ -177,12 +180,12 @@ internals.SnackQueue.prototype.registerRoutes = function () {
             },
             handler: function (request, reply) {
 
-                sq.getJob(request.params, function (error, result) {
+                sq.getJob(request.params, function (err, result) {
 
-                    if (error) {
+                    if (err) {
                         return reply({
-                            error: error.name,
-                            message: error.message
+                            error: err.name,
+                            message: err.message
                         }).code(500);
                     }
 
@@ -194,7 +197,7 @@ internals.SnackQueue.prototype.registerRoutes = function () {
 
     plugin.route({
         method: 'GET',
-        path: '/api/v1/queue/job/{id}/log',
+        path: basePath + 'queue/job/{id}/log',
         config: {
             validate: {
                 path: {
@@ -203,12 +206,12 @@ internals.SnackQueue.prototype.registerRoutes = function () {
             },
             handler: function (request, reply) {
 
-                sq.getJobLog(request.params, function (error, result) {
+                sq.getJobLog(request.params, function (err, result) {
 
-                    if (error) {
+                    if (err) {
                         return reply({
-                            error: error.name,
-                            message: error.message
+                            error: err.name,
+                            message: err.message
                         }).code(500);
                     }
 
@@ -220,7 +223,7 @@ internals.SnackQueue.prototype.registerRoutes = function () {
 
     plugin.route({
         method: 'DELETE',
-        path: '/api/v1/queue/job/{id}',
+        path: basePath + 'queue/job/{id}',
         config: {
             validate: {
                 path: {
@@ -229,9 +232,9 @@ internals.SnackQueue.prototype.registerRoutes = function () {
             },
             handler: function (request, reply) {
 
-                plugin.methods.sqRemoveJob(request.params, function (error, result) {
+                plugin.methods.sqRemoveJob(request.params, function (err, result) {
 
-                    if (error) {
+                    if (err) {
                         return reply({
                             error: err.name,
                             message: err.message
@@ -246,13 +249,13 @@ internals.SnackQueue.prototype.registerRoutes = function () {
 
     plugin.route({
         method: 'POST',
-        path: '/api/v1/queue/job',
+        path: basePath + 'queue/job',
         handler: function (request, reply) {
 
             var payload = request.payload || {};
 
-            sq.createJob(payload, function (error, result) {
-                if (error) {
+            sq.createJob(payload, function (err, result) {
+                if (err) {
                     return reply({
                         error: err.name,
                         message: err.message

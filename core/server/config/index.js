@@ -9,6 +9,7 @@ var Path = require('path'),
     Hapi = require('hapi'),
     Utils = Hapi.utils,
     Url = require('url'),
+    ConfigUrl     = require('./url'),
     appRoot = Path.resolve(__dirname, '../../../'),
     corePath = Path.resolve(appRoot, 'core/'),
     snackConfig = {};
@@ -87,6 +88,8 @@ function updateConfig(config) {
         }
     });
 
+    ConfigUrl.setConfig(snackConfig);
+
     return snackConfig;
 }
 
@@ -112,3 +115,5 @@ function config() {
 
 module.exports = config;
 module.exports.init = initConfig;
+module.exports.urlFor = ConfigUrl.urlFor;
+// module.exports.urlForPost = ConfigUrl.urlForPost;

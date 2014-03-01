@@ -57,13 +57,14 @@ posts.update = function update(args, done) {
             }
         }
 
-        if (query['clear-queue'] === 'true') {
+        if (query['clearQueue'] === 'true') {
 
             // Pass in the private queue clearing flag
             post.__data.clearQueue = true;
         }
 
         post.updateAttributes(payload, function (err, results) {
+
             done(err, results ? results.toJSON(true) : null);
         });
     });
@@ -71,6 +72,7 @@ posts.update = function update(args, done) {
 
 posts.destroy = function destroy(args, done) {
 
+    var query = args.query;
     var params = args.params;
 
     models.Post.find(params.id, function (err, post) {
@@ -82,9 +84,22 @@ posts.destroy = function destroy(args, done) {
             return done(new Error('Record not found.'));
         }
 
-        post.destroy(function (err, results) {
-            done(err, results ? results.toJSON(true) : null);
-        });
+        if (query.destroy === 'true') {
+
+            // A true destructive delete
+            post.destroy(function (err) {
+                done(err);
+            });
+
+        } else {
+
+            // A more commons setting of the deleted flag
+            post.updateAttributes({
+                deleted: true
+            }, function (err) {
+                done(err);
+            });
+        }
     });
 };
 

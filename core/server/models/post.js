@@ -4,14 +4,66 @@ var Schema = require('jugglingdb').Schema;
 var _ = require('lodash');
 
 var Config = require('../config');
+var config = Config();
+
+var server = {};
 
 var internals = {};
 
 internals.dependencies = ['User'];
 
+internals._apiEndpoint = function (type, id) {
+
+    if (!type || !id) {
+        return '';
+    }
+
+    var context = 'api';
+
+    var data = {
+        api: {
+            type: type,
+            id: id
+        }
+    };
+
+    var endpoint = Config.urlFor(context, data, true);
+
+    return endpoint;
+};
+
+internals._enqueue = function (hook, item, cleanup, done) {
+
+    var endpoint = internals._apiEndpoint(item.type, item.id);
+
+    var task = {
+        type: hook,
+        data: {
+            type: item.type,
+            id: item.id,
+            cleanup: Boolean(cleanup),
+            endpoint: endpoint
+        }
+    };
+
+    server.methods.snackQueue('createJob', task, function (err, result) {
+
+        if (err) return done(err);
+
+        var queuePath = Config.urlFor('api', {
+            api: {
+                type: 'queue',
+                id: result.id
+            }
+        });
+
+        done(null, queuePath);
+    });
+};
+
 internals.register = function (model, next) {
 
-    var server = model.server;
+    server = model.server;
     var schema = model.schema;
     var models = model.models;
 
@@ -23,6 +75,16 @@ internals.register = function (model, next) {
         title: {
             type: String,
             length: 255
+        },
+        type: {
+            type: String,
+            length: 255,
+            default: 'post'
+        },
+        kind: {
+            type: String,
+            length: 255,
+            default: 'article'
         },
         content: {
             type: Schema.Text
@@ -38,6 +100,11 @@ internals.register = function (model, next) {
             default: Date.now
         },
         published: {
+            type: Boolean,
+            default: false,
+            index: true
+        },
+        deleted: {
             type: Boolean,
             default: false,
             index: true
@@ -80,41 +147,31 @@ internals.register = function (model, next) {
         });
     };
 
-    Post.prototype.getApiUrl = function () {
-
-        var apiUrl = Config.urlFor('api', {
-            api: {
-                model: 'posts',
-                version: 1,
-                id: this.id
-            }
-        }, true);
-
-        return apiUrl;
-    };
-
     Post.afterCreate = function (next) {
 
         var self = this;
 
-        var apiUrl = this.getApiUrl();
+        if (config.hooks['post.created']) {
 
-        var task = {
-            type: 'post.created',
-            data: {
-                id: this.id,
-                cleanup: true
-            }
-        };
+            internals._enqueue('post.created', {
+                type: this.constructor.modelName,
+                id: this.id
+            }, true, function (err, queuePath) {
 
-        server.methods.snackQueue('createJob', task, function (err, result) {
-            self.updateAttributes({
-                    queue: result.endpoint
-                },
-                function (err) {
-                    next(err);
-                });
-        });
+                if (err) return next(err);
+
+                self.updateAttributes({
+                        queue: queuePath
+                    },
+                    function (err) {
+                        next(err);
+                    });
+            });
+
+            return;
+        }
+
+        next();
     };
 
     Post.beforeUpdate = function (next, data) {
@@ -143,26 +200,25 @@ internals.register = function (model, next) {
 
         if (!this.queue && _data.clearQueue !== true) {
 
-            var apiUrl = this.getApiUrl();
+            if (config.hooks['post.updated'] || config.hooks['post.deleted']) {
 
-            var task = {
-                type: 'post.updated',
-                data: {
-                    id: this.id,
-                    cleanup: true,
-                    endpoint: apiUrl
-                }
-            };
+                internals._enqueue(this.deleted ? 'post.deleted' : 'post.updated', {
+                    type: this.constructor.modelName,
+                    id: this.id
+                }, true, function (err, queuePath) {
 
-            server.methods.snackQueue('createJob', task, function (err, result) {
+                    if (err) return next();
 
-                self.updateAttributes({
-                        queue: result.endpoint
-                    },
-                    function (err) {
+                    var attr = {
+                        queue: queuePath
+                    };
+
+                    self.updateAttributes(attr, function (err) {
+
                         next(err);
                     });
-            });
+                });
+            }
 
         } else {
 
@@ -172,17 +228,16 @@ internals.register = function (model, next) {
 
     Post.beforeDestroy = function (next) {
 
-        var task = {
-            type: 'post.destroying',
-            data: {
-                id: this.id,
-                cleanup: false
-            }
-        };
+        if (config.hooks['post.destroyed']) {
 
-        server.methods.snackQueue('createJob', task, function (err, result) {
-            next();
-        });
+            internals._enqueue('post.destroyed', {
+                type: this.constructor.modelName,
+                id: this.id
+            }, false, function (err) {
+
+                next(err);
+            });
+        }
     };
 
     models.Post = Post;
@@ -190,4 +245,5 @@ internals.register = function (model, next) {
     next();
 };
 
-module.exports = internals;
+exports.dependencies = internals.dependencies;
+exports.register = internals.register;

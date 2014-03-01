@@ -8,7 +8,7 @@ internals.register = function (model, next) {
     var schema = model.schema;
     var models = model.models;
 
-    var Asset = schema.define('Asset', {
+    var Image = schema.define('Image', {
         id: {
             type: String,
             index: true
@@ -21,9 +21,9 @@ internals.register = function (model, next) {
 
     var Post = models.Post;
 
-    Post.hasAndBelongsToMany('assets');
+    Post.hasAndBelongsToMany('images');
 
-    models.Asset = Asset;
+    models.Image = Image;
 
     next();
 };

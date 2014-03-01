@@ -53,19 +53,19 @@ internals.loadOrder = function (models) {
     return loadOrder;
 };
 
-internals.init = function (snack, callback) {
+internals.init = function (server, callback) {
 
     var db = Config.db;
     var schema = new Schema(db.engine, db);
 
     var requires = {};
-    Utils.loadDirModules(__dirname, ['index'], requires);
+    Utils.loadDirModules(__dirname, ['index', 'base'], requires);
 
     var loadOrder = internals.loadOrder(requires);
 
     var root = {};
-    root.snack = snack;
-    root.server = snack.server;
+
+    root.server = server;
     root.models = exports.models;
     root.schema = schema;
 

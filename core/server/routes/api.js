@@ -1,38 +1,6 @@
 var api = require('../api');
 
-module.exports = function (snack) {
-
-    var server = snack.server;
-
-    server.route({
-        method: 'GET',
-        path: '/foo',
-        handler: function (request, reply) {
-
-            reply('bar');
-        }
-    });
-
-    server.route({
-        method: 'GET',
-        path: '/test/{id}',
-        handler: function (request, reply) {
-
-            var params = request.params;
-
-            var task = {
-                type: 'image',
-                data: {
-                    api: 'posts',
-                    id: params.id
-                }
-            };
-
-            server.methods.snackQueue('createJob', task, function (err, result) {
-                reply(result);
-            });
-        }
-    });
+module.exports = function (server) {
 
     server.route({
         method: 'POST',

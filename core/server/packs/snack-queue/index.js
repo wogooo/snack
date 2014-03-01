@@ -4,7 +4,7 @@ var Kue = require('kue'),
     Job = Kue.Job;
 
 var defaults = {
-    basePath: '/api/v1/',
+    basePath: '',
     kue: {
         host: 'localhost',
         port: 6379,
@@ -29,7 +29,7 @@ internals.SnackQueue = function (plugin, options) {
 
 internals.SnackQueue.prototype.debug = function () {
     this.queue.on('job complete', function (id) {
-        console.log('this job finished', id);
+        console.log('job complete:', id);
         // Job.get(id, function (err, job) {
         //     if (err) return;
         //     job.remove(function (err) {
@@ -40,7 +40,11 @@ internals.SnackQueue.prototype.debug = function () {
     });
 
     this.queue.on('job progress', function (progress, id) {
-        console.log('this job progress', progress, id);
+        console.log('job progress:', progress, id);
+    });
+
+    this.queue.on('job failed', function (id) {
+        console.log('job failed:', id);
     });
 };
 
@@ -67,8 +71,7 @@ internals.SnackQueue.prototype.createJob = function (task, done) {
 
         done(null, {
             message: 'job created',
-            id: job.id,
-            endpoint: basePath + 'queue/job/' + job.id
+            id: job.id
         });
     });
 };
@@ -154,7 +157,7 @@ internals.SnackQueue.prototype.registerRoutes = function () {
 
     plugin.route({
         method: 'GET',
-        path: basePath + 'queue/stats',
+        path: basePath + '/queue/stats',
         handler: function (request, reply) {
             sq.stats(function (err, result) {
                 if (error) {
@@ -171,7 +174,7 @@ internals.SnackQueue.prototype.registerRoutes = function () {
 
     plugin.route({
         method: 'GET',
-        path: basePath + 'queue/job/{id}',
+        path: basePath + '/queue/job/{id}',
         config: {
             validate: {
                 path: {
@@ -197,7 +200,7 @@ internals.SnackQueue.prototype.registerRoutes = function () {
 
     plugin.route({
         method: 'GET',
-        path: basePath + 'queue/job/{id}/log',
+        path: basePath + '/queue/job/{id}/log',
         config: {
             validate: {
                 path: {
@@ -223,7 +226,7 @@ internals.SnackQueue.prototype.registerRoutes = function () {
 
     plugin.route({
         method: 'DELETE',
-        path: basePath + 'queue/job/{id}',
+        path: basePath + '/queue/job/{id}',
         config: {
             validate: {
                 path: {
@@ -249,7 +252,7 @@ internals.SnackQueue.prototype.registerRoutes = function () {
 
     plugin.route({
         method: 'POST',
-        path: basePath + 'queue/job',
+        path: basePath + '/queue/job',
         handler: function (request, reply) {
 
             var payload = request.payload || {};

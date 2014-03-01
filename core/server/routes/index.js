@@ -7,8 +7,10 @@ var requires = {};
 
 Utils.loadDirModules(__dirname, ['index'], requires);
 
-exports.init = function (snack, next) {
+exports.init = function (server, next) {
     Object.keys(requires).forEach(function (requireName) {
-        exports[requireName] = requires[requireName](snack);
+        exports[requireName] = requires[requireName](server);
     });
+
+    next();
 };

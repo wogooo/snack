@@ -1,7 +1,7 @@
 /* Demons should remain as de-coupled as practical.
    They will only communicate with the main app server via the API,
    not internal methods, despite that being fundamentally easier. */
-
+var Fs = require('fs');
 var Util = require('util');
 var Path = require('path');
 var Hapi = require('hapi');
@@ -26,6 +26,10 @@ internals.Demon = function (options) {
         this._settings.requirePath = Path.resolve(options.requirePath);
     }
 
+    this._settings.demons = options.demons || {};
+    this._settings.pluginsPath = options.pluginsPath || '';
+    this._settings.contentPath = options.contentPath || '';
+
     Utils.assert(options.queue, 'No queue settings defined!');
 
     if (options.queue.kue) {
@@ -33,7 +37,19 @@ internals.Demon = function (options) {
         this.queue = this.usingKue(options.kue);
     }
 
+    this.hapi = Hapi;
+
     this._hooks = {};
+
+    if (options.hooks) {
+
+        // Pre-populate the hooks that will need processing
+        for (var hook in options.hooks) {
+            this._hooks[hook] = [];
+        }
+    }
+
+    this._registered = {};
 };
 
 internals.Demon.prototype.usingKue = function (settings) {
@@ -50,12 +66,34 @@ internals.Demon.prototype.usingKue = function (settings) {
 internals.Demon.prototype.init = function (callback) {
 
     var self = this;
+    var settings = this._settings;
 
-    var demons = Config().demons || [];
-
-    this.require(demons, {}, function (err) {
+    this.require(settings.demons, {}, function (err) {
         self._processHandlers();
         callback(err);
+    });
+};
+
+internals.Demon.prototype._processCleanUp = function (job, done) {
+
+    if (!job || !job.data || !job.data.endpoint) {
+
+        // Without an endpoint, we can't cleanup,
+        // so just let things finish
+        return done();
+    }
+
+    var cleanUpRequest = {
+        uri: job.data.endpoint,
+        qs: {
+            'clearQueue': true,
+            'jobId': job.id
+        }
+    };
+
+    Request.put(cleanUpRequest, function (err, response, body) {
+
+        done(err);
     });
 };
 
@@ -66,15 +104,10 @@ internals.Demon.prototype._processHandlers = function () {
     var queue = this.queue;
     var hooks = this._hooks;
 
-    var processes = {};
-
     // Iterate hooks, to set up queue processes to handle
     var attachHandlers = function () {
 
         for (var hook in hooks) {
-
-            // Get the processes array, for the async series
-            processes = hooks[hook] || [];
 
             // Listen to the job queue
             queue.process(hook, processHandler);
@@ -83,12 +116,29 @@ internals.Demon.prototype._processHandlers = function () {
 
     var processHandler = function (job, done) {
 
+        // Get the processes array, for the async series
+        var processes = hooks[job.type];
+
         var pending = processes.length,
             total = pending;
 
-        // Setup the series of processes that will be run
-        Async.forEachSeries(processes, function (proc, next) {
+        if (total === 0) {
 
+            // No processes for this hook, so clear it and callback
+            if (job.data && job.data.cleanup) {
+
+                // Cleanup requested
+                return self._processCleanUp(job, done);
+            }
+
+            return done(err);
+        }
+
+        // Setup the series of processes that will be run
+        Async.eachSeries(processes, function (proc, next) {
+
+                // Decrement pending for each process,
+                // progress becomes a percent of processes complete.
                 --pending;
 
                 // Pass in the job
@@ -101,25 +151,11 @@ internals.Demon.prototype._processHandlers = function () {
 
                 if (job.data && job.data.cleanup) {
 
-                    console.log('job done, cleaning up');
-
-                    Request.put({
-                        url: job.data.endpoint,
-                        qs: {
-                            'clear-queue': true,
-                            'job-id': job.id
-                        }
-                    }, function (err, response, body) {
-
-                        console.log('cleanup response');
-                        done(err);
-                    });
-
-                } else {
-
-                    // Complete the job
-                    return done(err);
+                    // Cleanup requested
+                    return self._processCleanUp(job, done);
                 }
+
+                done(err);
             });
     };
 
@@ -191,13 +227,16 @@ internals.Demon.prototype._sortProcessHandlers = function (hook, fn, options) {
 internals.Demon.prototype._register = function (plugin, options, callback) {
 
     var self = this;
+    var registered = this._registered;
 
     // Setup root demon object
     var root = {};
 
+    root.hapi = this.hapi;
     root.config = Config;
     root.queue = this.queue;
     root.hooks = this._hooks;
+    root.registered = registered;
 
     root.process = function ( /* hooks, fn, options */ ) {
 
@@ -206,6 +245,7 @@ internals.Demon.prototype._register = function (plugin, options, callback) {
 
     plugin.register.call(null, root, options || {}, function (err) {
 
+        registered[plugin.name] = true;
         callback(err);
     });
 };
@@ -223,6 +263,8 @@ internals.Demon.prototype.require = function (names, options, callback) {
 internals.Demon.prototype._require = function (names, options, callback, requireFunc) {
 
     var self = this;
+    var settings = this._settings;
+    var registered = this._registered;
 
     requireFunc = requireFunc || require;
 
@@ -230,15 +272,19 @@ internals.Demon.prototype._require = function (names, options, callback, require
 
         var registrations = [];
 
-        names.forEach(function (item) {
+        Object.keys(names).forEach(function (item) {
 
             registrations.push({
                 name: item,
-                options: null
+                options: names[item]
             });
         });
 
-        Async.forEachSeries(registrations, function (item, next) {
+        Async.eachSeries(registrations, function (item, next) {
+
+                // Set the registered flag to false,
+                // reset as true when ready.
+                registered[item.name] = false;
 
                 load(item, next);
             },
@@ -251,27 +297,25 @@ internals.Demon.prototype._require = function (names, options, callback, require
     var load = function (item, next) {
 
         var itemName = item.name;
-        if (itemName[0] === '.') {
-            itemName = Path.join(__dirname, itemName);
-        } else if (itemName[0] !== '/' &&
-            self._settings.requirePath) {
 
-            itemName = Path.join(self._settings.requirePath, itemName);
-        }
+        internals.demonHunter(itemName, settings.pluginsPath, function (err, demonPath) {
 
-        var packageFile = Path.join(itemName, 'package.json');
+            if (err) return next();
 
-        var mod = requireFunc(itemName);
-        var pkg = requireFunc(packageFile);
+            var packageFile = Path.join(demonPath, 'package.json');
 
-        var processor = {
-            name: pkg.name,
-            version: pkg.version,
-            register: mod.register,
-            path: internals.packagePath(pkg.name, packageFile)
-        };
+            var mod = requireFunc(demonPath);
+            var pkg = requireFunc(packageFile);
 
-        self._register(processor, item.options, next);
+            var processor = {
+                name: pkg.name,
+                version: pkg.version,
+                register: mod.register,
+                path: internals.packagePath(pkg.name, packageFile)
+            };
+
+            self._register(processor, item.options, next);
+        });
     };
 
     parse();
@@ -281,13 +325,71 @@ internals.Demon.start = function () {
 
     var config = {
         requirePath: Path.resolve(__dirname),
-        queue: Config().queue
+        queue: Config().queue,
+        hooks: Config().hooks,
+        demons: Config().demons,
+        pluginsPath: Config().paths.pluginsPath,
+        contentPath: Config().paths.contentPath
     };
 
     var demon = new internals.Demon(config);
 
     demon.init(function () {
-        console.info('😈  Snack Demon ready!');
+
+        var registered = demon._registered;
+        var enabled = [], disabled = [];
+        for (var reg in registered) {
+            if (registered[reg]) {
+                enabled.push(reg);
+            } else {
+                disabled.push(reg);
+            }
+        }
+
+        console.log(
+            "Snack Demon is running...".green,
+            enabled.length ? ("\nEnabled: " + enabled.join(', ')).grey : '',
+            disabled.length ? ("\nDisabled: " + disabled.join(', ')).red : ''
+        );
+    });
+};
+
+//
+// 1. ../node_modules/[demonName]
+// 2. ../[userPath]/demons
+// 3. ./demons
+
+internals.demonHunter = function (name, pluginsPath, done) {
+
+    var demonPath;
+
+    var mod;
+    try {
+        mod = require(name);
+    } catch (e) {}
+
+    if (mod) {
+        return done(null, name);
+    }
+
+    var path = Path.join(pluginsPath, 'demons', name);
+
+    Fs.stat(path, function (err, stats) {
+
+        if (stats && stats.isDirectory()) {
+            return done(null, path);
+        }
+
+        path = Path.join(__dirname, 'demons', name);
+
+        Fs.stat(path, function (err, stats) {
+
+            if (stats && stats.isDirectory()) {
+                return done(null, path);
+            }
+
+            done(err);
+        });
     });
 };
 

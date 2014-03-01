@@ -18,6 +18,7 @@ function updateConfig(config) {
 
     var localPath,
         contentPath,
+        pluginsPath,
         subdir,
         logLevel,
         serverPort,
@@ -54,8 +55,23 @@ function updateConfig(config) {
     // Allow contentPath to be over-written by passed in config object
     // Otherwise default to default content path location
     contentPath = snackConfig.paths.contentPath || Path.resolve(appRoot, 'content');
+    pluginsPath = snackConfig.paths.pluginsPath || Path.resolve(appRoot, 'plugins');
 
     snackConfig = Utils.merge(snackConfig, {
+        api: {
+            'basePath': '/api',
+            'version': 1
+        },
+        hooks: {
+            'post.created': true,
+            'post.updated': true,
+            'post.deleted': true,
+            'post.destroyed': true,
+            'image.created': true,
+            'image.updated': true,
+            'image.deleted': true,
+            'image.destroyed': true
+        },
         server: {
             'port': serverPort,
             'host': serverHost
@@ -71,6 +87,7 @@ function updateConfig(config) {
             'corePath': corePath,
 
             'contentPath': contentPath,
+            'pluginsPath': pluginsPath,
             // 'themePath': Path.resolve(contentPath, 'themes'),
             // 'appPath': Path.resolve(contentPath, 'apps'),
             'imagesPath': Path.resolve(contentPath, 'images'),

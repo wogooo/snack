@@ -18,7 +18,9 @@
     "minimist": "0.0.8",
     "hapi": "git+ssh://git@github.com:spumko/hapi.git",
     "jugglingdb": "git+ssh://git@github.com:mshick/jugglingdb.git",
-    "jugglingdb-rethink": "git+ssh://git@github.com:mshick/jugglingdb-rethink.git"
+    "jugglingdb-rethink": "git+ssh://git@github.com:mshick/jugglingdb-rethink.git",
+    "inflection": "^1.3.5",
+    "colors": "^0.6.2"
   },
   "devDependencies": {},
   "repository": {

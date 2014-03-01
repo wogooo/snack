@@ -1,5 +1,5 @@
 // This file manages the root level config.js.
-
+require('colors');
 require('consoleplusplus');
 
 var Fs      = require('fs'),

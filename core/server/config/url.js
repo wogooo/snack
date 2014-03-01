@@ -5,6 +5,7 @@
 
 var moment            = require('moment'),
     _                 = require('lodash'),
+    Inflection        = require('inflection'),
     snackConfig = '';
 
 // ## setConfig
@@ -81,36 +82,19 @@ function urlPathForPost(post, permalinks) {
     return output;
 }
 
-// ## urlPathForApi
-// Always sync
-// Creates the url path for a post, given a post and a permalink
-// Parameters:
-// - post - a json object representing a post
-// - permalinks - a json object containing the permalinks setting
-function urlPathForApi(post, permalinks) {
-    var output = '',
-        tags = {
-            year:   function () { return moment(post.published_at).format('YYYY'); },
-            month:  function () { return moment(post.published_at).format('MM'); },
-            day:    function () { return moment(post.published_at).format('DD'); },
-            slug: function () { return post.slug; },
-            id: function () { return post.id; }
-        };
+function urlPathForApi(api) {
 
-    if (post.page === 1) {
-        output += '/:slug/';
+    var urlPath = '';
+
+    if (api.type === 'queue') {
+        urlPath = snackConfig.api.basePath + '/v' + snackConfig.api.version + '/queue/job/' + api.id;
     } else {
-        output += permalinks.value;
+
+        var apiType = Inflection.pluralize(api.type).toLowerCase();
+        urlPath = snackConfig.api.basePath + '/v' + snackConfig.api.version + '/' + apiType + '/' + api.id;
     }
 
-    // replace tags like :slug or :year with actual values
-    output = output.replace(/(:[a-z]+)/g, function (match) {
-        if (_.has(tags, match.substr(1))) {
-            return tags[match.substr(1)]();
-        }
-    });
-
-    return output;
+    return urlPath;
 }
 
 // ## urlFor
@@ -151,7 +135,7 @@ function urlFor(context, data, absolute) {
         } else if (context === 'tag' && data.tag) {
             urlPath = '/tag/' + data.tag.slug + '/';
         } else if (context === 'api' && data.api) {
-            urlPath = '/api/v' + data.api.version + '/' + data.api.model + '/' + data.api.id;
+            urlPath = urlPathForApi(data.api);
         }
         // other objects are recognised but not yet supported
     } else if (_.isString(context) && _.indexOf(_.keys(knownPaths), context) !== -1) {

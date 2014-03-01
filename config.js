@@ -19,7 +19,8 @@ config = {
         queue: {
             kue: {
                 host: 'localhost',
-                port: 6379
+                port: 6379,
+                disableSearch: true
             }
         },
         cache: {
@@ -53,10 +54,16 @@ config = {
         logging: {
             level: 'DEBUG'
         },
-        demons: [
-            'search-indexing',
-            'open-calais'
-        ]
+        demons: {
+            'snack-solr-indexing': {
+                engine: 'solr',
+                host: 'localhost',
+                port: 8983,
+                path: '/solr/test'
+            },
+            'snack-open-calais': {},
+            'snack-to-s3': {}
+        }
     },
 
     production: {

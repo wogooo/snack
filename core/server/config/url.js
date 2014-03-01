@@ -86,13 +86,8 @@ function urlPathForApi(api) {
 
     var urlPath = '';
 
-    if (api.type === 'queue') {
-        urlPath = snackConfig.api.basePath + '/v' + snackConfig.api.version + '/queue/job/' + api.id;
-    } else {
-
-        var apiType = Inflection.pluralize(api.type).toLowerCase();
-        urlPath = snackConfig.api.basePath + '/v' + snackConfig.api.version + '/' + apiType + '/' + api.id;
-    }
+    var apiType = Inflection.pluralize(api.type).toLowerCase();
+    urlPath = snackConfig.api.basePath + '/v' + snackConfig.api.version + '/' + apiType + '/' + api.id;
 
     return urlPath;
 }

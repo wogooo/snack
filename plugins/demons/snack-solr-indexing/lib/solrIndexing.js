@@ -2,9 +2,11 @@
 
 var Request = require('request');
 var Helios = require('helios');
+
+// JS loves long not. Solves some problems with _version_
 var JSONbig = require('json-bigint');
 
-var Maps = require('../maps');
+
 var SolrDoc = require('./solrDoc');
 
 var internals = {};
@@ -15,6 +17,15 @@ internals.SolrIndexing = function (demon, options) {
 
     this.config = demon.config;
     this.hapi = demon.hapi;
+
+    if (options.contentPath) {
+
+        this.maps = require(options.contentPath);
+
+    } else {
+
+        this.maps = require('../examples');
+    }
 
     this.queryBuilder = new Helios.queryBuilder();
 
@@ -29,15 +40,16 @@ internals.SolrIndexing.prototype.getMap = function (type) {
 
     type = type ? type.toLowerCase() : 'default';
 
+    var maps = this.maps;
     var map = {};
 
-    if (Maps[type]) {
+    if (maps[type]) {
 
-        map = Maps[type];
+        map = maps[type];
 
-    } else if (Maps['default']) {
+    } else if (maps['default']) {
 
-        map = Maps['default'];
+        map = maps['default'];
 
     } else {
 

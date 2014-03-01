@@ -21,7 +21,8 @@ config = {
                 host: 'localhost',
                 port: 6379,
                 disableSearch: true
-            }
+            },
+            attempts: 3
         },
         cache: {
             engine: 'redis',

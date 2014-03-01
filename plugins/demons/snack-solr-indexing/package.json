@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "snack-solr-indexing",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Snack Demon for updating solr indexes.",
   "main": "index.js",
   "scripts": {

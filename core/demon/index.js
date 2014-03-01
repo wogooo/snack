@@ -276,7 +276,7 @@ internals.Demon.prototype._require = function (names, options, callback, require
 
             registrations.push({
                 name: item,
-                options: names[item]
+                options: names[item] || {}
             });
         });
 
@@ -298,23 +298,35 @@ internals.Demon.prototype._require = function (names, options, callback, require
 
         var itemName = item.name;
 
-        internals.demonHunter(itemName, settings.pluginsPath, function (err, demonPath) {
+        var contentPath = settings.contentPath;
+        var pluginsPath = settings.pluginsPath;
+
+        internals.demonHunter(itemName, pluginsPath, function (err, demonPath) {
 
             if (err) return next();
 
-            var packageFile = Path.join(demonPath, 'package.json');
+            var demonContentPath = Path.join(contentPath, 'demons', itemName);
 
-            var mod = requireFunc(demonPath);
-            var pkg = requireFunc(packageFile);
+            internals.demonHunterPath(demonContentPath, function (err, demonContent) {
 
-            var processor = {
-                name: pkg.name,
-                version: pkg.version,
-                register: mod.register,
-                path: internals.packagePath(pkg.name, packageFile)
-            };
+                var packageFile = Path.join(demonPath, 'package.json');
 
-            self._register(processor, item.options, next);
+                var mod = requireFunc(demonPath);
+                var pkg = requireFunc(packageFile);
+
+                var processor = {
+                    name: pkg.name,
+                    version: pkg.version,
+                    register: mod.register,
+                    path: internals.packagePath(pkg.name, packageFile)
+                };
+
+                if (demonContent) {
+                    item.options.contentPath = item.options.contentPath || demonContent;
+                }
+
+                self._register(processor, item.options, next);
+            });
         });
     };
 
@@ -337,7 +349,8 @@ internals.Demon.start = function () {
     demon.init(function () {
 
         var registered = demon._registered;
-        var enabled = [], disabled = [];
+        var enabled = [],
+            disabled = [];
         for (var reg in registered) {
             if (registered[reg]) {
                 enabled.push(reg);
@@ -359,7 +372,7 @@ internals.Demon.start = function () {
 // 2. ../[userPath]/demons
 // 3. ./demons
 
-internals.demonHunter = function (name, pluginsPath, done) {
+internals.demonHunter = function (name, path, done) {
 
     var demonPath;
 
@@ -372,24 +385,41 @@ internals.demonHunter = function (name, pluginsPath, done) {
         return done(null, name);
     }
 
-    var path = Path.join(pluginsPath, 'demons', name);
+    var testPaths = [];
+    testPaths.push(Path.join(path, 'demons', name));
+    testPaths.push(Path.join(__dirname, 'demons', name));
 
-    Fs.stat(path, function (err, stats) {
+    internals.demonHunterPath(testPaths, done);
+};
+
+internals.demonHunterPath = function (paths, done) {
+
+    var testPath, manyPaths;
+
+    if (paths instanceof Array && paths.length) {
+
+        manyPaths = true;
+        testPath = paths.shift();
+
+    } else {
+
+        testPath = paths;
+    }
+
+    Fs.stat(testPath, function (err, stats) {
 
         if (stats && stats.isDirectory()) {
-            return done(null, path);
-        }
 
-        path = Path.join(__dirname, 'demons', name);
+            return done(null, testPath);
 
-        Fs.stat(path, function (err, stats) {
+        } else if (manyPaths && paths.length) {
 
-            if (stats && stats.isDirectory()) {
-                return done(null, path);
-            }
+            internals.demonHunterPath(paths, done);
+
+        } else {
 
             done(err);
-        });
+        }
     });
 };
 

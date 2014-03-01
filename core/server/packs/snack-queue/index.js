@@ -4,6 +4,7 @@ var Kue = require('kue'),
     Job = Kue.Job;
 
 var defaults = {
+    attempts: 3,
     basePath: '',
     kue: {
         host: 'localhost',
@@ -60,7 +61,7 @@ internals.SnackQueue.prototype.createJob = function (task, done) {
     var job = new Job(task.type, task.data || {});
 
     var options = task.options || {};
-    if (options.attempts) job.attempts(parseInt(options.attempts));
+    if (options.attempts) job.attempts(parseInt(settings.attempts));
     if (options.priority) job.priority(options.priority);
     if (options.delay) job.delay(options.delay);
 
@@ -157,10 +158,10 @@ internals.SnackQueue.prototype.registerRoutes = function () {
 
     plugin.route({
         method: 'GET',
-        path: basePath + '/queue/stats',
+        path: basePath + '/jobs/stats',
         handler: function (request, reply) {
             sq.stats(function (err, result) {
-                if (error) {
+                if (err) {
                     return reply({
                         error: err.name,
                         message: err.message
@@ -174,7 +175,7 @@ internals.SnackQueue.prototype.registerRoutes = function () {
 
     plugin.route({
         method: 'GET',
-        path: basePath + '/queue/job/{id}',
+        path: basePath + '/jobs/{id}',
         config: {
             validate: {
                 path: {
@@ -200,7 +201,7 @@ internals.SnackQueue.prototype.registerRoutes = function () {
 
     plugin.route({
         method: 'GET',
-        path: basePath + '/queue/job/{id}/log',
+        path: basePath + '/jobs/{id}/log',
         config: {
             validate: {
                 path: {
@@ -226,7 +227,7 @@ internals.SnackQueue.prototype.registerRoutes = function () {
 
     plugin.route({
         method: 'DELETE',
-        path: basePath + '/queue/job/{id}',
+        path: basePath + '/jobs/{id}',
         config: {
             validate: {
                 path: {
@@ -252,7 +253,7 @@ internals.SnackQueue.prototype.registerRoutes = function () {
 
     plugin.route({
         method: 'POST',
-        path: basePath + '/queue/job',
+        path: basePath + '/jobs',
         handler: function (request, reply) {
 
             var payload = request.payload || {};

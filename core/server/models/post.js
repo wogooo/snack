@@ -52,7 +52,7 @@ internals._enqueue = function (hook, item, cleanup, done) {
 
         var queuePath = Config.urlFor('api', {
             api: {
-                type: 'queue',
+                type: 'job',
                 id: result.id
             }
         });

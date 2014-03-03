@@ -26,7 +26,7 @@ internals.Demon = function (options) {
         this._settings.requirePath = Path.resolve(options.requirePath);
     }
 
-    this._settings.demons = options.demons || {};
+    this._settings.packs = options.packs || {};
 
     // Important paths
     this._settings.appRoot = options.appRoot || '';
@@ -71,7 +71,7 @@ internals.Demon.prototype.init = function (callback) {
     var self = this;
     var settings = this._settings;
 
-    this.require(settings.demons, {}, function (err) {
+    this.require(settings.packs, {}, function (err) {
         self._processHandlers();
         callback(err);
     });
@@ -279,7 +279,8 @@ internals.Demon.prototype._require = function (names, options, callback, require
 
             registrations.push({
                 name: item,
-                options: names[item] || {}
+                options: names[item] || {},
+                disabled: !Boolean(names[item])
             });
         });
 
@@ -288,6 +289,12 @@ internals.Demon.prototype._require = function (names, options, callback, require
                 // Set the registered flag to false,
                 // reset as true when ready.
                 registered[item.name] = false;
+
+                if (item.disabled) {
+
+                    // Support explicit disabling of packs
+                    return next();
+                }
 
                 load(item, next);
             },
@@ -369,7 +376,7 @@ internals.Demon.start = function () {
         requirePath: Path.resolve(__dirname),
         queue: Config().queue,
         hooks: Config().hooks,
-        demons: Config().demons,
+        packs: Config().packs,
         appRoot: Config().paths.appRoot,
         packsPath: Config().paths.packsPath,
         contentPath: Config().paths.contentPath

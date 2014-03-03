@@ -27,7 +27,10 @@ internals.Demon = function (options) {
     }
 
     this._settings.demons = options.demons || {};
-    this._settings.pluginsPath = options.pluginsPath || '';
+
+    // Important paths
+    this._settings.appRoot = options.appRoot || '';
+    this._settings.packsPath = options.packsPath || '';
     this._settings.contentPath = options.contentPath || '';
 
     Utils.assert(options.queue, 'No queue settings defined!');
@@ -299,25 +302,32 @@ internals.Demon.prototype._require = function (names, options, callback, require
         var itemName = item.name;
 
         var contentPath = settings.contentPath;
-        var pluginsPath = settings.pluginsPath;
 
-        internals.demonHunter(itemName, pluginsPath, function (err, demonPath) {
+        self.demonHunter(itemName, function (err, demonPath) {
 
             if (err) return next();
 
-            var demonContentPath = Path.join(contentPath, 'demons', itemName);
+            var demonContentPath = Path.join(contentPath, 'packs', itemName);
+
+            var mod = requireFunc(demonPath);
+            var demon = mod.demon;
+
+            if (!demon) {
+
+                // Plugins can export plugins or demons,
+                // in this case we only care about demons
+                return next();
+            }
 
             internals.demonHunterPath(demonContentPath, function (err, demonContent) {
 
                 var packageFile = Path.join(demonPath, 'package.json');
-
-                var mod = requireFunc(demonPath);
                 var pkg = requireFunc(packageFile);
 
                 var processor = {
                     name: pkg.name,
                     version: pkg.version,
-                    register: mod.register,
+                    register: demon.register,
                     path: internals.packagePath(pkg.name, packageFile)
                 };
 
@@ -333,6 +343,26 @@ internals.Demon.prototype._require = function (names, options, callback, require
     parse();
 };
 
+// 1. [appRoot]/node_modules/[demonName]
+// 2. [appRoot]/[contentPath]/packs/[demonName]
+// 3. ./demons
+
+internals.Demon.prototype.demonHunter = function (name, done) {
+
+    var settings = this._settings;
+
+    var appRoot = settings.appRoot;
+    var packsPath = settings.packsPath;
+
+    var testPaths = [];
+
+    testPaths.push(Path.join(appRoot, 'node_modules', name));
+    testPaths.push(Path.join(packsPath, name));
+    testPaths.push(Path.join(__dirname, 'demons', name));
+
+    internals.demonHunterPath(testPaths, done);
+};
+
 internals.Demon.start = function () {
 
     var config = {
@@ -340,7 +370,8 @@ internals.Demon.start = function () {
         queue: Config().queue,
         hooks: Config().hooks,
         demons: Config().demons,
-        pluginsPath: Config().paths.pluginsPath,
+        appRoot: Config().paths.appRoot,
+        packsPath: Config().paths.packsPath,
         contentPath: Config().paths.contentPath
     };
 
@@ -365,31 +396,6 @@ internals.Demon.start = function () {
             disabled.length ? ("\nDisabled: " + disabled.join(', ')).red : ''
         );
     });
-};
-
-//
-// 1. ../node_modules/[demonName]
-// 2. ../[userPath]/demons
-// 3. ./demons
-
-internals.demonHunter = function (name, path, done) {
-
-    var demonPath;
-
-    var mod;
-    try {
-        mod = require(name);
-    } catch (e) {}
-
-    if (mod) {
-        return done(null, name);
-    }
-
-    var testPaths = [];
-    testPaths.push(Path.join(path, 'demons', name));
-    testPaths.push(Path.join(__dirname, 'demons', name));
-
-    internals.demonHunterPath(testPaths, done);
 };
 
 internals.demonHunterPath = function (paths, done) {

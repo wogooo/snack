@@ -23,30 +23,40 @@ internals.SnackQueue = function (plugin, options) {
 
     this.plugin = plugin;
     this.hapi = Hapi;
-    this.queue = Kue.createQueue(this._settings.kue);
 
-    this.debug();
+    this.queue = Kue.createQueue(this._settings.kue);
+    this.socketIO = this.loadSocketIO();
+
 };
 
-internals.SnackQueue.prototype.debug = function () {
-    this.queue.on('job complete', function (id) {
-        console.log('job complete:', id);
-        // Job.get(id, function (err, job) {
-        //     if (err) return;
-        //     job.remove(function (err) {
-        //         if (err) throw err;
-        //         console.log('removed completed job #%d', job.id);
-        //     });
-        // });
+internals.SnackQueue.prototype.loadSocketIO = function () {
+
+    var plugin = this.plugin;
+    var SocketIO;
+
+    // If a server got labeled for socket.io, and if it exists
+    // at an expected location, use the server instance.
+
+    // TODO: We only want to do this once for a certain server. Uncertain
+    // of what the conventions for this might be...
+
+    var selection = plugin.select('socket.io');
+
+    selection.servers.forEach(function (server) {
+
+        if (SocketIO) {
+            return;
+        }
+
+        if (server.app.services && (server.app['socket.io'] || server.app.services['socket.io'])) {
+
+            // Check for two possible locations, `services` is pretty
+            // specific to the Snack organization.
+            SocketIO = server.app['socket.io'] || server.app.services['socket.io'];
+        }
     });
 
-    this.queue.on('job progress', function (progress, id) {
-        console.log('job progress:', progress, id);
-    });
-
-    this.queue.on('job failed', function (id) {
-        console.log('job failed:', id);
-    });
+    return SocketIO;
 };
 
 internals.SnackQueue.prototype.createJob = function (task, done) {
@@ -299,12 +309,70 @@ internals.get = function (obj) {
     };
 };
 
+internals.SnackQueue.prototype.registerSocketIO = function () {
+
+    var self = this;
+
+    var socketIO = this.socketIO;
+
+    if (socketIO) {
+
+        socketIO.of('/jobs').on('connection', function (socket) {
+
+            self.queue.on('job complete', function (id) {
+                Job.get(id, function (err, job) {
+                    if (err) return;
+
+                    socket.emit('job', {
+                        event: 'complete',
+                        job: job
+                    });
+                });
+            });
+
+            self.queue.on('job progress', function (progress, id) {
+                Job.get(id, function (err, job) {
+                    if (err) return;
+
+                    socket.emit('job', {
+                        event: 'progress',
+                        job: job
+                    });
+                });
+            });
+
+            self.queue.on('job failed', function (id) {
+                Job.get(id, function (err, job) {
+                    if (err) return;
+
+                    socket.emit('job', {
+                        event: 'failed',
+                        job: job
+                    });
+                });
+            });
+
+            self.queue.on('job failed attempt', function (id) {
+                Job.get(id, function (err, job) {
+                    if (err) return;
+
+                    socket.emit('job', {
+                        event: 'retry',
+                        job: job
+                    });
+                });
+            });
+        });
+    }
+};
+
 exports.register = function (plugin, options, next) {
 
     var snackQueue = new internals.SnackQueue(plugin, options);
 
     snackQueue.registerMethods();
     snackQueue.registerRoutes();
+    snackQueue.registerSocketIO();
 
     next();
 };

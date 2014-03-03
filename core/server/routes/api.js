@@ -1,6 +1,7 @@
-var api = require('../api');
-
 module.exports = function (server) {
+
+    var Snack = server.app;
+    var api = Snack.api;
 
     server.route({
         method: 'POST',

@@ -1,0 +1,43 @@
+<script src="/socket.io/socket.io.js"></script>
+<script>
+
+    socket = io.connect('/jobs');
+
+    socket.on('job', function (data) {
+        console.log('job:', data);
+
+        var rowClass = '';
+        if (data.event === 'progress') {
+            rowClass = 'active';
+        }
+        if (data.event === 'complete') {
+            rowClass = 'success';
+        }
+        if (data.event === 'failed') {
+            rowClass = 'danger';
+        }
+        if (data.event === 'retry') {
+            rowClass = 'warning';
+        }
+
+
+        $('#debug').find('tbody').prepend('<tr class="'+ rowClass +'"><td>'+ data.job.id +'</td><td>' + data.event + '</td><td>' + data.job.type + '</td><td>' + data.job.progress || '' + '</td></tr>');
+    });
+
+</script>
+
+<div id="debug">
+    <table class="table table-striped">
+        <thead>
+            <th>Job Id</th>
+            <th>Event</th>
+            <th>Hook</th>
+            <th>Progress</th>
+        </thead>
+
+        <tbody>
+
+        </tbody>
+
+    </table>
+</div>

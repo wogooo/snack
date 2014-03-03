@@ -4,7 +4,6 @@ var Schema = require('jugglingdb').Schema;
 var _ = require('lodash');
 
 var Config = require('../config');
-var config = Config();
 
 var server = {};
 
@@ -64,6 +63,10 @@ internals._enqueue = function (hook, item, cleanup, done) {
 internals.register = function (model, next) {
 
     server = model.server;
+
+    var Snack = model.snack;
+    var config = Snack.config();
+
     var schema = model.schema;
     var models = model.models;
 

@@ -55,7 +55,7 @@ function updateConfig(config) {
     // Allow contentPath to be over-written by passed in config object
     // Otherwise default to default content path location
     contentPath = snackConfig.paths.contentPath || Path.resolve(appRoot, 'content');
-    pluginsPath = snackConfig.paths.pluginsPath || Path.resolve(appRoot, 'plugins');
+    packsPath = snackConfig.paths.packsPath || Path.resolve(appRoot, 'packs');
 
     snackConfig = Utils.merge(snackConfig, {
         api: {
@@ -87,7 +87,7 @@ function updateConfig(config) {
             'corePath': corePath,
 
             'contentPath': contentPath,
-            'pluginsPath': pluginsPath,
+            'packsPath': packsPath,
             // 'themePath': Path.resolve(contentPath, 'themes'),
             // 'appPath': Path.resolve(contentPath, 'apps'),
             'imagesPath': Path.resolve(contentPath, 'images'),

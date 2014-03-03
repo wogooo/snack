@@ -19,11 +19,12 @@ internals.SolrIndexing = function (demon, options) {
     this.hapi = demon.hapi;
 
     if (options.contentPath) {
+        try {
+            this.maps = require(options.contentPath).maps;
+        } catch (e) {}
+    }
 
-        this.maps = require(options.contentPath);
-
-    } else {
-
+    if (!this.maps) {
         this.maps = require('../examples');
     }
 

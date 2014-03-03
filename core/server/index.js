@@ -1,14 +1,31 @@
+var Path = require('path');
 var Cluster = require('cluster');
 var Async = require('async');
 var Hapi = require('hapi');
 var Utils = Hapi.utils;
+
 var Config = require('./config');
+var ErrorHandling = require('./errorHandling');
+var Services = require('./services');
 var Packs = require('./packs');
 var Routes = require('./routes');
 var Api = require('./api');
 var Models = require('./models');
 
-function messages() {
+function messages(tags) {
+
+    if (tags.error) {
+
+        if (tags.stop) {
+            console.log('Snack server encountered an error and was stopped.'.red);
+        }
+
+        if (tags.restart) {
+            console.log('Snack server restarted...'.red);
+        }
+
+        return;
+    }
 
     var envVal = process.env.NODE_ENV;
 
@@ -51,54 +68,23 @@ function messages() {
     }
 }
 
-function start(server, callback) {
+function logging(server) {
+
+    server.on('log', function (event, tags) {
+
+        if (tags.start || tags.error) {
+            messages(tags);
+        }
+    });
+};
+
+function start(server) {
 
     // Start the server!
+    server.start(function () {
 
-    if (!callback) {
-        callback = messages;
-    }
-
-    server.start(callback);
-}
-
-function errorHandling(server) {
-
-    // Safely bring down the server and either restart, or
-    // trigger a cluster disconnect.
-
-    server.on('internalError', function (request, err) {
-        if (err.data.domainThrown) {
-            try {
-
-                // make sure we close down within 30 seconds
-                var killtimer = setTimeout(function () {
-                    process.exit(1);
-                }, 30000);
-
-                // But don't keep the process open just for that!
-                killtimer.unref();
-
-                // stop taking new requests.
-                server.stop(function () {
-                    console.error('Snack server stopped... Attempting restart');
-                });
-
-                // Let the master know we're dead.  This will trigger a
-                // 'disconnect' in the cluster master, and then it will fork
-                // a new worker.
-                if (Cluster.isWorker) {
-                    Cluster.worker.disconnect();
-                } else {
-                    start(server, function () {
-                        console.info('Snack server successfully restarted.');
-                    });
-                }
-            } catch (er2) {
-                // oh well, not much we can do at this point.
-                console.error('Error sending 500!', er2.stack);
-            }
-        }
+        // Log the start.
+        server.log('start');
     });
 }
 
@@ -113,24 +99,53 @@ function setup() {
             engines: {
                 html: 'handlebars'
             },
-            path: __dirname + '/templates'
+            path: Path.join(__dirname, '/templates'),
+            partialsPath: Path.join(__dirname, '/templates/partials'),
+            layout: true
         },
-        labels: ['snack-app']
+        labels: ['snack-app', 'socket.io']
     };
 
     var server = Hapi.createServer(config.server.host, config.server.port, options);
 
-    errorHandling(server);
+    // Set up the server.log listener.
+    logging(server);
 
-    Async.eachSeries([
-            Models,
-            Api,
-            Routes,
-            Packs
-        ], function (module, next) {
+    server.app.config = Config;
 
-            module.init(server, next);
+    var init = [{
+        name: 'errorHandling',
+        module: ErrorHandling,
+        expose: false
+    }, {
+        name: 'services',
+        module: Services,
+        expose: true
+    }, {
+        name: 'models',
+        module: Models,
+        expose: true
+    }, {
+        name: 'api',
+        module: Api,
+        expose: true
+    }, {
+        name: 'routes',
+        module: Routes,
+        expose: false
+    }, {
+        name: 'packs',
+        module: Packs,
+        expose: false
+    }];
 
+    Async.eachSeries(init, function (item, next) {
+
+            if (item.expose) {
+                server.app[item.name] = item.module;
+            }
+
+            item.module.init(server, next);
         },
         function (err) {
 

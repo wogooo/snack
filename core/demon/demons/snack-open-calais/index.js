@@ -50,7 +50,7 @@ internals.OpenCalais.prototype.handler = function (job, done) {
     // }, 3000);
 };
 
-exports.register = function (demon, options, next) {
+internals.register = function (demon, options, next) {
 
     var openCalais = new internals.OpenCalais(demon);
 
@@ -64,3 +64,7 @@ exports.register = function (demon, options, next) {
 
     next();
 };
+
+exports.demon = internals;
+
+

@@ -3,8 +3,6 @@ var Utils = Hapi.utils;
 var Async = require('async');
 var Schema = require('jugglingdb').Schema;
 
-var Config = require('../config')();
-
 var internals = {};
 
 internals.loadOrder = function (models) {
@@ -55,7 +53,10 @@ internals.loadOrder = function (models) {
 
 internals.init = function (server, callback) {
 
-    var db = Config.db;
+    var Snack = server.app;
+    var Config = Snack.config;
+
+    var db = Config().db;
     var schema = new Schema(db.engine, db);
 
     var requires = {};
@@ -66,6 +67,7 @@ internals.init = function (server, callback) {
     var root = {};
 
     root.server = server;
+    root.snack = Snack;
     root.models = exports.models;
     root.schema = schema;
 

@@ -72,13 +72,24 @@ internals.SnackQueue.prototype.createJob = function (task, done) {
 
     var options = task.options || {};
 
-    if (settings.attempts) job.attempts(parseInt(settings.attempts));
+    if (settings.attempts) {
+        job.attempts(+settings.attempts);
+    }
 
-    if (task.priority) job.priority(+task.priority);
+    if (task.priority) {
+        job.priority(+task.priority);
+    }
 
     if (task.delay) {
+
+        // If we actually want a delay
         job.delay(+task.delay);
         this.queue.promote();
+
+    } else {
+
+        // Default is to delay for explicit later start
+        job._state = 'delayed';
     }
 
     job.save(function (err) {
@@ -89,6 +100,30 @@ internals.SnackQueue.prototype.createJob = function (task, done) {
         done(null, {
             message: 'job created',
             id: job.id
+        });
+    });
+};
+
+/*
+    Allows separation of job creation and execution.
+    eg, A database record can be updated with queue
+    data before processing starts
+*/
+
+internals.SnackQueue.prototype.startJob = function (j, done) {
+
+    done = done || function () {};
+
+    Job.get(j.id, function (err, job) {
+        if (err) return done(err);
+
+        job.inactive(function (err) {
+            if (err) return done(err);
+
+            done(null, {
+                message: 'job started',
+                id: job.id
+            });
         });
     });
 };
@@ -106,9 +141,9 @@ internals.SnackQueue.prototype.removeJob = function (job, done) {
     });
 };
 
-internals.SnackQueue.prototype.getJob = function (job, done) {
+internals.SnackQueue.prototype.getJob = function (j, done) {
 
-    Job.get(job.id, function (err, job) {
+    Job.get(j.id, function (err, job) {
 
         if (err) {
             return done(err);
@@ -404,7 +439,6 @@ internals.formatList = function (jobs, options) {
 
     return list;
 };
-
 
 internals.SnackQueue.prototype.registerSocketIO = function () {
 

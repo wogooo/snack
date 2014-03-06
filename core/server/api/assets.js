@@ -110,35 +110,35 @@ assets.update = function update(args, done) {
 
 assets.destroy = function destroy(args, done) {
 
-    // var query = args.query;
-    // var params = args.params;
+    var query = args.query;
+    var params = args.params;
 
-    // models.Post.find(params.id, function (err, post) {
-    //     if (err) {
-    //         return done(err);
-    //     }
+    models.Asset.find(params.id, function (err, asset) {
+        if (err) {
+            return done(err);
+        }
 
-    //     if (!post) {
-    //         return done(new Error('Record not found.'));
-    //     }
+        if (!asset) {
+            return done(new Error('Record not found.'));
+        }
 
-    //     if (query.destroy === 'true') {
+        if (query.destroy === 'true') {
 
-    //         // A true destructive delete
-    //         post.destroy(function (err) {
-    //             done(err);
-    //         });
+            // A true destructive delete
+            asset.destroy(function (err) {
+                done(err);
+            });
 
-    //     } else {
+        } else {
 
-    //         // A more commons setting of the deleted flag
-    //         post.updateAttributes({
-    //             deleted: true
-    //         }, function (err) {
-    //             done(err);
-    //         });
-    //     }
-    // });
+            // A more commons setting to make it unavailable
+            asset.updateAttributes({
+                available: false
+            }, function (err) {
+                done(err);
+            });
+        }
+    });
 };
 
 module.exports = assets;

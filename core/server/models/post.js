@@ -3,69 +3,16 @@ var Utils = Hapi.utils;
 var Schema = require('jugglingdb').Schema;
 var _ = require('lodash');
 
-var Config = require('../config');
-
-var server = {};
+var Base = require('./base');
 
 var internals = {};
 
-internals.dependencies = ['User', 'Tag', 'Asset'];
-
-internals._apiEndpoint = function (type, id) {
-
-    if (!type || !id) {
-        return '';
-    }
-
-    var context = 'api';
-
-    var data = {
-        api: {
-            type: type,
-            id: id
-        }
-    };
-
-    var endpoint = Config.urlFor(context, data, true);
-
-    return endpoint;
-};
-
-internals._enqueue = function (hook, item, cleanup, done) {
-
-    var endpoint = internals._apiEndpoint(item.type, item.id);
-
-    var task = {
-        type: hook,
-        data: {
-            type: item.type,
-            id: item.id,
-            cleanup: Boolean(cleanup),
-            endpoint: endpoint
-        }
-    };
-
-    server.methods.snackQueue('createJob', task, function (err, result) {
-
-        if (err) return done(err);
-
-        var queuePath = Config.urlFor('api', {
-            api: {
-                type: 'job',
-                id: result.id
-            }
-        });
-
-        done(null, queuePath);
-    });
-};
+internals.dependencies = ['User', 'Tag', 'Asset', 'Base'];
 
 internals.init = function (model, next) {
 
-    server = model.server;
-
     var Snack = model.snack;
-    var config = Snack.config();
+    var hooks = Snack.config().hooks;
 
     var schema = model.schema;
     var models = model.models;
@@ -149,52 +96,57 @@ internals.init = function (model, next) {
         model: models.Asset
     });
 
-    Post.getAll = function (fields, options, callback) {
-        fields = fields || [];
-        options = options || {};
+    // Post.getAll = function (fields, options, callback) {
+    //     fields = fields || [];
+    //     options = options || {};
 
-        this.all({
-            include: fields
-        }, function (err, results) {
+    //     this.all({
+    //         include: fields
+    //     }, function (err, results) {
 
-            if (err) {
-                return callback(err);
-            }
+    //         if (err) {
+    //             return callback(err);
+    //         }
 
-            if (options.toJSON) {
+    //         if (options.toJSON) {
 
-                var resultJSON, relations;
-                results.forEach(function (result, index) {
-                    relations = result.__cachedRelations;
-                    resultJSON = result.toJSON();
-                    resultJSON = _.extend(resultJSON, relations);
-                    results[index] = resultJSON;
-                });
-            }
+    //             var resultJSON, relations;
+    //             results.forEach(function (result, index) {
+    //                 relations = result.__cachedRelations;
+    //                 resultJSON = result.toJSON();
+    //                 resultJSON = _.extend(resultJSON, relations);
+    //                 results[index] = resultJSON;
+    //             });
+    //         }
 
-            callback(err, results);
-        });
-    };
+    //         callback(err, results);
+    //     });
+    // };
 
     Post.afterCreate = function (next) {
 
         var self = this;
 
-        if (config.hooks['post.created']) {
+        if (hooks['post.created']) {
 
-            internals._enqueue('post.created', {
+            var queueItem = {
                 type: this.constructor.modelName,
-                id: this.id
-            }, true, function (err, queuePath) {
+                id: this.id,
+                cleanup: true
+            };
 
+            Base.enqueue('post.created', queueItem, function (err, queued) {
                 if (err) return next(err);
 
-                self.updateAttributes({
-                        queue: queuePath
-                    },
-                    function (err) {
-                        next(err);
-                    });
+                var attr = {
+                    queue: queued.path
+                };
+
+                self.updateAttributes(attr, function (err) {
+
+                    queued.start();
+                    next(err);
+                });
             });
 
             return;
@@ -232,21 +184,27 @@ internals.init = function (model, next) {
 
         if (!this.queue && _data.clearQueue !== true) {
 
-            if (config.hooks['post.updated'] || config.hooks['post.deleted']) {
+            if (hooks['post.updated'] || hooks['post.deleted']) {
 
-                internals._enqueue(this.deleted ? 'post.deleted' : 'post.updated', {
+                var hook = this.deleted ? 'post.deleted' : 'post.updated';
+
+                var queueItem = {
                     type: this.constructor.modelName,
-                    id: this.id
-                }, true, function (err, queuePath) {
+                    id: this.id,
+                    cleanup: true
+                };
+
+                Base.enqueue(hook, queueItem, function (err, queued) {
 
                     if (err) return next();
 
                     var attr = {
-                        queue: queuePath
+                        queue: queued.path
                     };
 
                     self.updateAttributes(attr, function (err) {
 
+                        queued.start();
                         next(err);
                     });
                 });
@@ -260,12 +218,15 @@ internals.init = function (model, next) {
 
     Post.beforeDestroy = function (next) {
 
-        if (config.hooks['post.destroyed']) {
+        if (hooks['post.destroyed']) {
 
-            internals._enqueue('post.destroyed', {
+            var queueItem = {
                 type: this.constructor.modelName,
-                id: this.id
-            }, false, function (err) {
+                id: this.id,
+                obj: this
+            };
+
+            Base.enqueue('post.destroyed', queueItem, function (err) {
 
                 next(err);
             });

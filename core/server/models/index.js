@@ -59,7 +59,7 @@ internals.init = function (server, callback) {
     var schema = new Schema(db.engine, db);
 
     var requires = {};
-    Utils.loadDirModules(__dirname, ['index', 'base'], requires);
+    Utils.loadDirModules(__dirname, ['index'], requires);
 
     var loadOrder = internals.loadOrder(requires);
 
@@ -67,6 +67,7 @@ internals.init = function (server, callback) {
 
     root.server = server;
     root.snack = Snack;
+    root.config = Config;
     root.models = exports.models;
     root.schema = schema;
 

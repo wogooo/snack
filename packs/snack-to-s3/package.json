@@ -4,6 +4,6 @@
   "version": "0.0.0",
   "dependencies": {
     "aws-sdk": "^2.0.0-rc10",
-    "request": "^2.34.0"
+    "nipple": "^2.2.0"
   }
 }

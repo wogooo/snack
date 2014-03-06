@@ -36,6 +36,16 @@ internals.SolrIndexing = function (demon, options) {
     }
 };
 
+internals.SolrIndexing.prototype.ready = function (done) {
+
+    this.client.select({
+        q: '*:*',
+        rows: 0
+    }, function (err, results) {
+        done(err);
+    });
+};
+
 internals.SolrIndexing.prototype.getMap = function (type) {
 
     type = type ? type.toLowerCase() : 'default';
@@ -192,7 +202,6 @@ internals.SolrIndexing.prototype.toSolr = function (item, done) {
         self.applyMap(item, doc, existing);
 
         client[method](doc.get(), true, function (err) {
-
             if (err) return done(err);
 
             done(err);

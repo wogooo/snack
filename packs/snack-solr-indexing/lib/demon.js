@@ -28,5 +28,6 @@ exports.register = function (demon, options, next) {
         }
     });
 
-    next();
+    // Determine readyness before allowing this to register.
+    solrIndexing.ready(next);
 };

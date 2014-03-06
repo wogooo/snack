@@ -1,66 +1,15 @@
 var Schema = require('jugglingdb').Schema;
-var Config = require('../config');
-var server = {};
+var Base = require('./base');
 
 var internals = {};
 
-internals.dependencies = [];
-
-internals._apiEndpoint = function (type, id) {
-
-    if (!type || !id) {
-        return '';
-    }
-
-    var context = 'api';
-
-    var data = {
-        api: {
-            type: type,
-            id: id
-        }
-    };
-
-    var endpoint = Config.urlFor(context, data, true);
-
-    return endpoint;
-};
-
-internals._enqueue = function (hook, item, cleanup, done) {
-
-    var endpoint = internals._apiEndpoint(item.type, item.id);
-
-    var task = {
-        type: hook,
-        data: {
-            type: item.type,
-            id: item.id,
-            cleanup: Boolean(cleanup),
-            endpoint: endpoint
-        }
-    };
-
-    server.methods.snackQueue('createJob', task, function (err, result) {
-
-        if (err) return done(err);
-
-        var queuePath = Config.urlFor('api', {
-            api: {
-                type: 'job',
-                id: result.id
-            }
-        });
-
-        done(null, queuePath);
-    });
-};
+internals.dependencies = ['Base'];
 
 internals.init = function (model, next) {
 
     var Snack = model.snack;
-    var config = Snack.config();
+    var hooks = Snack.config().hooks;
 
-    server = model.server;
     var schema = model.schema;
     var models = model.models;
 
@@ -84,7 +33,7 @@ internals.init = function (model, next) {
             type: String,
             default: 'local'
         },
-        path: {
+        key: {
             type: String,
             length: 2000
         },
@@ -167,25 +116,70 @@ internals.init = function (model, next) {
         next();
     };
 
+    Asset.afterUpdate = function (next) {
+
+        var self = this;
+
+        // Private data
+        var _data = this.__data;
+
+        if (!this.queue && _data.clearQueue !== true) {
+
+            if (hooks['asset.updated']) {
+
+                var queueItem = {
+                    type: this.constructor.modelName,
+                    id: this.id,
+                    cleanup: true
+                };
+
+                Base.enqueue('asset.updated', queueItem, function (err, queued) {
+
+                    if (err) return next();
+
+                    var attr = {
+                        queue: queued.path
+                    };
+
+                    self.updateAttributes(attr, function (err) {
+
+                        queued.start();
+                        next(err);
+                    });
+                });
+            }
+
+        } else {
+
+            next();
+        }
+    };
+
     Asset.afterCreate = function (next) {
 
         var self = this;
 
-        if (config.hooks['asset.created']) {
+        if (hooks['asset.created']) {
 
-            internals._enqueue('asset.created', {
+            var queueItem = {
                 type: this.constructor.modelName,
-                id: this.id
-            }, true, function (err, queuePath) {
+                id: this.id,
+                cleanup: true
+            };
+
+            Base.enqueue('asset.created', queueItem, function (err, queued) {
 
                 if (err) return next(err);
 
-                self.updateAttributes({
-                        queue: queuePath
-                    },
-                    function (err) {
-                        next(err);
-                    });
+                var attr = {
+                    queue: queued.path
+                };
+
+                self.updateAttributes(attr, function (err) {
+
+                    queued.start();
+                    next(err);
+                });
             });
 
             return;
@@ -194,6 +188,23 @@ internals.init = function (model, next) {
         next();
     };
 
+    Asset.beforeDestroy = function (next) {
+
+        if (hooks['asset.destroyed']) {
+
+            var queueItem = {
+                type: this.constructor.modelName,
+                id: this.id,
+                obj: this
+            };
+
+            Base.enqueue('asset.destroyed', queueItem, function (err, queued) {
+
+                queued.start();
+                next(err);
+            });
+        }
+    };
 
     models.Asset = Asset;
 

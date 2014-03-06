@@ -155,16 +155,26 @@ module.exports = function (server) {
         }
     });
 
-    // server.route({
-    //     method: 'POST',
-    //     path: '/api/v1/files',
-    //     handler: function (request, reply) {
+    server.route({
+        method: 'DELETE',
+        path: '/api/v1/assets/{id}',
+        handler: function (request, reply) {
 
-    //         api.Images.create(request, function (err, results) {
-    //             reply(results);
-    //         });
-    //     }
-    // });
+            Api.Assets.destroy(request, function (err, results) {
+
+                if (err) {
+                    return reply({
+                        error: err.name,
+                        message: err.message
+                    }).code(500);
+                }
+
+                reply({
+                    message: 'deleted'
+                });
+            });
+        }
+    });
 
     // server.route({
     //     method: 'GET',
@@ -177,19 +187,6 @@ module.exports = function (server) {
     //             function (err, results) {
     //                 reply(results);
     //             });
-    //     }
-    // });
-
-    // server.route({
-    //     method: 'GET',
-    //     path: '/api/v1/posts/{id}',
-    //     handler: function (request, reply) {
-
-    //         var id = request.params.id;
-
-    //         db.getWithRelations(id, 'post', function (err, result) {
-    //             reply(result);
-    //         });
     //     }
     // });
 };

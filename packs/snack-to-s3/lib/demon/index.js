@@ -4,10 +4,18 @@ exports.register = function (demon, options, next) {
 
     var sendToS3 = new SendToS3(demon, options);
 
-    // sendToS3.list();
-
     demon.process({
         hook: 'asset.created',
+        fn: function (job, done) {
+            sendToS3.handler(job, done);
+        },
+        options: {
+            priority: 0
+        }
+    });
+
+    demon.process({
+        hook: 'asset.updated',
         fn: function (job, done) {
             sendToS3.handler(job, done);
         },
@@ -26,5 +34,5 @@ exports.register = function (demon, options, next) {
         }
     });
 
-    next();
+    sendToS3.ready(next);
 };

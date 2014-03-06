@@ -47,8 +47,8 @@ internals.createAsset = function (fileObj, done) {
     fileObj.createdAt = new Date();
 
     var assetsPath = Config().paths.assetsPath;
-    var assetPath = Config.urlForAsset(fileObj, 'real');
-    var newPath = Path.join(assetsPath, assetPath);
+    var assetKey = Config.keyForAsset(fileObj);
+    var newPath = Path.join(assetsPath, assetKey);
 
     internals.finalize(fileObj.path, newPath, function (err, newPath) {
         if (err) return next(err);
@@ -66,7 +66,7 @@ internals.createAsset = function (fileObj, done) {
 
         var assetObj = {
             filename: Path.basename(newPath),
-            path: assetPath,
+            key: assetKey,
             url: Config.urlFor('asset', {
                 asset: fileObj
             }, true),
@@ -116,10 +116,10 @@ internals.save = function (fileObjOrArr, done) {
     }
 };
 
-internals.exists = function (filename, done) {
+internals.exists = function (key, done) {
 
     var assetsPath = Config().paths.assetsPath,
-        assetPath = Path.join(assetsPath, filename);
+        assetPath = Path.join(assetsPath, key);
 
     Fs.exists(assetPath, done);
 };

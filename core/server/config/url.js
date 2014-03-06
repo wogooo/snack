@@ -103,7 +103,7 @@ function urlPathForApi(api) {
     return urlPath;
 }
 
-function urlPathForAsset(asset, realPath) {
+function urlPathForAsset(asset, key) {
     var output = '',
         tags = {
             year: function () {
@@ -129,7 +129,7 @@ function urlPathForAsset(asset, realPath) {
         }
     });
 
-    if (!realPath) {
+    if (!key) {
         output = Path.join(snackConfig.paths.assetsRelPath, output);
     }
 
@@ -205,23 +205,12 @@ function urlFor(context, data, absolute) {
 //     });
 // }
 
-function urlForAsset(asset, realOrAbsolutePath) {
+function keyForAsset(asset) {
 
-    var url = '';
-
-    var absolute = (realOrAbsolutePath === 'absolute');
-    var real = (realOrAbsolutePath === 'real');
-
-    if (real) {
-        return urlPathForAsset(asset, real);
-    }
-
-    return urlFor('asset', {
-        asset: asset
-    }, absolute);
+    return urlPathForAsset(asset, true);
 }
 
 module.exports.setConfig = setConfig;
 module.exports.urlFor = urlFor;
 // module.exports.urlForPost = urlForPost;
-module.exports.urlForAsset = urlForAsset;
+module.exports.keyForAsset = keyForAsset;

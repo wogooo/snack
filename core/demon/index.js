@@ -10,7 +10,8 @@ var Utils = Hapi.utils;
 
 var Nipple = require('nipple');
 var Async = require('async');
-var Kue = require('kue');
+var Kue = require('kue'),
+    Job = Kue.Job;
 
 var Config = require('../server/config');
 
@@ -78,26 +79,31 @@ internals.Demon.prototype.init = function (callback) {
     });
 };
 
-internals.Demon.prototype._processCleanUp = function (job, done) {
+internals.Demon.prototype._processCleanUp = function (endpoint) {
 
-    if (!job || !job.data || !job.data.endpoint) {
+    if (!endpoint) {
 
         // Without an endpoint, we can't cleanup,
         // so just let things finish
-        return done();
+        return;
     }
 
-    var cleanUpRequest = job.data.endpoint;
-    var qs = Querystring.stringify({
-        'clearQueue': true,
-        'jobId': job.id
-    });
+    Nipple.put(endpoint + '?clearQueue=true', noop);
+};
 
-    cleanUpRequest += '?' + qs;
+internals.Demon.prototype._jobDone = function (id) {
 
-    Nipple.put(cleanUpRequest, function (err, res) {
+    var self = this;
 
-        done(err);
+    Job.get(id, function (err, job) {
+        if (err) return;
+
+        if (job.data && job.data.cleanup) {
+
+            // Cleanup requested
+            self._processCleanUp(job.data.endpoint);
+            return;
+        }
     });
 };
 
@@ -107,6 +113,14 @@ internals.Demon.prototype._processHandlers = function () {
 
     var queue = this.queue;
     var hooks = this._hooks;
+
+    queue.on('job complete', function (id) {
+        self._jobDone(id);
+    });
+
+    queue.on('job failed', function (id) {
+        self._jobDone(id);
+    });
 
     // Iterate hooks, to set up queue processes to handle
     var attachHandlers = function () {
@@ -120,19 +134,20 @@ internals.Demon.prototype._processHandlers = function () {
 
     var processHandler = function (job, done) {
 
-        // Get the processes array, for the async series
-        var processes = hooks[job.type];
-
-        var pending = processes.length,
+        // Get the processes array,
+        // for the async series
+        var processes = hooks[job.type],
+            pending = processes.length,
             total = pending;
 
         if (total === 0) {
 
-            // No processes for this hook, so clear it and callback
+            // No processes for this hook,
+            // so clear it and callback
             if (job.data && job.data.cleanup) {
 
                 // Cleanup requested
-                return self._processCleanUp(job, done);
+                self._processCleanUp(job.data.endpoint);
             }
 
             return done(err);
@@ -153,10 +168,8 @@ internals.Demon.prototype._processHandlers = function () {
             },
             function (err) {
 
-                if (job.data && job.data.cleanup) {
-
-                    // Cleanup requested
-                    return self._processCleanUp(job, done);
+                if (err) {
+                    job.error(err);
                 }
 
                 done(err);
@@ -228,7 +241,7 @@ internals.Demon.prototype._sortProcessHandlers = function (hook, fn, options) {
     });
 };
 
-internals.Demon.prototype._register = function (plugin, options, callback) {
+internals.Demon.prototype._register = function (plugin, options, done) {
 
     var self = this;
     var registered = this._registered;
@@ -249,8 +262,11 @@ internals.Demon.prototype._register = function (plugin, options, callback) {
 
     plugin.register.call(null, root, options || {}, function (err) {
 
-        registered[plugin.name] = true;
-        callback(err);
+        if (!err) {
+            registered[plugin.name] = true;
+        }
+
+        done();
     });
 };
 
@@ -456,6 +472,10 @@ internals.packagePath = function (name, packageFile) {
     }
 
     return pkgPath;
+};
+
+function noop() {
+
 };
 
 module.exports = internals.Demon.start;

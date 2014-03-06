@@ -3,62 +3,14 @@ var Utils = Hapi.utils;
 var Schema = require('jugglingdb').Schema;
 var _ = require('lodash');
 
+var Base = require('./base');
 var Config = require('../config');
 
 var server = {};
 
 var internals = {};
 
-internals.dependencies = ['User', 'Tag', 'Asset'];
-
-internals._apiEndpoint = function (type, id) {
-
-    if (!type || !id) {
-        return '';
-    }
-
-    var context = 'api';
-
-    var data = {
-        api: {
-            type: type,
-            id: id
-        }
-    };
-
-    var endpoint = Config.urlFor(context, data, true);
-
-    return endpoint;
-};
-
-internals._enqueue = function (hook, item, cleanup, done) {
-
-    var endpoint = internals._apiEndpoint(item.type, item.id);
-
-    var task = {
-        type: hook,
-        data: {
-            type: item.type,
-            id: item.id,
-            cleanup: Boolean(cleanup),
-            endpoint: endpoint
-        }
-    };
-
-    server.methods.snackQueue('createJob', task, function (err, result) {
-
-        if (err) return done(err);
-
-        var queuePath = Config.urlFor('api', {
-            api: {
-                type: 'job',
-                id: result.id
-            }
-        });
-
-        done(null, queuePath);
-    });
-};
+internals.dependencies = ['User', 'Tag', 'Asset', 'Base'];
 
 internals.init = function (model, next) {
 
@@ -155,7 +107,7 @@ internals.init = function (model, next) {
 
         if (config.hooks['page.created']) {
 
-            internals._enqueue('page.created', {
+            Base.enqueue('page.created', {
                 type: this.constructor.modelName,
                 id: this.id
             }, true, function (err, queuePath) {
@@ -204,7 +156,7 @@ internals.init = function (model, next) {
 
             if (config.hooks['page.updated'] || config.hooks['page.deleted']) {
 
-                internals._enqueue(this.deleted ? 'page.deleted' : 'page.updated', {
+                Base.enqueue(this.deleted ? 'page.deleted' : 'page.updated', {
                     type: this.constructor.modelName,
                     id: this.id
                 }, true, function (err, queuePath) {
@@ -232,7 +184,7 @@ internals.init = function (model, next) {
 
         if (config.hooks['page.destroyed']) {
 
-            internals._enqueue('page.destroyed', {
+            Base.enqueue('page.destroyed', {
                 type: this.constructor.modelName,
                 id: this.id
             }, false, function (err) {

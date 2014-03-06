@@ -140,4 +140,4 @@ module.exports = config;
 module.exports.init = initConfig;
 module.exports.urlFor = ConfigUrl.urlFor;
 // module.exports.urlForPost = ConfigUrl.urlForPost;
-module.exports.urlForAsset= ConfigUrl.urlForAsset;
+module.exports.keyForAsset = ConfigUrl.keyForAsset;

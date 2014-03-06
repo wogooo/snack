@@ -23,8 +23,10 @@
             rowClass = 'warning';
         }
 
+        var duration = job.duration ? job.duration + 'ms' : '';
+
         var $job = $('#job-' + job.id);
-        var rowHtml = '<td>'+ job.id +'</td><td>' + data.event + '</td><td>' + job.type + '</td><td>' + (job.progress || '') + '</td><td>' + (job.duration + 'ms' || '') + '</td>';
+        var rowHtml = '<td>'+ job.id +'</td><td>' + data.event + '</td><td>' + job.type + '</td><td>' + (job.progress || '') + '</td><td>' + duration + '</td>';
 
         if ($job.length) {
 
@@ -56,7 +58,7 @@
                 <td>{{state}}</td>
                 <td>{{type}}</td>
                 <td>{{progress}}</td>
-                <td>{{duration}}ms</td>
+                <td>{{#if duration}}{{duration}}ms{{/if}}</td>
             </tr>
         {{/each}}
         </tbody>

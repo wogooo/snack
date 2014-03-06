@@ -4,9 +4,24 @@ module.exports = function (server) {
         method: 'GET',
         path: '/test-queue',
         handler: function (request, reply) {
-            reply.view('test-queue', {
-                title: 'DEBUG'
+            server.methods.snackQueue('getJobRange', null, function (err, jobList) {
+                reply.view('test-queue', {
+                    title: 'DEBUG',
+                    list: jobList
+                });
             });
+        }
+    });
+
+    server.route({
+        method: 'POST',
+        path: '/test-post',
+        handler: function (request, reply) {
+
+            var payload = request.payload;
+            console.log(payload.assets);
+
+            reply('ok');
         }
     });
 };

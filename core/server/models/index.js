@@ -24,7 +24,6 @@ internals.loadOrder = function (models) {
 
             deps.forEach(function (dep) {
 
-                dep = dep.toLowerCase();
                 depIndex = loadOrder.indexOf(dep);
                 if (depIndex > lastDepIndex) {
                     lastDepIndex = depIndex;
@@ -73,7 +72,7 @@ internals.init = function (server, callback) {
 
     Async.eachSeries(loadOrder, function (loadItem, next) {
 
-        requires[loadItem].register(root, next);
+        requires[loadItem].init(root, next);
 
     }, function (err) {
 

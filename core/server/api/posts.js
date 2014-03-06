@@ -1,19 +1,65 @@
-var models = require('../models').models;
+var Async = require('async');
+
+var Assets = require('./assets');
+var Models = require('../models').models;
 
 var posts = {};
 
-posts.create = function create(args, done) {
+posts.list = function list(args, done) {
 
-    var payload = args.payload;
+    var postList = {
+        count: null,
+        items: null
+    };
 
-    var post = new models.Post(payload);
-
-    post.save(function (err, p) {
+    Models.Post.all(function (err, posts) {
         if (err) {
             return done(err);
         }
 
-        done(null, p.toJSON(true));
+        postList.count = posts.length;
+        postList.items = posts;
+
+        done(null, postList);
+    });
+};
+
+posts.create = function create(args, done) {
+
+    var payload = args.payload;
+    var assets;
+
+    if (payload.assets) {
+
+        assets = payload.assets;
+        delete payload.assets;
+
+        if (assets.items && !assets.items[0].id) {
+            console.log('assets need to be handled.');
+        }
+    }
+
+    var post = new Models.Post(payload);
+
+    post.save(function (err, p) {
+
+        if (err) {
+            return done(err);
+        }
+
+        if (assets && assets.items) {
+            Async.each(assets.items, function (item, next) {
+                p.assets.add(item.id, function (err) {
+                    next(err);
+                });
+            }, function (err) {
+
+                done(null, p.toJSON(true));
+            });
+        } else {
+
+            done(null, p.toJSON(true));
+        }
     });
 };
 
@@ -21,7 +67,7 @@ posts.read = function read(args, done) {
 
     var params = args.params;
 
-    models.Post.find(params.id, function (err, post) {
+    Models.Post.find(params.id, function (err, post) {
         if (err) {
             return done(err);
         }
@@ -30,7 +76,9 @@ posts.read = function read(args, done) {
             return done(new Error('Not found!'));
         }
 
-        done(err, post.toJSON(true));
+        post.assets(function () {
+            done(err, post.toJSON(true));
+        });
     });
 };
 
@@ -40,7 +88,19 @@ posts.update = function update(args, done) {
     var params = args.params;
     var payload = args.payload;
 
-    models.Post.find(params.id, function (err, post) {
+    var assets;
+
+    if (payload.assets) {
+
+        assets = payload.assets;
+        delete payload.assets;
+
+        if (assets.items && !assets.items[0].id) {
+            console.log('assets need to be handled.');
+        }
+    }
+
+    Models.Post.find(params.id, function (err, post) {
         if (err) {
             return done(err);
         }
@@ -57,16 +117,36 @@ posts.update = function update(args, done) {
             }
         }
 
-        if (query['clearQueue'] === 'true') {
+        if (query.clearQueue === 'true') {
 
             // Pass in the private queue clearing flag
             post.__data.clearQueue = true;
         }
 
-        post.updateAttributes(payload, function (err, results) {
+        if (assets && assets.items) {
 
-            done(err, results ? results.toJSON(true) : null);
-        });
+            Async.each(assets.items, function (item, next) {
+
+                post.assets.add(item, function (err) {
+                    next(err);
+                });
+
+            }, function (err) {
+
+                post.updateAttributes(payload, function (err, results) {
+
+                    done(err, results ? results.toJSON(true) : null);
+                });
+            });
+
+        } else {
+
+            post.updateAttributes(payload, function (err, results) {
+
+                done(err, results ? results.toJSON(true) : null);
+            });
+        }
+
     });
 };
 
@@ -75,7 +155,7 @@ posts.destroy = function destroy(args, done) {
     var query = args.query;
     var params = args.params;
 
-    models.Post.find(params.id, function (err, post) {
+    Models.Post.find(params.id, function (err, post) {
         if (err) {
             return done(err);
         }

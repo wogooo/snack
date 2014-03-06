@@ -6,6 +6,8 @@ var Utils = Hapi.utils;
 
 var Config = require('./config');
 var ErrorHandling = require('./errorHandling');
+var Extensions = require('./extensions');
+var Storage = require('./storage');
 var Services = require('./services');
 var Packs = require('./packs');
 var Routes = require('./routes');
@@ -106,6 +108,8 @@ function setup() {
         labels: ['snack-app', 'socket.io']
     };
 
+    options = Utils.applyToDefaults(config.server.options, options);
+
     var server = Hapi.createServer(config.server.host, config.server.port, options);
 
     // Set up the server.log listener.
@@ -117,6 +121,14 @@ function setup() {
         name: 'errorHandling',
         module: ErrorHandling,
         expose: false
+    }, {
+        name: 'extensions',
+        module: Extensions,
+        expose: false
+    }, {
+        name: 'storage',
+        module: Storage,
+        expose: true
     }, {
         name: 'services',
         module: Services,

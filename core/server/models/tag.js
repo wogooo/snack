@@ -10,18 +10,17 @@ internals.init = function (model, next) {
     var schema = model.schema;
     var models = model.models;
 
-    var User = schema.define('User', {
+    var Tag = schema.define('Tag', {
         id: {
             type: String,
             index: true
         },
-        displayName: {
-            type: String,
-            length: 255
-        },
-        name: {
-            type: String,
-            length: 255
+        type: String,
+        kind: String,
+        name: String,
+        slug: String,
+        description: {
+            type: Schema.Text
         },
         timestamp: {
             type: Number,
@@ -35,7 +34,7 @@ internals.init = function (model, next) {
         }
     });
 
-    models.User = User;
+    models.Tag = Tag;
 
     next();
 };

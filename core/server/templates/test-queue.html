@@ -4,9 +4,12 @@
     socket = io.connect('/jobs');
 
     socket.on('job', function (data) {
-        console.log('job:', data);
+        // console.log('job:', data);
+
+        var job = data.job;
 
         var rowClass = '';
+
         if (data.event === 'progress') {
             rowClass = 'active';
         }
@@ -20,8 +23,18 @@
             rowClass = 'warning';
         }
 
+        var $job = $('#job-' + job.id);
+        var rowHtml = '<td>'+ job.id +'</td><td>' + data.event + '</td><td>' + job.type + '</td><td>' + (job.progress || '') + '</td><td>' + (job.duration + 'ms' || '') + '</td>';
 
-        $('#debug').find('tbody').prepend('<tr class="'+ rowClass +'"><td>'+ data.job.id +'</td><td>' + data.event + '</td><td>' + data.job.type + '</td><td>' + data.job.progress || '' + '</td></tr>');
+        if ($job.length) {
+
+            $job.removeClass().addClass(rowClass);
+            $job.html(rowHtml);
+
+        } else {
+            $('#debug').find('tbody').prepend('<tr id="job-'+ job.id +'" class="'+ rowClass +'">' + rowHtml + '</tr>');
+        }
+
     });
 
 </script>
@@ -33,10 +46,19 @@
             <th>Event</th>
             <th>Hook</th>
             <th>Progress</th>
+            <th>Duration</th>
         </thead>
 
         <tbody>
-
+        {{#each list.items}}
+            <tr>
+                <td>{{id}}</td>
+                <td>{{state}}</td>
+                <td>{{type}}</td>
+                <td>{{progress}}</td>
+                <td>{{duration}}ms</td>
+            </tr>
+        {{/each}}
         </tbody>
 
     </table>

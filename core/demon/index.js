@@ -1,13 +1,14 @@
 /* Demons should remain as de-coupled as practical.
    They will only communicate with the main app server via the API,
    not internal methods, despite that being fundamentally easier. */
+var Querystring = require('querystring');
 var Fs = require('fs');
 var Util = require('util');
 var Path = require('path');
 var Hapi = require('hapi');
 var Utils = Hapi.utils;
 
-var Request = require('request');
+var Nipple = require('nipple');
 var Async = require('async');
 var Kue = require('kue');
 
@@ -86,15 +87,15 @@ internals.Demon.prototype._processCleanUp = function (job, done) {
         return done();
     }
 
-    var cleanUpRequest = {
-        uri: job.data.endpoint,
-        qs: {
-            'clearQueue': true,
-            'jobId': job.id
-        }
-    };
+    var cleanUpRequest = job.data.endpoint;
+    var qs = Querystring.stringify({
+        'clearQueue': true,
+        'jobId': job.id
+    });
 
-    Request.put(cleanUpRequest, function (err, response, body) {
+    cleanUpRequest += '?' + qs;
+
+    Nipple.put(cleanUpRequest, function (err, res) {
 
         done(err);
     });

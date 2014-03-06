@@ -11,7 +11,7 @@
   "license": "MIT",
   "dependencies": {
     "helios": "git+ssh://git@github.com:mshick/helios.git",
-    "request": "^2.34.0",
-    "json-bigint": "0.0.1"
+    "json-bigint": "0.0.1",
+    "nipple": "^2.2.0"
   }
 }

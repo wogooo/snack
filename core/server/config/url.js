@@ -3,9 +3,10 @@
 // Contains all path information to be used throughout
 // the codebase.
 
-var moment            = require('moment'),
-    _                 = require('lodash'),
-    Inflection        = require('inflection'),
+var moment = require('moment'),
+    _ = require('lodash'),
+    Inflection = require('inflection'),
+    Path = require('path'),
     snackConfig = '';
 
 // ## setConfig
@@ -59,11 +60,21 @@ function createUrl(urlPath, absolute) {
 function urlPathForPost(post, permalinks) {
     var output = '',
         tags = {
-            year:   function () { return moment(post.published_at).format('YYYY'); },
-            month:  function () { return moment(post.published_at).format('MM'); },
-            day:    function () { return moment(post.published_at).format('DD'); },
-            slug: function () { return post.slug; },
-            id: function () { return post.id; }
+            year: function () {
+                return moment(post.published_at).format('YYYY');
+            },
+            month: function () {
+                return moment(post.published_at).format('MM');
+            },
+            day: function () {
+                return moment(post.published_at).format('DD');
+            },
+            slug: function () {
+                return post.slug;
+            },
+            id: function () {
+                return post.id;
+            }
         };
 
     if (post.page === 1) {
@@ -92,6 +103,39 @@ function urlPathForApi(api) {
     return urlPath;
 }
 
+function urlPathForAsset(asset, realPath) {
+    var output = '',
+        tags = {
+            year: function () {
+                return moment(asset.createdAt).format('YYYY');
+            },
+            month: function () {
+                return moment(asset.createdAt).format('MM');
+            },
+            day: function () {
+                return moment(asset.createdAt).format('DD');
+            },
+            filename: function () {
+                return asset.filename.toLowerCase();
+            }
+        };
+
+    output += snackConfig.paths.assetsRelPathPattern;
+
+    // replace tags like :slug or :year with actual values
+    output = output.replace(/(:[a-z]+)/g, function (match) {
+        if (_.has(tags, match.substr(1))) {
+            return tags[match.substr(1)]();
+        }
+    });
+
+    if (!realPath) {
+        output = Path.join(snackConfig.paths.assetsRelPath, output);
+    }
+
+    return output;
+}
+
 // ## urlFor
 // Synchronous url creation for a given context
 // Can generate a url for a named path, given path, or known object (post)
@@ -112,8 +156,13 @@ function urlPathForApi(api) {
 // This is probably not the right place for this, but it's the best place for now
 function urlFor(context, data, absolute) {
     var urlPath = '/',
-        knownObjects = ['api', 'post', 'tag', 'user'],
-        knownPaths = {'home': '/', 'rss': '/rss/'}; // this will become really big
+        knownObjects = ['api', 'post', 'tag', 'user', 'asset'],
+        knownPaths = {
+            'home': '/',
+            'rss': '/rss/'
+        }; // this will become really big
+
+    // TODO: do with args, this is silly.
 
     // Make data properly optional
     if (_.isBoolean(data)) {
@@ -131,6 +180,8 @@ function urlFor(context, data, absolute) {
             urlPath = '/tag/' + data.tag.slug + '/';
         } else if (context === 'api' && data.api) {
             urlPath = urlPathForApi(data.api);
+        } else if (context === 'asset' && data.asset) {
+            urlPath = urlPathForAsset(data.asset);
         }
         // other objects are recognised but not yet supported
     } else if (_.isString(context) && _.indexOf(_.keys(knownPaths), context) !== -1) {
@@ -154,6 +205,23 @@ function urlFor(context, data, absolute) {
 //     });
 // }
 
+function urlForAsset(asset, realOrAbsolutePath) {
+
+    var url = '';
+
+    var absolute = (realOrAbsolutePath === 'absolute');
+    var real = (realOrAbsolutePath === 'real');
+
+    if (real) {
+        return urlPathForAsset(asset, real);
+    }
+
+    return urlFor('asset', {
+        asset: asset
+    }, absolute);
+}
+
 module.exports.setConfig = setConfig;
 module.exports.urlFor = urlFor;
 // module.exports.urlForPost = urlForPost;
+module.exports.urlForAsset = urlForAsset;

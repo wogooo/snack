@@ -1,16 +1,46 @@
+var Fs = require('fs');
+var Path = require('path');
+var Async = require('async');
+
 module.exports = function (server) {
 
     var Snack = server.app;
-    var api = Snack.api;
+    var Config = Snack.config;
+    var Storage = Snack.storage;
+    var Api = Snack.api;
+
+    server.route({
+        method: 'GET',
+        path: '/api/v1/posts',
+        handler: function (request, reply) {
+
+            Api.Posts.list(request, function (err, results) {
+                if (err) {
+                    return reply({
+                        error: err.name,
+                        message: err.message
+                    }).code(500);
+                }
+
+                reply(results);
+            });
+        }
+    });
 
     server.route({
         method: 'POST',
         path: '/api/v1/posts',
-        handler: function (request, reply) {
+        config: {
+            payload: {
+                output: 'file',
+                parse: true
+            },
+            handler: function (request, reply) {
 
-            api.Posts.create(request, function (err, results) {
-                reply(results);
-            });
+                Api.Posts.create(request, function (err, results) {
+                    reply(results);
+                });
+            }
         }
     });
 
@@ -19,7 +49,7 @@ module.exports = function (server) {
         path: '/api/v1/posts/{id}',
         handler: function (request, reply) {
 
-            api.Posts.update(request, function (err, results) {
+            Api.Posts.update(request, function (err, results) {
                 reply(results);
             });
         }
@@ -30,7 +60,7 @@ module.exports = function (server) {
         path: '/api/v1/posts/{id}',
         handler: function (request, reply) {
 
-            api.Posts.read(request, function (err, results) {
+            Api.Posts.read(request, function (err, results) {
                 if (err) {
                     return reply({
                         error: err.name,
@@ -48,11 +78,93 @@ module.exports = function (server) {
         path: '/api/v1/posts/{id}',
         handler: function (request, reply) {
 
-            api.Posts.destroy(request, function (err, results) {
+            Api.Posts.destroy(request, function (err, results) {
                 reply(results);
             });
         }
     });
+
+    server.route({
+        method: 'GET',
+        path: '/api/v1/assets',
+        handler: function (request, reply) {
+
+            Api.Assets.list(request, function (err, results) {
+                if (err) {
+                    return reply({
+                        error: err.name,
+                        message: err.message
+                    }).code(500);
+                }
+
+                reply(results);
+            });
+        }
+    });
+
+    server.route({
+        method: 'POST',
+        path: '/api/v1/assets',
+        config: {
+            payload: {
+                output: 'file',
+                parse: true
+            },
+            handler: function (request, reply) {
+
+                Api.Assets.create(request, function (err, results) {
+                    if (err) {
+                        return reply({
+                            error: err.name,
+                            message: err.message
+                        }).code(500);
+                    }
+
+                    reply(results);
+                });
+            }
+        }
+    });
+
+    server.route({
+        method: 'GET',
+        path: '/api/v1/assets/{id}',
+        handler: function (request, reply) {
+
+            Api.Assets.read(request, function (err, results) {
+                if (err) {
+                    return reply({
+                        error: err.name,
+                        message: err.message
+                    }).code(500);
+                }
+
+                reply(results);
+            });
+        }
+    });
+
+    server.route({
+        method: 'PUT',
+        path: '/api/v1/assets/{id}',
+        handler: function (request, reply) {
+
+            Api.Assets.update(request, function (err, results) {
+                reply(results);
+            });
+        }
+    });
+
+    // server.route({
+    //     method: 'POST',
+    //     path: '/api/v1/files',
+    //     handler: function (request, reply) {
+
+    //         api.Images.create(request, function (err, results) {
+    //             reply(results);
+    //         });
+    //     }
+    // });
 
     // server.route({
     //     method: 'GET',

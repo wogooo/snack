@@ -25,7 +25,7 @@ function updateConfig(config) {
         serverHost;
 
     // Merge passed in config object onto
-    // the cached ghostConfig object
+    // the cached snackConfig object
     snackConfig = Utils.merge(snackConfig, config);
 
     // Protect against accessing a non-existant object.
@@ -67,14 +67,20 @@ function updateConfig(config) {
             'post.updated': true,
             'post.deleted': true,
             'post.destroyed': true,
-            'image.created': true,
-            'image.updated': true,
-            'image.deleted': true,
-            'image.destroyed': true
+            'asset.created': true,
+            'asset.updated': true,
+            'asset.deleted': true,
+            'asset.destroyed': true
         },
         server: {
             'port': serverPort,
-            'host': serverHost
+            'host': serverHost,
+            'options': {
+                'cors': true,
+                'files': {
+                    'relativeTo': appRoot
+                }
+            }
         },
         logging: {
             'level': logLevel || 'ERROR'
@@ -88,10 +94,10 @@ function updateConfig(config) {
 
             'contentPath': contentPath,
             'packsPath': packsPath,
-            // 'themePath': Path.resolve(contentPath, 'themes'),
-            // 'appPath': Path.resolve(contentPath, 'apps'),
-            'imagesPath': Path.resolve(contentPath, 'images'),
-            'imagesRelPath': 'content/images',
+            'themePath': Path.resolve(contentPath, 'themes'),
+            'assetsPath': Path.resolve(contentPath, 'assets'),
+            'assetsRelPath': '/content/assets',
+            'assetsRelPathPattern': snackConfig.paths.assetsRelPathPattern || ':filename'
 
             // 'adminViews': path.join(corePath, '/server/views/'),
             // 'helperTemplates': path.join(corePath, '/server/helpers/tpl/'),
@@ -134,3 +140,4 @@ module.exports = config;
 module.exports.init = initConfig;
 module.exports.urlFor = ConfigUrl.urlFor;
 // module.exports.urlForPost = ConfigUrl.urlForPost;
+module.exports.urlForAsset= ConfigUrl.urlForAsset;

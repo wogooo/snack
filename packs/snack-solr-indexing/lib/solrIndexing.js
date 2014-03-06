@@ -1,11 +1,10 @@
 /* jshint sub:true */
 
-var Request = require('request');
+var Nipple = require('nipple');
 var Helios = require('helios');
 
 // JS loves long not. Solves some problems with _version_
 var JSONbig = require('json-bigint');
-
 
 var SolrDoc = require('./solrDoc');
 
@@ -203,29 +202,33 @@ internals.SolrIndexing.prototype.toSolr = function (item, done) {
 
 internals.SolrIndexing.prototype.fetchData = function (item, done) {
 
-    var self = this;
     var config = this.config;
 
-    var url = config.urlFor('api', {
+    var uri = config.urlFor('api', {
         api: {
             type: item.type,
             id: item.id
         }
     }, true);
 
-    Request.get(url, function (err, response, body) {
+    Nipple.get(uri, function (err, res, payload) {
 
         if (err) return done(err);
 
-        var data = JSON.parse(body);
+        var data = JSON.parse(payload);
 
-        self.toSolr(data, done);
+        done(null, data);
     });
 };
 
 internals.SolrIndexing.prototype.handler = function (job, done) {
 
-    this.fetchData(job.data, done);
+    var self = this;
+
+    this.fetchData(job.data, function (err, data) {
+
+        self.toSolr(data, done);
+    });
 };
 
 module.exports = internals.SolrIndexing;

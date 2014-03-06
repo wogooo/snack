@@ -70,7 +70,7 @@ internals.init = function (model, next) {
     var schema = model.schema;
     var models = model.models;
 
-    var Post = schema.define('Post', {
+    var Page = schema.define('Page', {
         id: {
             type: String,
             index: true
@@ -82,12 +82,12 @@ internals.init = function (model, next) {
         type: {
             type: String,
             length: 255,
-            default: 'post'
+            default: 'page'
         },
         kind: {
             type: String,
             length: 255,
-            default: 'article'
+            default: 'simple'
         },
         content: {
             type: Schema.Text
@@ -121,14 +121,14 @@ internals.init = function (model, next) {
             default: false,
             index: true
         },
+        timestamp: {
+            type: Number,
+            default: Date.now
+        },
         deleted: {
             type: Boolean,
             default: false,
             index: true
-        },
-        timestamp: {
-            type: Number,
-            default: Date.now
         },
         queue: {
             type: String,
@@ -137,52 +137,25 @@ internals.init = function (model, next) {
         }
     });
 
-    Post.hasAndBelongsToMany('authors', {
+    Page.hasAndBelongsToMany('authors', {
         model: models.User
     });
 
-    Post.hasAndBelongsToMany('tags', {
+    Page.hasAndBelongsToMany('tags', {
         model: models.Tag
     });
 
-    Post.hasAndBelongsToMany('assets', {
+    Page.hasAndBelongsToMany('assets', {
         model: models.Asset
     });
 
-    Post.getAll = function (fields, options, callback) {
-        fields = fields || [];
-        options = options || {};
-
-        this.all({
-            include: fields
-        }, function (err, results) {
-
-            if (err) {
-                return callback(err);
-            }
-
-            if (options.toJSON) {
-
-                var resultJSON, relations;
-                results.forEach(function (result, index) {
-                    relations = result.__cachedRelations;
-                    resultJSON = result.toJSON();
-                    resultJSON = _.extend(resultJSON, relations);
-                    results[index] = resultJSON;
-                });
-            }
-
-            callback(err, results);
-        });
-    };
-
-    Post.afterCreate = function (next) {
+    Page.afterCreate = function (next) {
 
         var self = this;
 
-        if (config.hooks['post.created']) {
+        if (config.hooks['page.created']) {
 
-            internals._enqueue('post.created', {
+            internals._enqueue('page.created', {
                 type: this.constructor.modelName,
                 id: this.id
             }, true, function (err, queuePath) {
@@ -203,16 +176,13 @@ internals.init = function (model, next) {
         next();
     };
 
-    Post.beforeUpdate = function (next, data) {
+    Page.beforeUpdate = function (next, data) {
 
         // Private data
         var _data = this.__data;
 
         // Always set a new timestsamp
-        var now = Date.now();
-
-        data.timestamp = now;
-        data.updatedAt = new Date(now).toJSON();
+        data.timestamp = Date.now();
 
         if (_data.clearQueue === true) {
 
@@ -223,7 +193,7 @@ internals.init = function (model, next) {
         next();
     };
 
-    Post.afterUpdate = function (next) {
+    Page.afterUpdate = function (next) {
 
         var self = this;
 
@@ -232,9 +202,9 @@ internals.init = function (model, next) {
 
         if (!this.queue && _data.clearQueue !== true) {
 
-            if (config.hooks['post.updated'] || config.hooks['post.deleted']) {
+            if (config.hooks['page.updated'] || config.hooks['page.deleted']) {
 
-                internals._enqueue(this.deleted ? 'post.deleted' : 'post.updated', {
+                internals._enqueue(this.deleted ? 'page.deleted' : 'page.updated', {
                     type: this.constructor.modelName,
                     id: this.id
                 }, true, function (err, queuePath) {
@@ -258,11 +228,11 @@ internals.init = function (model, next) {
         }
     };
 
-    Post.beforeDestroy = function (next) {
+    Page.beforeDestroy = function (next) {
 
-        if (config.hooks['post.destroyed']) {
+        if (config.hooks['page.destroyed']) {
 
-            internals._enqueue('post.destroyed', {
+            internals._enqueue('page.destroyed', {
                 type: this.constructor.modelName,
                 id: this.id
             }, false, function (err) {
@@ -272,7 +242,7 @@ internals.init = function (model, next) {
         }
     };
 
-    models.Post = Post;
+    models.Page = Page;
 
     next();
 };

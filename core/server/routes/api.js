@@ -2,11 +2,12 @@ var Fs = require('fs');
 var Path = require('path');
 var Async = require('async');
 
-module.exports = function (server) {
+module.exports = function (route) {
 
-    var Snack = server.app;
-    var Config = Snack.config;
-    var Storage = Snack.storage;
+    var server = route.server;
+    var Snack = route.snack;
+    var Config = route.config;
+
     var Api = Snack.api;
 
     server.route({

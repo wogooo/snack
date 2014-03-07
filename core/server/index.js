@@ -101,8 +101,8 @@ function setup() {
             engines: {
                 html: 'handlebars'
             },
-            path: Path.join(__dirname, '/templates'),
-            partialsPath: Path.join(__dirname, '/templates/partials'),
+            path: Path.join(__dirname, '/views'),
+            partialsPath: Path.join(__dirname, '/views/partials'),
             layout: true
         },
         labels: ['snack-app', 'socket.io']

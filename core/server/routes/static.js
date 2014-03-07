@@ -1,7 +1,10 @@
-module.exports = function (server) {
+var Path = require('path');
 
-    var Snack = server.app;
-    var Config = Snack.config;
+module.exports = function (route) {
+
+    var server = route.server;
+    var Snack = route.snack;
+    var Config = route.config;
 
     server.route({
         method: 'GET',

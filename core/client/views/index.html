@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="app">
+
+  <head>
+    <title>{{{title}}}</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <base href="/admin/" />
+
+    <link rel="stylesheet" type="text/css" href="/admin/static/{{packageInfo.name}}.css"/>
+
+    <script type="text/javascript" src="/admin/static/angular.js"></script>
+    <script type="text/javascript" src="/admin/static/bootstrap.js"></script>
+    <script type="text/javascript" src="/admin/static/{{packageInfo.name}}.js"></script>
+
+    <style>
+        body {
+            padding-top: 70px;
+        }
+    </style>
+  </head>
+
+  <body ng-controller="AppCtrl">
+    <div ng-include="'header.tpl.html'"></div>
+    <div ng-include="'notifications.tpl.html'" class="container" ng-show="notifications.getCurrent().length"></div>
+    <div ng-view class="container"></div>
+    <hr />
+    <div class="container">
+        <footer id="footer">
+            {{> footer}}
+        </footer>
+    </div>
+  </body>
+
+</html>

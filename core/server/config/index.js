@@ -12,6 +12,7 @@ var Path = require('path'),
     ConfigUrl     = require('./url'),
     appRoot = Path.resolve(__dirname, '../../../'),
     corePath = Path.resolve(appRoot, 'core/'),
+    packageInfo = require(Path.resolve(appRoot, 'package.json')),
     snackConfig = {};
 
 function updateConfig(config) {
@@ -110,6 +111,8 @@ function updateConfig(config) {
             // 'builtScriptPath': path.join(corePath, 'built/scripts/')
         }
     });
+
+    snackConfig.packageInfo = packageInfo;
 
     ConfigUrl.setConfig(snackConfig);
 

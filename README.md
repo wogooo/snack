@@ -3,9 +3,11 @@ Snack
 
 Right now Snack isn't much of anything. My goal with the project is to create
 a publishing system / CMS that is designed to be easy to develop on and
-institutes some notions I have about relations in a NoSQL / document store
+implements some notions I have about relations in a NoSQL / document store
 world, as well as making task queues and background processes an easy and
 natural part of the workflow.
+
+Key projects used here: hapi, kue
 
 *Phase 1
 

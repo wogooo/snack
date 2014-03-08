@@ -16,7 +16,7 @@
     "node": "0.10.x"
   },
   "dependencies": {
-    "kue": "~0.7.5"
+    "kue": "^0.7.5"
   },
   "peerDependencies": {
     "hapi": "^3.0"

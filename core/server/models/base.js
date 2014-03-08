@@ -32,7 +32,7 @@ internals.Base.prototype._enqueue = function (hook, item, done) {
         task.data.obj = JSON.stringify(item.obj);
     }
 
-    server.methods.snackQueue('createJob', task, function (err, job) {
+    server.methods.queue('createJob', task, function (err, job) {
 
         if (err) return done(err);
 
@@ -80,7 +80,7 @@ internals.Base.prototype._startJob = function (id) {
     var server = this.server;
 
     function start() {
-        server.methods.snackQueue('startJob', {
+        server.methods.queue('startJob', {
             id: id
         });
     }

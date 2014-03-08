@@ -40,7 +40,7 @@ module.exports = function (route) {
         method: 'GET',
         path: '/test-queue',
         handler: function (request, reply) {
-            server.methods.snackQueue('getJobRange', null, function (err, jobList) {
+            server.methods.queue('getJobRange', null, function (err, jobList) {
                 reply.view('test-queue', {
                     title: 'DEBUG',
                     list: jobList

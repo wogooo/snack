@@ -14,18 +14,21 @@ var Routes = require('./routes');
 var Api = require('./api');
 var Models = require('./models');
 
-function messages(tags) {
+function messages(tags, log) {
 
     if (tags.error) {
 
-        if (tags.stop) {
+        if (tags.serverStop) {
             console.log('Snack server encountered an error and was stopped.'.red);
+            return;
         }
 
-        if (tags.restart) {
+        if (tags.serverRestart) {
             console.log('Snack server restarted...'.red);
+            return;
         }
 
+        console.log(('Error: ' + log).red);
         return;
     }
 
@@ -72,10 +75,11 @@ function messages(tags) {
 
 function logging(server) {
 
-    server.on('log', function (event, tags) {
+    // This is weird, but pack events also get server events?
+    server.pack.events.on('log', function (event, tags) {
 
         if (tags.start || tags.error) {
-            messages(tags);
+            messages(tags, event.data);
         }
     });
 };
@@ -96,17 +100,25 @@ function setup() {
 
     var config = Config();
 
-    var options = {
-        views: {
-            engines: {
-                html: 'handlebars'
-            },
-            path: Path.join(__dirname, '/views'),
-            partialsPath: Path.join(__dirname, '/views/partials'),
-            layout: true
+    var options = {};
+
+    options.labels = ['snack-app', 'socket.io'];
+
+    options.views = {
+        engines: {
+            html: 'handlebars'
         },
-        labels: ['snack-app', 'socket.io']
+        path: Path.join(__dirname, '/views'),
+        partialsPath: Path.join(__dirname, '/views/partials'),
+        layout: true
     };
+
+    options.cache = {
+        engine: 'catbox-redis',
+        name: 'snack-app'
+    };
+
+    options.cache = Utils.merge(options.cache, config.redis);
 
     options = Utils.applyToDefaults(config.server.options, options);
 
@@ -160,10 +172,8 @@ function setup() {
             item.module.init(server, next);
         },
         function (err) {
-
             if (err) {
-                console.error(new Error('Error loading server...'));
-                return;
+                server.log(['error', 'registration'], 'One or more core services didn\'t load.');
             }
 
             start(server);

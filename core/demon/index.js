@@ -399,27 +399,27 @@ internals.Demon.start = function () {
         contentPath: Config().paths.contentPath
     };
 
-    var demon = new internals.Demon(config);
+    // var demon = new internals.Demon(config);
 
-    demon.init(function () {
+    // demon.init(function () {
 
-        var registered = demon._registered;
-        var enabled = [],
-            disabled = [];
-        for (var reg in registered) {
-            if (registered[reg]) {
-                enabled.push(reg);
-            } else {
-                disabled.push(reg);
-            }
-        }
+    //     var registered = demon._registered;
+    //     var enabled = [],
+    //         disabled = [];
+    //     for (var reg in registered) {
+    //         if (registered[reg]) {
+    //             enabled.push(reg);
+    //         } else {
+    //             disabled.push(reg);
+    //         }
+    //     }
 
-        console.log(
-            "Snack Demon is running...".green,
-            enabled.length ? ("\nEnabled: " + enabled.join(', ')).grey : '',
-            disabled.length ? ("\nDisabled: " + disabled.join(', ')).red : ''
-        );
-    });
+    //     console.log(
+    //         "Snack Demon is running...".green,
+    //         enabled.length ? ("\nEnabled: " + enabled.join(', ')).grey : '',
+    //         disabled.length ? ("\nDisabled: " + disabled.join(', ')).red : ''
+    //     );
+    // });
 };
 
 internals.demonHunterPath = function (paths, done) {
@@ -474,8 +474,6 @@ internals.packagePath = function (name, packageFile) {
     return pkgPath;
 };
 
-function noop() {
-
-};
+function noop() {};
 
 module.exports = internals.Demon.start;

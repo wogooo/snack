@@ -20,7 +20,7 @@ internals.init = function (server, next) {
 
                 // stop taking new requests.
                 server.stop(function () {
-                    server.log(['error', 'stop']);
+                    server.log(['error', 'serverStop']);
                 });
 
                 // Let the master know we're dead.  This will trigger a
@@ -30,7 +30,7 @@ internals.init = function (server, next) {
                     Cluster.worker.disconnect();
                 } else {
                     server.start(function () {
-                        server.log(['error', 'restart']);
+                        server.log(['error', 'serverRestart']);
                     });
                 }
             } catch (er2) {

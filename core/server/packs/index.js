@@ -3,7 +3,8 @@
 
 var Hapi = require('hapi');
 var Utils = Hapi.utils;
-var Config = require('../config')();
+var Config = require('../config');
+var config = Config();
 var Path = require('path');
 
 // If path is omitted, it is presumed to be in node_modules,
@@ -13,17 +14,15 @@ var packs = {
     'snack-queue': {
         path: Path.resolve(__dirname, 'snack-queue'),
         options: {
-            basePath: Config.api.basePath + '/v' + Config.api.version,
+            basePath: config.api.basePath + '/v' + config.api.version,
             kue: {
-                host: 'localhost',
-                port: 6379,
                 disableSearch: true
             }
         }
     }
 };
 
-packs['snack-queue'].options = Utils.applyToDefaults(packs['snack-queue'].options, Config.queue);
+packs['snack-queue'].options = Utils.merge(packs['snack-queue'].options, config.queue);
 
 var internals = {};
 

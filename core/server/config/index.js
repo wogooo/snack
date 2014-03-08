@@ -9,7 +9,7 @@ var Path = require('path'),
     Hapi = require('hapi'),
     Utils = Hapi.utils,
     Url = require('url'),
-    ConfigUrl     = require('./url'),
+    ConfigUrl = require('./url'),
     appRoot = Path.resolve(__dirname, '../../../'),
     corePath = Path.resolve(appRoot, 'core/'),
     packageInfo = require(Path.resolve(appRoot, 'package.json')),
@@ -53,6 +53,11 @@ function updateConfig(config) {
     serverPort = process.env.PORT || snackConfig.server.port;
     serverHost = process.env.HOST || snackConfig.server.host;
 
+    snackConfig.redis = snackConfig.redis || {};
+    redisPort = process.env.REDIS_PORT || snackConfig.redis.port;
+    redisHost = process.env.REDIS_HOST || snackConfig.redis.host;
+    redisPassword = process.env.REDIS_PASSWORD || snackConfig.redis.password;
+
     // Allow contentPath to be over-written by passed in config object
     // Otherwise default to default content path location
     contentPath = snackConfig.paths.contentPath || Path.resolve(appRoot, 'content');
@@ -80,6 +85,22 @@ function updateConfig(config) {
                 'cors': true,
                 'files': {
                     'relativeTo': appRoot
+                }
+            }
+        },
+        redis: {
+            'host': redisHost,
+            'port': redisPort,
+            'password': redisPassword
+        },
+        queue: {
+            'attempts': 3,
+            'kue': {
+                'disableSearch': true,
+                'redis': {
+                    'host': redisHost,
+                    'port': redisPort,
+                    'password': redisPassword
                 }
             }
         },

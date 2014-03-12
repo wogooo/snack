@@ -41,26 +41,9 @@ internals.SnackQueue.prototype.start = function (next) {
 
     var self = this;
     var settings = this._settings;
-    var queue = this.queue;
 
-    // Since we can't get the pubsub errors for bad
-    // redis config, wrap the whole thing in a domain.
-    var domain = Domain.create();
-
-    this._errored = false;
-    domain.on('error', function (err) {
-
-        if (!self._errored) {
-            self._errored = true;
-            queue.shutdown();
-            next(err);
-        }
-    });
-
-    domain.run(function () {
-        queue = Kue.createQueue(settings.kue);
-        queue.client.on('ready', next);
-    });
+    this.queue = Kue.createQueue(settings.kue);
+    this.queue.client.on('ready', next);
 };
 
 internals.SnackQueue.prototype.loadSocketIO = function () {

@@ -98,7 +98,15 @@ function urlPathForApi(api) {
     var urlPath = '';
 
     var apiType = Inflection.pluralize(api.type).toLowerCase();
-    urlPath = snackConfig.api.basePath + '/v' + snackConfig.api.version + '/' + apiType + '/' + api.id;
+    urlPath = snackConfig.api.basePath + '/v' + snackConfig.api.version + '/' + apiType;
+
+    if (api.id) {
+        urlPath += '/' + api.id;
+    }
+
+    if (api.ids) {
+        urlPath += '?ids=' + api.ids.join(',');
+    }
 
     return urlPath;
 }

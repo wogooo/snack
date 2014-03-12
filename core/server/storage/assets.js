@@ -67,13 +67,11 @@ internals.createAsset = function (fileObj, done) {
         var assetObj = {
             filename: Path.basename(newPath),
             key: assetKey,
-            url: Config.urlFor('asset', {
-                asset: fileObj
-            }, true),
             bytes: fileObj.bytes,
             mimetype: mimeType,
             data: data,
-            createdAt: fileObj.createdAt
+            createdAt: fileObj.createdAt,
+            storage: 'local'
         };
 
         done(null, assetObj);
@@ -88,7 +86,7 @@ internals.save = function (fileObjOrArr, done) {
 
         var fileArr = fileObjOrArr;
 
-        Async.each(fileArr, function (fileObj, next) {
+        Async.eachSeries(fileArr, function (fileObj, next) {
 
                 internals.createAsset(fileObj, function (err, asset) {
                     if (err) return next(err);

@@ -4,21 +4,21 @@ var Bootstrap = require('./bootstrap');
 
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 
-function startServer() {
+function startServer(bootstrap) {
     var Server = require('./server');
-    Server();
+    Server(bootstrap);
 }
 
-function startDemon() {
+function startDemon(bootstrap) {
     var Demon = require('./demon');
-    Demon();
+    Demon(bootstrap);
 }
 
 function start(options) {
 
     options = options || {};
 
-    Bootstrap(options.config, function (err) {
+    Bootstrap(options.config, function (err, bootstrap) {
 
         Utils.assert(!err, 'Cannot start Snack!', err);
 
@@ -26,12 +26,12 @@ function start(options) {
 
         if (load.indexOf('demon') > -1 || !load.length) {
 
-            startDemon();
+            startDemon(bootstrap);
         }
 
         if (load.indexOf('app') > -1 || !load.length) {
 
-            startServer();
+            startServer(bootstrap);
         }
     });
 }

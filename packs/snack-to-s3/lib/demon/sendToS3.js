@@ -109,7 +109,7 @@ internals.SendToS3.prototype.putS3 = function (asset, done) {
     var stream = Fs.createReadStream(assetPath);
 
     var data = {
-        ACL: asset.available ? 'public-read' : 'private',
+        ACL: asset.deleted ? 'private' : 'public-read',
         Bucket: settings.bucket,
         Key: asset.key,
         Body: stream,
@@ -135,7 +135,7 @@ internals.SendToS3.prototype.updateS3 = function (asset, done) {
     var client = this.client;
 
     var data = {
-        ACL: asset.available ? 'public-read' : 'private',
+        ACL: asset.deleted ? 'private' : 'public-read',
         Bucket: settings.bucket,
         Key: asset.key
     };
@@ -241,7 +241,7 @@ internals.SendToS3.prototype.handler = function (job, next) {
             return;
         }
 
-        if (job.type === 'asset.updated') {
+        if (job.type === 'asset.updated' || job.type === 'asset.deleted') {
             self.updateS3(asset, function (err) {
 
                 next(err);

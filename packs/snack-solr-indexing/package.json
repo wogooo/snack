@@ -12,6 +12,7 @@
   "dependencies": {
     "helios": "git+ssh://git@github.com:mshick/helios.git",
     "json-bigint": "0.0.1",
-    "nipple": "^2.2.0"
+    "nipple": "^2.2.0",
+    "async": "^0.2.10"
   }
 }

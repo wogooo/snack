@@ -177,6 +177,84 @@ module.exports = function (route) {
         }
     });
 
+    server.route({
+        method: 'POST',
+        path: '/api/v1/tags',
+        handler: function (request, reply) {
+
+            Api.Tags.create(request, function (err, results) {
+                if (err) {
+                    var error = {
+                        error: err.name,
+                        message: err.message
+                    };
+
+                    return reply(error).code(500);
+                }
+
+                reply(results);
+            });
+        }
+    });
+
+    server.route({
+        method: 'PUT',
+        path: '/api/v1/tags/{id}',
+        handler: function (request, reply) {
+
+            Api.Tags.update(request, function (err, results) {
+                if (err) {
+                    var error = {
+                        error: err.name,
+                        message: err.message
+                    };
+
+                    return reply(error).code(500);
+                }
+
+                reply(results);
+            });
+        }
+    });
+
+    server.route({
+        method: 'GET',
+        path: '/api/v1/tags',
+        handler: function (request, reply) {
+
+            Api.Tags.list(request, function (err, results) {
+
+                if (err) {
+                    return reply({
+                        error: err.name,
+                        message: err.message
+                    }).code(500);
+                }
+
+                reply(results);
+            });
+        }
+    });
+
+    server.route({
+        method: 'GET',
+        path: '/api/v1/tags/{idOrMethod}',
+        handler: function (request, reply) {
+
+            Api.Tags.read(request, function (err, results) {
+                if (err) {
+                    return reply({
+                        error: err.name,
+                        message: err.message
+                    }).code(500);
+                }
+
+                reply(results);
+            });
+        }
+    });
+
+
     // server.route({
     //     method: 'GET',
     //     path: '/api/v1/posts',

@@ -14,6 +14,9 @@ internals.SolrIndexing = function (demon, options) {
 
     options = options || {};
 
+    var Utils = demon.hapi.utils;
+    Utils.assert(options.solr, 'A solr configuration is required!');
+
     this.config = demon.config;
     this.hapi = demon.hapi;
 
@@ -30,7 +33,7 @@ internals.SolrIndexing = function (demon, options) {
     this.queryBuilder = new Helios.queryBuilder();
 
     try {
-        this.client = new Helios.client(options);
+        this.client = new Helios.client(options.solr);
     } catch (e) {
         return null;
     }

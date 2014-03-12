@@ -23,7 +23,10 @@ function updateConfig(config) {
         subdir,
         logLevel,
         serverPort,
-        serverHost;
+        serverHost,
+        redisPort,
+        redisHost,
+        redisAuth;
 
     // Merge passed in config object onto
     // the cached snackConfig object
@@ -56,12 +59,16 @@ function updateConfig(config) {
     snackConfig.redis = snackConfig.redis || {};
     redisPort = process.env.REDIS_PORT || snackConfig.redis.port;
     redisHost = process.env.REDIS_HOST || snackConfig.redis.host;
-    redisPassword = process.env.REDIS_PASSWORD || snackConfig.redis.password;
+    redisAuth = process.env.REDIS_AUTH || snackConfig.redis.password;
 
     // Allow contentPath to be over-written by passed in config object
     // Otherwise default to default content path location
     contentPath = snackConfig.paths.contentPath || Path.resolve(appRoot, 'content');
     packsPath = snackConfig.paths.packsPath || Path.resolve(appRoot, 'packs');
+
+    snackConfig.packs = snackConfig.packs || {};
+    snackConfig.packs.plugins = snackConfig.packs.plugins || {};
+    snackConfig.packs.demons = snackConfig.packs.demons || {};
 
     snackConfig = Utils.merge(snackConfig, {
         api: {
@@ -76,7 +83,11 @@ function updateConfig(config) {
             'asset.created': true,
             'asset.updated': true,
             'asset.deleted': true,
-            'asset.destroyed': true
+            'asset.destroyed': true,
+            'tag.created': true,
+            'tag.updated': true,
+            'tag.deleted': true,
+            'tag.destroyed': true
         },
         server: {
             'port': serverPort,
@@ -91,16 +102,17 @@ function updateConfig(config) {
         redis: {
             'host': redisHost,
             'port': redisPort,
-            'password': redisPassword
+            'password': redisAuth
         },
         queue: {
+            'basePath': '/api/v1',
             'attempts': 3,
             'kue': {
                 'disableSearch': true,
                 'redis': {
                     'host': redisHost,
                     'port': redisPort,
-                    'password': redisPassword
+                    'auth': redisAuth
                 }
             }
         },
@@ -132,6 +144,8 @@ function updateConfig(config) {
             // 'builtScriptPath': path.join(corePath, 'built/scripts/')
         }
     });
+
+    snackConfig.packs.plugins['snack-queue'] = snackConfig.queue;
 
     snackConfig.packageInfo = packageInfo;
 

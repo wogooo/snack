@@ -1,9 +1,10 @@
 var Schema = require('jugglingdb').Schema;
-var Base = require('./base');
+
+var modelName = 'Asset';
 
 var internals = {};
 
-internals.dependencies = ['Base'];
+internals.dependencies = [];
 
 internals.init = function (model, next) {
 
@@ -13,14 +14,19 @@ internals.init = function (model, next) {
     var schema = model.schema;
     var models = model.models;
 
-    var Asset = schema.define('Asset', {
+    var Model = schema.define(modelName, {
         id: {
             type: String,
             index: true
         },
         type: {
             type: String,
-            default: 'file'
+            default: modelName.toLowerCase()
+        },
+        kind: {
+            type: String,
+            default: 'file',
+            index: true
         },
         etag: {
             type: String,
@@ -35,7 +41,8 @@ internals.init = function (model, next) {
         },
         key: {
             type: String,
-            length: 2000
+            length: 2000,
+            index: true
         },
         url: {
             type: String,
@@ -55,9 +62,9 @@ internals.init = function (model, next) {
                 return new Date();
             }
         },
-        available: {
+        deleted: {
             type: Boolean,
-            default: true,
+            default: false,
             index: true
         },
         title: {
@@ -67,14 +74,18 @@ internals.init = function (model, next) {
         description: {
             type: Schema.Text
         },
+        data: {
+            type: Schema.JSON,
+            default: null
+        },
+        removeLocal: {
+            type: Boolean,
+            default: false
+        },
         timestamp: {
             type: Number,
             default: Date.now,
             index: true
-        },
-        data: {
-            type: {},
-            default: null
         },
         queue: {
             type: String,
@@ -83,27 +94,33 @@ internals.init = function (model, next) {
         }
     });
 
-    Asset.beforeCreate = function (next, data) {
+    Model.validatesPresenceOf('filename', 'key', 'mimetype', 'bytes');
+
+    // Key must be unqiue!
+    Model.validatesUniquenessOf('key', {
+        message: 'Key is not unique.'
+    });
+
+    Model.beforeCreate = function (next, data) {
 
         var mimeRegex = /^([a-z]+)\//;
         var mimeType = this.mimetype;
 
         // Get a more useful, human type from the mimetype.
         if (mimeType && mimeRegex.test(mimeType)) {
-            data.type = mimeType.match(mimeRegex)[1];
+            data.kind = mimeType.match(mimeRegex)[1];
         }
 
         next();
     };
 
-    Asset.beforeUpdate = function (next, data) {
+    Model.beforeUpdate = function (next, data) {
 
         // Private data
-        var _data = this.__data;
+        var _data = this.__data,
+            now = Date.now();
 
         // Always set a new timestsamp
-        var now = Date.now();
-
         data.timestamp = now;
         data.updatedAt = new Date(now).toJSON();
 
@@ -113,100 +130,31 @@ internals.init = function (model, next) {
             data.queue = null;
         }
 
-        next();
-    };
+        if (this.storage !== 'local' && this.storage_was === 'local') {
 
-    Asset.afterUpdate = function (next) {
-
-        var self = this;
-
-        // Private data
-        var _data = this.__data;
-
-        if (!this.queue && _data.clearQueue !== true) {
-
-            if (hooks['asset.updated']) {
-
-                var queueItem = {
-                    type: this.constructor.modelName,
-                    id: this.id,
-                    cleanup: true
-                };
-
-                Base.enqueue('asset.updated', queueItem, function (err, queued) {
-
-                    if (err) return next();
-
-                    var attr = {
-                        queue: queued.path
-                    };
-
-                    self.updateAttributes(attr, function (err) {
-
-                        queued.start();
-                        next(err);
-                    });
-                });
-            }
-
-        } else {
-
-            next();
-        }
-    };
-
-    Asset.afterCreate = function (next) {
-
-        var self = this;
-
-        if (hooks['asset.created']) {
-
-            var queueItem = {
-                type: this.constructor.modelName,
-                id: this.id,
-                cleanup: true
-            };
-
-            Base.enqueue('asset.created', queueItem, function (err, queued) {
-
-                if (err) return next(err);
-
-                var attr = {
-                    queue: queued.path
-                };
-
-                self.updateAttributes(attr, function (err) {
-
-                    queued.start();
-                    next(err);
-                });
-            });
-
-            return;
+            // Mark asset so cleanup can happen later
+            data.removeLocal = true;
         }
 
         next();
     };
 
-    Asset.beforeDestroy = function (next) {
+    Model.afterCreate = function (next) {
 
-        if (hooks['asset.destroyed']) {
-
-            var queueItem = {
-                type: this.constructor.modelName,
-                id: this.id,
-                obj: this
-            };
-
-            Base.enqueue('asset.destroyed', queueItem, function (err, queued) {
-
-                queued.start();
-                next(err);
-            });
-        }
+        next();
     };
 
-    models.Asset = Asset;
+    Model.afterUpdate = function (next) {
+
+        next();
+    };
+
+    Model.beforeDestroy = function (next) {
+
+        next();
+    };
+
+    models[modelName] = Model;
 
     next();
 };

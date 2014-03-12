@@ -28,6 +28,16 @@ exports.register = function (demon, options, next) {
         });
 
         demon.process({
+            hook: 'asset.deleted',
+            fn: function (job, done) {
+                sendToS3.handler(job, done);
+            },
+            options: {
+                priority: 0
+            }
+        });
+
+        demon.process({
             hook: 'asset.destroyed',
             fn: function (job, done) {
                 sendToS3.handler(job, done);

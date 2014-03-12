@@ -23,6 +23,10 @@ internals.init = function (model, next) {
             type: String,
             length: 255
         },
+        email: {
+            type: String,
+            length: 255
+        },
         timestamp: {
             type: Number,
             default: Date.now,
@@ -33,6 +37,12 @@ internals.init = function (model, next) {
             length: 2000,
             default: null
         }
+    });
+
+    User.validatesPresenceOf('name', 'displayName', 'email');
+
+    User.validatesUniquenessOf('email', {
+        message: 'Email is not unique.'
     });
 
     models.User = User;

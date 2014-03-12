@@ -27,7 +27,8 @@
     "mime": "^1.2.11",
     "fs-extra": "^0.8.1",
     "image-size": "^0.2.1",
-    "catbox-redis": "^1.0.0"
+    "catbox-redis": "^1.0.0",
+    "uslug": "^1.0.3"
   },
   "devDependencies": {
     "grunt": "^0.4.2",

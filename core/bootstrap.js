@@ -2,16 +2,15 @@
 require('colors');
 require('consoleplusplus');
 
-var Fs      = require('fs'),
-    Config  = require('./server/config');
+var Fs = require('fs'),
+    Config = require('./server/config');
 
 function setLogLevel() {
 
     // Set log level
     var logLevel = Config().logging.level;
     console.setLevel(console.LEVELS[logLevel]);
-};
-
+}
 
 function readConfigFile(envVal) {
 
@@ -50,7 +49,12 @@ function loadConfig(configFilePath, done) {
 
             Config.init(rawConfig);
             setLogLevel();
-            done(null);
+
+            var bootstrap = {
+                config: Config
+            };
+
+            done(null, bootstrap);
         });
     });
 }

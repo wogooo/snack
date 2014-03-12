@@ -1,13 +1,13 @@
 var defaultMap = {
     'id': 'id',
+    'type_s': 'type',
     'title_s': 'title',
     'title_t': {
         value: 'title',
         boost: 2.0
     },
-    'crazy_ss': ['timestamp', 'date'],
-    'content_t': function (model) {
-        return model.content;
+    'body_t': function (model) {
+        return model.body;
     }
 };
 

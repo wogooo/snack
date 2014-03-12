@@ -1,13 +1,22 @@
 var Async = require('async');
+var Hapi = require('hapi');
+var Utils = Hapi.utils;
 
-var Storage = require('../storage');
-var models = require('../models').models;
+var internals = {};
 
-var assets = {};
+internals.Assets = function (options) {
 
-assets.list = function list(args, done) {
+    this.config = options.snack.config;
+    this.models = options.snack.models.models;
+    this.storage = options.snack.storage;
+    this.api = options.api;
+};
 
-    models.Asset.all(function (err, assets) {
+internals.Assets.prototype.list = function (args, done) {
+
+    var Models = this.models;
+
+    Models.Asset.all(function (err, assets) {
         if (err) {
             return done(err);
         }
@@ -16,50 +25,96 @@ assets.list = function list(args, done) {
     });
 };
 
-assets.create = function create(args, done) {
+internals.Assets.prototype.create = function (args, done) {
+
+    var Models = this.models;
+    var Api = this.api;
+    var Storage = this.storage;
+    var Config = this.config;
 
     var payload = args.payload;
 
+    var multi = true,
+        assets = [],
+        asset,
+        files = [],
+        items = [],
+        item;
+
+    // Can create 1 or many assets at once.
     if (payload.items) {
 
-        var assets = [],
-            asset;
+        payload.items.forEach(function (item) {
+            files.push(item.file);
+            delete item.file;
 
-        Storage.Assets.save(payload.items, function (err, assetObjs) {
-
-            Async.each(assetObjs,
-                function (assetObj, next) {
-
-                    assetObj.title = payload.title;
-                    assetObj.description = payload.description;
-
-                    asset = new models.Asset(assetObj);
-
-                    asset.save(function (err, a) {
-                        if (err) return next(err);
-
-                        assets.push(a.toJSON(true));
-                        next();
-                    });
-                },
-                function (err) {
-                    if (err) return done(err);
-
-                    done(null, assets);
-                });
+            items.push(item);
         });
+
+    } else if (payload.file) {
+
+        // Can't have that in there...
+        files.push(payload.file);
+        delete payload.file;
+
+        items.push(payload);
+        multi = false;
 
     } else {
 
-        done (new Error('No assets provided.'));
+        return done(new Error('No files to process.'));
     }
+
+    // Save our files, always returns an array.
+    Storage.Assets.save(files, function (err, files) {
+        if (err) return done(err);
+
+        // Handle each file in order, turning into assets
+        Async.eachSeries(files, function (file, next) {
+
+                item = items.shift();
+
+                // Create an asset url from the file obj
+                item.url =  Config.urlFor('asset', {
+                    asset: file
+                }, true);
+
+                // Merge file props onto
+                // item properties (title, description).
+                item = Utils.merge(item, file);
+
+                // Finally, create an asset instance
+                asset = new Models.Asset(item);
+
+                asset.save(function (err, a) {
+                    if (err) return next(err);
+
+                    assets.push(a);
+                    next();
+                });
+            },
+            function (err) {
+                if (err) return done(err);
+
+                // Queue everything up.
+                Api.Base.enqueue(assets, 'asset.created', function (err) {
+                    if (err) return done(err);
+
+                    done(err, multi ? assets : assets[0]);
+                });
+            });
+    });
 };
 
-assets.read = function read(args, done) {
+
+
+internals.Assets.prototype.read = function (args, done) {
+
+    var Models = this.models;
 
     var params = args.params;
 
-    models.Asset.find(params.id, function (err, asset) {
+    Models.Asset.find(params.id, function (err, asset) {
         if (err) {
             return done(err);
         }
@@ -72,16 +127,23 @@ assets.read = function read(args, done) {
     });
 };
 
-assets.update = function update(args, done) {
+internals.Assets.prototype.update = function (args, done) {
+
+    var Api = this.api;
+    var Models = this.models;
 
     var query = args.query;
     var params = args.params;
     var payload = args.payload;
 
-    models.Asset.find(params.id, function (err, asset) {
-        if (err) {
-            return done(err);
-        }
+    var clearQueue = false;
+    if (query.clearQueue === 'true') {
+        clearQueue = true;
+    }
+
+    Models.Asset.find(params.id, function (err, asset) {
+
+        if (err) return done(err);
 
         if (!asset) {
             return done(new Error('Record not found.'));
@@ -90,30 +152,45 @@ assets.update = function update(args, done) {
         if (payload.timestamp) {
 
             // Timestamp versioning in effect, compare
-            if (asset.timestamp > params.timestamp) {
+            if (asset.timestamp !== payload.timestamp) {
                 return done(new Error('Version mismatch.'));
             }
         }
 
-        if (query.clearQueue === 'true') {
+        if (asset.queue && clearQueue) {
 
             // Pass in the private queue clearing flag
-            asset.__data.clearQueue = true;
+            asset.__data.clearQueue = clearQueue;
         }
 
-        asset.updateAttributes(payload, function (err, results) {
+        asset.updateAttributes(payload, function (err, asset) {
 
-            done(err, results ? results.toJSON(true) : null);
+            if (!asset.queue && !clearQueue) {
+
+                Api.Base.enqueue(asset, 'asset.updated', function (err) {
+
+                    if (err) return done(err);
+
+                    done(err, asset ? asset.toJSON() : null);
+                });
+
+            } else {
+
+                done(err, asset ? asset.toJSON() : null);
+            }
         });
     });
 };
 
-assets.destroy = function destroy(args, done) {
+internals.Assets.prototype.destroy = function (args, done) {
+
+    var Api = this.api;
+    var Models = this.models;
 
     var query = args.query;
     var params = args.params;
 
-    models.Asset.find(params.id, function (err, asset) {
+    Models.Asset.find(params.id, function (err, asset) {
         if (err) {
             return done(err);
         }
@@ -126,19 +203,28 @@ assets.destroy = function destroy(args, done) {
 
             // A true destructive delete
             asset.destroy(function (err) {
-                done(err);
+                Api.Base.enqueue(asset, 'asset.destroyed', function (err) {
+                    done(err);
+                });
             });
 
         } else {
 
             // A more commons setting to make it unavailable
             asset.updateAttributes({
-                available: false
+                deleted: true
             }, function (err) {
-                done(err);
+                Api.Base.enqueue(asset, 'asset.deleted', function (err) {
+                    done(err);
+                });
             });
         }
     });
 };
 
-module.exports = assets;
+module.exports = function (root) {
+
+    var assets = new internals.Assets(root);
+    return assets;
+};
+

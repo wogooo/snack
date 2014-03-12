@@ -50,14 +50,12 @@ module.exports = function (route) {
     });
 
     server.route({
-        method: 'POST',
-        path: '/test-post',
+        method: 'GET',
+        path: '/test',
         handler: function (request, reply) {
-
-            var payload = request.payload;
-            console.log(payload.assets);
-
-            reply('ok');
+            reply.view('form', {
+                title: 'DEBUG'
+            });
         }
     });
 };

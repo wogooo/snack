@@ -9,7 +9,7 @@ var ErrorHandling = require('./errorHandling');
 var Extensions = require('./extensions');
 var Storage = require('./storage');
 var Services = require('./services');
-var Packs = require('./packs');
+var Plugins = require('./plugins');
 var Routes = require('./routes');
 var Api = require('./api');
 var Models = require('./models');
@@ -158,8 +158,8 @@ function setup() {
         module: Routes,
         expose: false
     }, {
-        name: 'packs',
-        module: Packs,
+        name: 'plugins',
+        module: Plugins,
         expose: false
     }];
 

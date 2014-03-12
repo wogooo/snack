@@ -1,9 +1,11 @@
 var Hapi = require('hapi');
 var Utils = Hapi.utils;
 var Schema = require('jugglingdb').Schema;
-var _ = require('lodash');
+var Uslug = require('uslug');
 
 var Base = require('./base');
+
+var modelName = 'Post';
 
 var internals = {};
 
@@ -17,7 +19,7 @@ internals.init = function (model, next) {
     var schema = model.schema;
     var models = model.models;
 
-    var Post = schema.define('Post', {
+    var Model = schema.define(modelName, {
         id: {
             type: String,
             index: true
@@ -26,17 +28,22 @@ internals.init = function (model, next) {
             type: String,
             length: 255
         },
+        key: {
+            type: String,
+            length: 255,
+            index: true
+        },
         type: {
             type: String,
             length: 255,
-            default: 'post'
+            default: modelName.toLowerCase()
         },
         kind: {
             type: String,
             length: 255,
             default: 'article'
         },
-        content: {
+        body: {
             type: Schema.Text
         },
         createdAt: {
@@ -46,10 +53,7 @@ internals.init = function (model, next) {
             }
         },
         updatedAt: {
-            type: Date,
-            default: function () {
-                return new Date();
-            }
+            type: Date
         },
         publishedAt: {
             type: Date,
@@ -62,11 +66,6 @@ internals.init = function (model, next) {
             default: function () {
                 return new Date();
             }
-        },
-        available: {
-            type: Boolean,
-            default: false,
-            index: true
         },
         deleted: {
             type: Boolean,
@@ -84,15 +83,22 @@ internals.init = function (model, next) {
         }
     });
 
-    Post.hasAndBelongsToMany('authors', {
-        model: models.User
+    Model.validatesPresenceOf('title', 'key');
+
+    // Key must be unqiue!
+    Model.validatesUniquenessOf('key', {
+        message: 'Key is not unique.'
     });
 
-    Post.hasAndBelongsToMany('tags', {
+    // Model.hasAndBelongsToMany('authors', {
+    //     model: models.User
+    // });
+
+    Model.hasAndBelongsToMany('tags', {
         model: models.Tag
     });
 
-    Post.hasAndBelongsToMany('assets', {
+    Model.hasAndBelongsToMany('assets', {
         model: models.Asset
     });
 
@@ -123,39 +129,62 @@ internals.init = function (model, next) {
     //     });
     // };
 
-    Post.afterCreate = function (next) {
+    Model.beforeValidate = function (next, data) {
 
-        var self = this;
+        if (!this.key) {
 
-        if (hooks['post.created']) {
+            // TODO: pass keys through config and allow patterns?
 
-            var queueItem = {
-                type: this.constructor.modelName,
-                id: this.id,
-                cleanup: true
-            };
+            // Key is a little like S3 keys -- in some cases it
+            // would generate a path, but it also supports
+            // subgroupings of items that might otherwise have the
+            // same slug.
 
-            Base.enqueue('post.created', queueItem, function (err, queued) {
-                if (err) return next(err);
+            this.key = Uslug(this.kind) + '/' + Uslug(this.title);
+        }
 
-                var attr = {
-                    queue: queued.path
-                };
+        if (!this.updatedAt) {
 
-                self.updateAttributes(attr, function (err) {
-
-                    queued.start();
-                    next(err);
-                });
-            });
-
-            return;
+            // Want the updatedAt and timestamp identical
+            data.updatedAt = new Date(this.timestamp).toJSON();
         }
 
         next();
     };
 
-    Post.beforeUpdate = function (next, data) {
+    Model.afterCreate = function (next) {
+
+        var self = this;
+
+        // if (hooks['post.created']) {
+
+        //     var queueItem = {
+        //         type: this.constructor.modelName,
+        //         id: this.id,
+        //         cleanup: true
+        //     };
+
+        //     Base.enqueue('post.created', queueItem, function (err, queued) {
+        //         if (err) return next(err);
+
+        //         var attr = {
+        //             queue: queued.path
+        //         };
+
+        //         self.updateAttributes(attr, function (err) {
+
+        //             queued.start();
+        //             next(err);
+        //         });
+        //     });
+
+        //     return;
+        // }
+
+        next();
+    };
+
+    Model.beforeUpdate = function (next, data) {
 
         // Private data
         var _data = this.__data;
@@ -175,7 +204,7 @@ internals.init = function (model, next) {
         next();
     };
 
-    Post.afterUpdate = function (next) {
+    Model.afterUpdate = function (next) {
 
         var self = this;
 
@@ -216,7 +245,7 @@ internals.init = function (model, next) {
         }
     };
 
-    Post.beforeDestroy = function (next) {
+    Model.beforeDestroy = function (next) {
 
         if (hooks['post.destroyed']) {
 
@@ -233,7 +262,7 @@ internals.init = function (model, next) {
         }
     };
 
-    models.Post = Post;
+    models[modelName] = Model;
 
     next();
 };

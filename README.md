@@ -1,7 +1,7 @@
 Snack
 =====
 
-### Installaion
+### Installation
 
 ``
 brew install redis && brew install rethinkdb

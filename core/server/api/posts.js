@@ -50,7 +50,7 @@ Posts.prototype.create = function (args, done) {
 
         if (err) return done(err);
 
-        Api.Base.processRelations(post, payload, function (err) {
+        Api.Base.processRelations(post, null, function (err) {
 
             Api.Base.enqueue(post, 'post.created', function (err) {
 
@@ -138,14 +138,12 @@ Posts.prototype.update = function (args, done) {
 
                     Api.Base.enqueue(post, 'post.updated', function (err) {
 
-                        if (err) return done(err);
-
-                        done(err, err ? post : null);
+                        done(err, !err ? post : null);
                     });
 
                 } else {
 
-                    done(err, err ? post : null);
+                    done(err, !err ? post : null);
                 }
             });
         });

@@ -1,5 +1,7 @@
 var Async = require('async');
 var Inflection = require('inflection');
+var Hapi = require('hapi');
+var Utils = Hapi.utils;
 
 var internals = {};
 
@@ -204,25 +206,50 @@ internals.Base.prototype.loadRelations = function (model, done) {
         });
 };
 
-internals.Base.prototype._findRelations = function (modelName, data) {
+internals.Base.prototype._findRelations = function (model, payload) {
 
-    var Api = this.api;
-    var Models = this.models;
+    payload = payload || {};
+
+    var Api = this.api,
+        Models = this.models;
 
     var found = {
         ready: [],
         process: []
     };
 
-    var relationInfo = this.getRelationInfo(modelName),
+    var relationInfo = this.getRelationInfo(model.constructor.modelName),
         relationNames = Object.keys(relationInfo),
-        relInfo,
+        relationName,
+        cachedRelations = model.__cachedRelations,
+        relByName,
         processItem,
         handleRelation;
 
+    var uniqueRel = function (relationName, allRelations) {
+
+        var relInfo = relationInfo[relationName];
+        var seen = {};
+
+        function uniqueRelations(currentValue, index, array) {
+            var key = currentValue[relInfo.keyFrom];
+            if (!key || !seen[key]) {
+                if (key) {
+                    seen[key] = true;
+                }
+                return true;
+            } else {
+
+                return false;
+            }
+        };
+
+        return allRelations.filter(uniqueRelations);
+    };
+
     var placeRelation = function (relationName) {
 
-        relInfo = relationInfo[relationName];
+        var relInfo = relationInfo[relationName];
 
         return function (item) {
 
@@ -244,18 +271,25 @@ internals.Base.prototype._findRelations = function (modelName, data) {
         };
     };
 
-    for (var relationName in relationInfo) {
+    var l = relationNames.length;
+    for (var i = 0; i < l; i++) {
 
-        rel = data[relationName];
+        relationName = relationNames[i];
+        relByName = cachedRelations[relationName] || [];
+        relByName = relByName.concat(payload[relationName] || []);
+
+        // Remap to remove possible dupes
+        relByName = uniqueRel(relationName, relByName);
+
         handleRelation = placeRelation(relationName);
 
-        if (rel && relationInfo[relationName].multiple && rel instanceof Array) {
+        if (relByName && relByName instanceof Array) {
 
-            rel.forEach(handleRelation);
+            relByName.forEach(handleRelation);
 
-        } else if (rel && rel instanceof Object) {
+        } else if (relByName && relByName instanceof Object) {
 
-            handleRelation(rel);
+            handleRelation(relByName);
         }
     }
 
@@ -275,10 +309,8 @@ internals.Base.prototype._createRelation = function (relations, relation, done) 
 
     Api[apiMethod].create(apiData, function (err, model) {
 
-        // Convert model to JSON so it conforms with any
-        // incoming data, which wouldn't be vivified.
-        // Also store errors here...
-        relation.data = err ? err : model.toJSON();
+        // Err, or, new model
+        relation.data = err ? err : model;
         relations.ready.push(relation);
 
         done();
@@ -309,14 +341,9 @@ internals.Base.prototype._resetCachedRelations = function (model) {
     var relationInfo = this.getRelationInfo(model.constructor.modelName),
         relationNames = Object.keys(relationInfo);
 
-
-    // TODO: Need to handle situation where cachedRelations are good /
-    // needed, like when loading an existing model to update or add tags.
-
     relationNames.forEach(function (relName) {
 
         relInfo = relationInfo[relName];
-
         model.__cachedRelations[relName] = relInfo.multiple ? [] : {};
     });
 };
@@ -338,10 +365,10 @@ internals.Base.prototype._addCachedRelations = function (model, relation, done) 
     });
 };
 
-internals.Base.prototype.processRelations = function (model, data, done) {
+internals.Base.prototype.processRelations = function (model, payload, done) {
 
     var self = this;
-    var relations = this._findRelations(model.constructor.modelName, data);
+    var relations = this._findRelations(model, payload);
 
     if (!relations.ready.length && !relations.process.length) {
 

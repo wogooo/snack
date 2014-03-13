@@ -2,7 +2,7 @@ var Schema = require('jugglingdb').Schema;
 
 var internals = {};
 
-internals.dependencies = ['Base'];
+internals.dependencies = [];
 
 internals.init = function (model, next) {
 

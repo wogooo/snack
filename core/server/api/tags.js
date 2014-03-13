@@ -1,6 +1,7 @@
 var Async = require('async');
-
-var Base = require('./base');
+var Hapi = require('hapi');
+var Utils = Hapi.utils;
+var Boom = Hapi.boom;
 
 var internals = {};
 
@@ -8,7 +9,6 @@ internals.Tags = function (options) {
 
     this.server = options.server;
     this.models = options.models.models;
-    this.storage = options.storage;
     this.config = options.config;
     this.api = options.api;
     this.hooks = options.config().hooks;
@@ -72,39 +72,22 @@ internals.Tags.prototype.create = function (args, done) {
 
 internals.Tags.prototype.read = function (args, done) {
 
-    var Models = this.models;
+    var Models = this.models,
+        Api = this.api;
 
-    var query = args.query;
-    var params = args.params;
+    var get = Api.Base.readParams(args);
 
-    var method = 'find';
-    var idOrMethod = params.idOrMethod;
+    if (!get) {
 
-    if (idOrMethod === 'bykey' && query.key) {
-
-        // tag api accepts either UUIDs or keys
-        method = 'findOne';
-        query = {
-            where: {
-                key: query.key
-            }
-        };
-
-    } else if (internals.isUUID(idOrMethod)) {
-
-        query = id;
-
-    } else {
-
-        return done(new Error('Ivalid request.'));
+        return done(Boom.badRequest());
     }
 
-    Models.Tag[method](query, function (err, tag) {
+    Models.Tag[get.method](get.params, function (err, tag) {
 
         if (err) return done(err);
 
         if (!tag) {
-            return done(new Error('Not found.'));
+            return done(Boom.notFound());
         }
 
         done(err, tag);
@@ -130,14 +113,14 @@ internals.Tags.prototype.update = function (args, done) {
         if (err) return done(err);
 
         if (!tag) {
-            return done(new Error('Record not found.'));
+            return done(Boom.notFound());
         }
 
         if (payload.timestamp) {
 
             // Timestamp versioning in effect, compare
             if (tag.timestamp !== payload.timestamp) {
-                return done(new Error('Version mismatch.'));
+                return done(Boom.conflict());
             }
         }
 
@@ -179,7 +162,7 @@ internals.Tags.prototype.destroy = function (args, done) {
         if (err) return done(err);
 
         if (!tag) {
-            return done(new Error('Record not found.'));
+            return done(Boom.notFound());
         }
 
         if (query.destroy === 'true') {
@@ -187,7 +170,10 @@ internals.Tags.prototype.destroy = function (args, done) {
             // A true destructive delete
             tag.destroy(function (err) {
                 Api.Base.enqueue(tag, 'tag.destroyed', function (err) {
-                    done(err);
+                    var results = {
+                        message: 'Destroyed'
+                    };
+                    done(err, results);
                 });
             });
 
@@ -198,17 +184,14 @@ internals.Tags.prototype.destroy = function (args, done) {
                 deleted: true
             }, function (err) {
                 Api.Base.enqueue(tag, 'tag.deleted', function (err) {
-                    done(err);
+                    var results = {
+                        message: 'Deleted'
+                    };
+                    done(err, results);
                 });
             });
         }
     });
-};
-
-internals.isUUID = function (str) {
-
-    var pattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    return pattern.test(str);
 };
 
 module.exports = function (root) {

@@ -3,13 +3,12 @@ var Utils = Hapi.utils;
 var Schema = require('jugglingdb').Schema;
 var Uslug = require('uslug');
 
-var Base = require('./base');
 
 var modelName = 'Post';
 
 var internals = {};
 
-internals.dependencies = ['User', 'Tag', 'Asset', 'Base'];
+internals.dependencies = ['User', 'Tag', 'Asset'];
 
 internals.init = function (model, next) {
 
@@ -152,38 +151,6 @@ internals.init = function (model, next) {
         next();
     };
 
-    Model.afterCreate = function (next) {
-
-        var self = this;
-
-        // if (hooks['post.created']) {
-
-        //     var queueItem = {
-        //         type: this.constructor.modelName,
-        //         id: this.id,
-        //         cleanup: true
-        //     };
-
-        //     Base.enqueue('post.created', queueItem, function (err, queued) {
-        //         if (err) return next(err);
-
-        //         var attr = {
-        //             queue: queued.path
-        //         };
-
-        //         self.updateAttributes(attr, function (err) {
-
-        //             queued.start();
-        //             next(err);
-        //         });
-        //     });
-
-        //     return;
-        // }
-
-        next();
-    };
-
     Model.beforeUpdate = function (next, data) {
 
         // Private data
@@ -202,64 +169,6 @@ internals.init = function (model, next) {
         }
 
         next();
-    };
-
-    Model.afterUpdate = function (next) {
-
-        var self = this;
-
-        // Private data
-        var _data = this.__data;
-
-        if (!this.queue && _data.clearQueue !== true) {
-
-            if (hooks['post.updated'] || hooks['post.deleted']) {
-
-                var hook = this.deleted ? 'post.deleted' : 'post.updated';
-
-                var queueItem = {
-                    type: this.constructor.modelName,
-                    id: this.id,
-                    cleanup: true
-                };
-
-                Base.enqueue(hook, queueItem, function (err, queued) {
-
-                    if (err) return next();
-
-                    var attr = {
-                        queue: queued.path
-                    };
-
-                    self.updateAttributes(attr, function (err) {
-
-                        queued.start();
-                        next(err);
-                    });
-                });
-            }
-
-        } else {
-
-            next();
-        }
-    };
-
-    Model.beforeDestroy = function (next) {
-
-        if (hooks['post.destroyed']) {
-
-            var queueItem = {
-                type: this.constructor.modelName,
-                id: this.id,
-                obj: this
-            };
-
-            Base.enqueue('post.destroyed', queueItem, function (err) {
-
-                next(err);
-            });
-        }
     };
 
     models[modelName] = Model;

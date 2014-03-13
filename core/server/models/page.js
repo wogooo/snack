@@ -3,14 +3,13 @@ var Utils = Hapi.utils;
 var Schema = require('jugglingdb').Schema;
 var _ = require('lodash');
 
-var Base = require('./base');
 var Config = require('../config');
 
 var server = {};
 
 var internals = {};
 
-internals.dependencies = ['User', 'Tag', 'Asset', 'Base'];
+internals.dependencies = ['User', 'Tag', 'Asset'];
 
 internals.init = function (model, next) {
 
@@ -101,33 +100,6 @@ internals.init = function (model, next) {
         model: models.Asset
     });
 
-    Page.afterCreate = function (next) {
-
-        var self = this;
-
-        if (config.hooks['page.created']) {
-
-            Base.enqueue('page.created', {
-                type: this.constructor.modelName,
-                id: this.id
-            }, true, function (err, queuePath) {
-
-                if (err) return next(err);
-
-                self.updateAttributes({
-                        queue: queuePath
-                    },
-                    function (err) {
-                        next(err);
-                    });
-            });
-
-            return;
-        }
-
-        next();
-    };
-
     Page.beforeUpdate = function (next, data) {
 
         // Private data
@@ -143,55 +115,6 @@ internals.init = function (model, next) {
         }
 
         next();
-    };
-
-    Page.afterUpdate = function (next) {
-
-        var self = this;
-
-        // Private data
-        var _data = this.__data;
-
-        if (!this.queue && _data.clearQueue !== true) {
-
-            if (config.hooks['page.updated'] || config.hooks['page.deleted']) {
-
-                Base.enqueue(this.deleted ? 'page.deleted' : 'page.updated', {
-                    type: this.constructor.modelName,
-                    id: this.id
-                }, true, function (err, queuePath) {
-
-                    if (err) return next();
-
-                    var attr = {
-                        queue: queuePath
-                    };
-
-                    self.updateAttributes(attr, function (err) {
-
-                        next(err);
-                    });
-                });
-            }
-
-        } else {
-
-            next();
-        }
-    };
-
-    Page.beforeDestroy = function (next) {
-
-        if (config.hooks['page.destroyed']) {
-
-            Base.enqueue('page.destroyed', {
-                type: this.constructor.modelName,
-                id: this.id
-            }, false, function (err) {
-
-                next(err);
-            });
-        }
     };
 
     models.Page = Page;

@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "dependencies": {
     "aws-sdk": "^2.0.0-rc10",
-    "nipple": "^2.2.0"
+    "nipple": "^2.2.0",
+    "form-data": "^0.1.2"
   }
 }

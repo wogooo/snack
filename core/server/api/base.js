@@ -136,7 +136,7 @@ internals.Base.prototype._enqueueArray = function (models, hook, done) {
 
     // .each() might be faster, but sticking to series to avoid
     // overwhelming a DB.
-    Async.eachSeries(models, function (model, next) {
+    Async.each(models, function (model, next) {
 
             self._enqueueItem(model, hook, next);
         },
@@ -187,6 +187,21 @@ internals.Base.prototype.getRelationInfo = function (modelName) {
     });
 
     return relationInfo;
+};
+
+internals.Base.prototype.loadRelations = function (model, done) {
+
+    var relationInfo = this.getRelationInfo(model.constructor.modelName);
+    var relationNames = Object.keys(relationInfo);
+
+    Async.eachSeries(relationNames, function (relationName, next) {
+
+            model[relationName](next);
+        },
+        function (err) {
+
+            done(err);
+        });
 };
 
 internals.Base.prototype._findRelations = function (modelName, data) {
@@ -247,42 +262,42 @@ internals.Base.prototype._findRelations = function (modelName, data) {
     return found;
 };
 
-internals.Base.prototype._processRelations = function (relations, done) {
+internals.Base.prototype._createRelation = function (relations, relation, done) {
 
-    var Api = this.api;
+    var Api = this.api,
+        relName = relation.relationName,
+        modelName = relation.modelName,
+        apiMethod = Inflection.pluralize(modelName);
+
+    var apiData = {
+        payload: relation.data
+    };
+
+    Api[apiMethod].create(apiData, function (err, model) {
+
+        // Convert model to JSON so it conforms with any
+        // incoming data, which wouldn't be vivified.
+        // Also store errors here...
+        relation.data = err ? err : model.toJSON();
+        relations.ready.push(relation);
+
+        done();
+    });
+};
+
+internals.Base.prototype._processRelations = function (relations, done) {
 
     if (relations.process.length === 0) {
 
         return done();
     }
 
-    var relName,
-        modelName,
-        apiMethod,
-        apiData;
+    var self = this;
 
-    Async.eachSeries(relations.process, function (relation, next) {
+    Async.each(relations.process, function (relation, next) {
 
-            relName = relation.relationName;
-            modelName = relation.modelName;
-            apiMethod = Inflection.pluralize(modelName);
-            apiData = {
-                payload: relation.data
-            };
-
-            Api[apiMethod].create(apiData, function (err, model) {
-                if (err) return next(err);
-
-                // Convert model to JSON so it conforms with any
-                // incoming data, which wouldn't be vivified.
-                relation.data = model.toJSON();
-                relations.ready.push(relation);
-
-                next();
-            });
-
+            self._createRelation(relations, relation, next);
         },
-
         function (err) {
 
             done(err);
@@ -294,6 +309,10 @@ internals.Base.prototype._resetCachedRelations = function (model) {
     var relationInfo = this.getRelationInfo(model.constructor.modelName),
         relationNames = Object.keys(relationInfo);
 
+
+    // TODO: Need to handle situation where cachedRelations are good /
+    // needed, like when loading an existing model to update or add tags.
+
     relationNames.forEach(function (relName) {
 
         relInfo = relationInfo[relName];
@@ -302,12 +321,26 @@ internals.Base.prototype._resetCachedRelations = function (model) {
     });
 };
 
+internals.Base.prototype._addCachedRelations = function (model, relation, done) {
+
+    var relData = relation.data,
+        relName = relation.relationName;
+
+    model[relName].add(relData, function (err) {
+
+        if (model.__cachedRelations[relName] instanceof Array) {
+            model.__cachedRelations[relName].push(relData);
+        } else {
+            model.__cachedRelations[relName] = relData;
+        }
+
+        done(err);
+    });
+};
+
 internals.Base.prototype.processRelations = function (model, data, done) {
 
-    var relData,
-        relId,
-        relName;
-
+    var self = this;
     var relations = this._findRelations(model.constructor.modelName, data);
 
     if (!relations.ready.length && !relations.process.length) {
@@ -319,21 +352,12 @@ internals.Base.prototype.processRelations = function (model, data, done) {
 
     this._processRelations(relations, function (err) {
 
+        // Ignore most relation errors, let them appear
+        // in the return objects.
+
         Async.each(relations.ready, function (rel, next) {
 
-            relData = rel.data;
-            relName = rel.relationName;
-
-            model[relName].add(relData, function (err) {
-
-                if (model.__cachedRelations[relName] instanceof Array) {
-                    model.__cachedRelations[relName].push(relData);
-                } else {
-                    model.__cachedRelations[relName] = relData;
-                }
-
-                next(err);
-            });
+            self._addCachedRelations(model, rel, next);
 
         }, function (err) {
 
@@ -342,8 +366,101 @@ internals.Base.prototype.processRelations = function (model, data, done) {
     });
 };
 
+internals.Base.prototype.keyExists = function (modelName, key, done) {
+
+    var Models = this.models;
+
+    var where = {
+        key: key
+    };
+
+    Models[modelName].count(where, function (err, count) {
+        done(err, err ? null : Boolean(count));
+    });
+};
+
+internals.listParams = function (options) {
+
+    var get = {
+        order: 'createdAt',
+        skip: 0,
+        limit: 10
+    };
+
+    if (options.ids) {
+        get.where = {};
+        get.where.id = {};
+        get.where.id.inq = options.ids.split(',');
+    }
+
+    if (options.order) {
+        get.order = options.order;
+    }
+
+    if (options.sort) {
+        get.order += ' ' + options.sort.toUpperCase();
+    } else {
+        get.order += ' DESC';
+    }
+
+    if (options.offset) {
+        get.skip = +options.offset;
+    }
+
+    if (options.limit) {
+        get.limit = +options.limit;
+    }
+
+    if (options.relations) {
+        get.include = options.relations.split(',');
+    }
+
+    return get;
+};
+
+internals.readParams = function (options) {
+
+    var get = {};
+
+    var params = options.params;
+    var query = options.query;
+
+    if (params.id === 'bykey' && query.key) {
+
+        // tag api accepts either UUIDs or keys
+        get.method = 'findOne';
+        get.params = {
+            where: {
+                key: query.key
+            }
+        };
+
+    } else if (internals.isUUID(params.id)) {
+
+        get.method = 'find';
+        get.params = params.id;
+
+    } else {
+
+        get = null;
+    }
+
+    return get;
+};
+
+internals.isUUID = function (str) {
+
+    var pattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return pattern.test(str);
+};
+
 module.exports = function (root) {
 
-    var base = new internals.Base(root);
-    return base;
+    var expose;
+
+    expose = new internals.Base(root);
+    expose.listParams = internals.listParams;
+    expose.readParams = internals.readParams;
+
+    return expose;
 };

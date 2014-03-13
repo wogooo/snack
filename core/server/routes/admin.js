@@ -1,4 +1,5 @@
 var Path = require('path');
+var Hapi = require('hapi');
 
 module.exports = function (route) {
 
@@ -54,6 +55,20 @@ module.exports = function (route) {
         path: '/test',
         handler: function (request, reply) {
             reply.view('form', {
+                title: 'DEBUG'
+            });
+        }
+    });
+
+    server.route({
+        method: 'GET',
+        path: '/throw',
+        handler: function (request, reply) {
+
+            reply(Hapi.error.notFound());
+            // throw new Error('foo');
+
+            reply.view('test', {
                 title: 'DEBUG'
             });
         }

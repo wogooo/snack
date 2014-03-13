@@ -27,55 +27,60 @@ internals.typeOfAsset = function (mimeType) {
     return;
 };
 
-internals.finalize = function (oldPath, newPath, done) {
+internals.writeFile = function (oldPath, newPath, done) {
 
     var basename = Path.basename(newPath);
     var newDirs = newPath.replace(basename, '');
 
     Fs.mkdirs(newDirs, function (err) {
+
         if (err) return done(err);
 
         Fs.rename(oldPath, newPath, function (err) {
-            if (err) return done(err);
-            done(err, newPath);
+
+            done(err);
         });
     });
 };
 
-internals.createAsset = function (fileObj, done) {
+internals._createAsset = function (file, done) {
 
-    fileObj.createdAt = new Date();
+    var filename = file.filename,
+        assetsPath = Config().paths.assetsPath,
+        newPath = Path.join(assetsPath, file.key),
+        mimeType,
+        typeOfAsset,
+        fileData = {},
+        dimensions,
+        assetObj;
 
-    var assetsPath = Config().paths.assetsPath;
-    var assetKey = Config.keyForAsset(fileObj);
-    var newPath = Path.join(assetsPath, assetKey);
+    var finalize = function (err) {
 
-    internals.finalize(fileObj.path, newPath, function (err, newPath) {
-        if (err) return next(err);
+        if (err) return done(err);
 
-        var mimeType = Mime.lookup(newPath);
-        var typeOfAsset = internals.typeOfAsset(mimeType);
-
-        var data = {};
+        mimeType = Mime.lookup(newPath);
+        typeOfAsset = internals.typeOfAsset(mimeType);
 
         if (typeOfAsset === 'image') {
-            var dim = Size(newPath);
-            data.height = dim.height || 0;
-            data.width = dim.width || 0;
+            dimensions = Size(newPath);
+            fileData.height = dimensions.height || 0;
+            fileData.width = dimensions.width || 0;
         }
 
-        var assetObj = {
+        assetObj = {
             filename: Path.basename(newPath),
-            key: assetKey,
-            bytes: fileObj.bytes,
+            key: file.key,
+            bytes: file.bytes,
             mimetype: mimeType,
-            data: data,
-            createdAt: fileObj.createdAt,
+            data: fileData,
+            createdAt: file.createdAt,
             storage: 'local'
         };
 
         done(null, assetObj);
-    });
+    };
+
+    internals.writeFile(file.path, newPath, finalize);
 };
 
 internals.save = function (fileObjOrArr, done) {
@@ -88,7 +93,7 @@ internals.save = function (fileObjOrArr, done) {
 
         Async.eachSeries(fileArr, function (fileObj, next) {
 
-                internals.createAsset(fileObj, function (err, asset) {
+                internals._createAsset(fileObj, function (err, asset) {
                     if (err) return next(err);
 
                     assets.push(asset);
@@ -105,7 +110,7 @@ internals.save = function (fileObjOrArr, done) {
 
         var fileObj = fileObjOrArr;
 
-        internals.createAsset(fileObj, function (err, asset) {
+        internals._createAsset(fileObj, function (err, asset) {
             if (err) return next(err);
 
             assets.push(asset);

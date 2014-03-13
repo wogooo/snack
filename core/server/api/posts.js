@@ -1,84 +1,54 @@
 var Async = require('async');
+var Hapi = require('hapi');
+var Utils = Hapi.utils;
+var Boom = Hapi.boom;
 
-var internals = {};
-
-internals.Posts = function (options) {
+function Posts(options) {
 
     this.models = options.snack.models.models;
     this.api = options.api;
-};
+}
 
-internals.Posts.prototype.list = function list(args, done) {
+Posts.prototype.list = function (args, done) {
 
     var Asests = this.api.Assets;
     var Models = this.models;
 
-    var postList = {
-        type: 'postList',
-        count: 0,
-        items: null
-    };
-
     var query = args.query,
-        params = {};
+        list;
 
-    if (query) {
+    var get = Api.Base.listParams(query);
 
-        if (query.ids) {
-            params.where = {};
-            params.where.id = {};
-            params.where.id.inq = query.ids.split(',');
-        }
+    Models.Post.all(get, function (err, posts) {
 
-        if (query.order) {
-            params.order = query.order;
-        }
+        if (err) return done(err);
 
-        if (query.offset) {
-            params.skip = +query.offset;
-        }
+        list = {
+            type: 'postList',
+            sort: get.order.split(' ')[1].toLowerCase(),
+            order: get.order.split(' ')[0],
+            offset: get.skip,
+            limit: get.limit,
+            count: posts.length,
+            items: posts
+        };
 
-        if (query.limit) {
-            params.limit = +query.limit;
-        }
-    }
-
-    params.include = ['assets'];
-
-    Models.Post.all(params, function (err, posts) {
-        if (err) {
-            return done(err);
-        }
-
-        postList.count = posts.length;
-
-        if (postList.count) {
-            postList.items = [];
-            posts.forEach(function (post) {
-                postList.items.push(post.toJSON());
-            });
-        }
-
-        done(null, postList);
+        done(null, list);
     });
 };
 
-internals.Posts.prototype.create = function (args, done) {
+Posts.prototype.create = function (args, done) {
 
     var Models = this.models;
     var Api = this.api;
 
     var payload = args.payload;
 
-console.log(args.payload);
-
     var post = new Models.Post(payload);
 
     post.save(function (err) {
 
-        if (err) {
-            return done(err);
-        }
+        if (err) return done(err);
 
         Api.Base.processRelations(post, payload, function (err) {
 
@@ -90,194 +60,99 @@ console.log(args.payload);
     });
 };
 
-internals.Posts.prototype.read = function (args, done) {
+Posts.prototype.read = function (args, done) {
 
-    var Api = this.api;
-    var Models = this.models;
-    var relationInfo = Api.Base.getRelationInfo(Models.Post.modelName);
-    var relationNames = Object.keys(relationInfo);
+    var Models = this.models,
+        Api = this.api;
 
-    var params = args.params;
+    var get = Api.Base.readParams(args);
 
-    Models.Post.find(params.id, function (err, post) {
+    if (!get) {
+
+        return done(Boom.badRequest());
+    }
+
+    Models.Post[get.method](get.params, function (err, post) {
 
         if (err) {
             return done(err);
         }
 
         if (!post) {
-            return done(new Error('Not found!'));
+            return done(Boom.notFound());
         }
 
-        Async.eachSeries(relationNames, function (relationName, next) {
+        Api.Base.loadRelations(post, function (err) {
 
-                post[relationName](next);
-            },
-            function (err) {
+            if (err) return done(err);
 
-                done(err, post);
-            });
+            done(null, post);
+        });
     });
 };
 
-internals.Posts.prototype.update = function update(args, done) {
+Posts.prototype.update = function (args, done) {
 
-    var Asests = this.api.Assets;
-    var Models = this.models;
+    var Models = this.models,
+        Api = this.api;
 
     var query = args.query;
     var params = args.params;
     var payload = args.payload;
 
-    var assets;
-
-    if (payload.assets) {
-
-        assets = payload.assets;
-        delete payload.assets;
-
-        if (assets.items && !assets.items[0].id) {
-            console.log('assets need to be handled.');
-        }
+    var clearQueue = false;
+    if (query.clearQueue === 'true') {
+        clearQueue = true;
     }
 
-    Models.Post.find(params.id, function (err, post) {
-        if (err) {
-            return done(err);
-        }
+    this.read(args, function (err, post) {
+        if (err) return done(err);
 
-        if (!post) {
-            return done(new Error('Record not found.'));
-        }
+        if (!post) return done(Boom.notFound());
 
         if (payload.timestamp) {
 
-            // Timestamp versioning in effect, compare
-            if (post.timestamp > params.timestamp) {
-                return done(new Error('Version mismatch.'));
+            // TODO: Should timestamp be a query var, and not in the payload?
+
+            // Timestamp versioning in effect
+            post.__data.versioned = true;
+
+            // Compare
+            if (post.timestamp !== payload.timestamp) {
+
+                return done(Boom.conflict());
             }
         }
 
-        if (query.clearQueue === 'true') {
+        if (clearQueue && post.queue) {
 
             // Pass in the private queue clearing flag
             post.__data.clearQueue = true;
         }
 
-        if (assets && assets.items) {
+        post.updateAttributes(payload, function (err) {
 
-            Async.each(assets.items, function (item, next) {
+            Api.Base.processRelations(post, payload, function (err) {
 
-                post.assets.add(item, function (err) {
-                    next(err);
-                });
+                if (!post.queue && !clearQueue) {
 
-            }, function (err) {
+                    Api.Base.enqueue(post, 'post.updated', function (err) {
 
-                post.updateAttributes(payload, function (err, results) {
+                        if (err) return done(err);
 
-                    done(err, results ? results.toJSON(true) : null);
-                });
+                        done(err, err ? post : null);
+                    });
+
+                } else {
+
+                    done(err, err ? post : null);
+                }
             });
-
-        } else {
-
-            post.updateAttributes(payload, function (err, results) {
-
-                done(err, results ? results.toJSON(true) : null);
-            });
-        }
-
+        });
     });
 };
 
-// internals.Posts.prototype.update = function (args, done) {
-
-//     var Api = this.api;
-//     var Models = this.models;
-
-//     var query = args.query;
-//     var params = args.params;
-//     var payload = args.payload;
-
-//     var clearQueue = false;
-//     if (query.clearQueue === 'true') {
-//         clearQueue = true;
-//     }
-
-//     Models.Post.find(params.id, function (err, post) {
-
-//         if (err) return done(err);
-
-//         if (!post) {
-//             return done(new Error('Record not found.'));
-//         }
-
-//         if (payload.timestamp) {
-
-//             // Timestamp versioning in effect, compare
-//             if (post.timestamp !== payload.timestamp) {
-//                 return done(new Error('Version mismatch.'));
-//             }
-//         }
-
-//         if (post.queue && clearQueue) {
-
-//             // Pass in the private queue clearing flag
-//             post.__data.clearQueue = clearQueue;
-//         }
-
-//         Async.each(relations, function (relation, next) {
-
-//             },
-//             function (err) {
-
-//             });
-
-//         if (assets && assets.length) {
-
-//             Async.each(assets, function (asset, next) {
-
-//                 post.assets.add(asset, function (err) {
-//                     next(err);
-//                 });
-
-//             }, function (err) {
-
-//                 post.updateAttributes(payload, function (err, results) {
-
-//                     done(err, results ? results : null);
-//                 });
-//             });
-
-//         } else {
-
-//             post.updateAttributes(payload, function (err, results) {
-
-//                 done(err, results ? results : null);
-//             });
-//         }
-
-//         post.updateAttributes(payload, function (err, post) {
-
-//             if (!post.queue && !clearQueue) {
-
-//                 Api.Base.enqueue(post, 'post.updated', function (err) {
-
-//                     if (err) return done(err);
-
-//                     done(err, post ? post : null);
-//                 });
-
-//             } else {
-
-//                 done(err, post ? post : null);
-//             }
-//         });
-//     });
-// };
-
-internals.Posts.prototype.destroy = function (args, done) {
+Posts.prototype.destroy = function (args, done) {
 
     var Models = this.models;
     var Api = this.api;
@@ -289,9 +164,7 @@ internals.Posts.prototype.destroy = function (args, done) {
 
         if (err) return done(err);
 
-        if (!post) {
-            return done(new Error('Record not found.'));
-        }
+        if (!post) return done(Boom.notFound());
 
         if (query.destroy === 'true') {
 
@@ -318,6 +191,6 @@ internals.Posts.prototype.destroy = function (args, done) {
 
 module.exports = function (root) {
 
-    var posts = new internals.Posts(root);
+    var posts = new Posts(root);
     return posts;
 };

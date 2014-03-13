@@ -1,13 +1,83 @@
+var Http = require('http');
 var Cluster = require('cluster');
+var Hapi = require('hapi');
+var Utils = Hapi.utils;
+var Boom = Hapi.boom;
 
 var internals = {};
 
-internals.init = function (server, next) {
+internals.errorMismatch = function (error) {
+
+    if (error.statusCode && error.output.statusCode && (error.statusCode !== error.output.statusCode)) {
+        return true;
+    }
+
+    return false;
+};
+
+internals.responseHandler = function (server) {
+
+    server.ext('onPreResponse', function (request, reply) {
+
+        var response = request.response;
+
+        if (!response.isBoom) {
+            return reply();
+        }
+
+        var error = response;
+
+        if (internals.errorMismatch(error)) {
+
+            // Boom unintelligently wraps any error in a 500.
+            // Attempt to make that better.
+            error.output.statusCode = error.statusCode;
+            error.output.payload.statusCode = error.statusCode;
+            error.output.payload.message = error.message;
+            error.output.payload.error = Http.STATUS_CODES[error.statusCode];
+
+            if (error.codes) {
+                error.output.payload.codes = error.codes;
+            }
+
+            if (error.name) {
+                error.output.payload.error = error.name;
+            }
+        }
+
+        if (request.path.search(/^\/api/i) > -1) {
+
+            // Api paths can just return unrendered.
+            return reply();
+        }
+
+        // Replace error with friendly HTML
+        var defaults = {
+            statusCode: 500,
+            error: Http.STATUS_CODES[500],
+            message: 'An error has occurred'
+        };
+
+        var locals = Utils.applyToDefaults(defaults, error.output.payload || {});
+
+        if (locals.statusCode === 404) {
+            locals.message = 'Page not found.';
+            locals.path = request.path;
+        }
+
+        reply.view('error', locals, {
+            layout: false
+        });
+    });
+};
+
+internals.internalError = function (server) {
 
     // Safely bring down the server and either restart, or
     // trigger a cluster disconnect.
     server.on('internalError', function (request, err) {
-        if (err.data.domainThrown) {
+
+        if (err.domainThrown) {
             try {
 
                 // make sure we close down within 30 seconds
@@ -40,8 +110,12 @@ internals.init = function (server, next) {
             }
         }
     });
+};
+
+exports.init = function (server, next) {
+
+    internals.internalError(server);
+    internals.responseHandler(server);
 
     next();
 };
-
-module.exports = internals;

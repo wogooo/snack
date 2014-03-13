@@ -1,6 +1,8 @@
 var Fs = require('fs');
 var Path = require('path');
 var Async = require('async');
+var Hapi = require('hapi');
+var Boom = Hapi.boom;
 
 module.exports = function (route) {
 
@@ -10,20 +12,16 @@ module.exports = function (route) {
 
     var Api = Snack.api;
 
+    // ----------------------
+    // Posts
+
     server.route({
         method: 'GET',
         path: '/api/v1/posts',
         handler: function (request, reply) {
 
             Api.Posts.list(request, function (err, results) {
-                if (err) {
-                    return reply({
-                        error: err.name,
-                        message: err.message
-                    }).code(500);
-                }
-
-                reply(results);
+                reply(err ? err : results);
             });
         }
     });
@@ -39,7 +37,7 @@ module.exports = function (route) {
             handler: function (request, reply) {
 
                 Api.Posts.create(request, function (err, results) {
-                    reply(results);
+                    reply(err ? err : results);
                 });
             }
         }
@@ -51,7 +49,7 @@ module.exports = function (route) {
         handler: function (request, reply) {
 
             Api.Posts.update(request, function (err, results) {
-                reply(results);
+                reply(err ? err : results);
             });
         }
     });
@@ -62,14 +60,7 @@ module.exports = function (route) {
         handler: function (request, reply) {
 
             Api.Posts.read(request, function (err, results) {
-                if (err) {
-                    return reply({
-                        error: err.name,
-                        message: err.message
-                    }).code(500);
-                }
-
-                reply(results);
+                reply(err ? err : results);
             });
         }
     });
@@ -80,28 +71,13 @@ module.exports = function (route) {
         handler: function (request, reply) {
 
             Api.Posts.destroy(request, function (err, results) {
-                reply(results);
+                reply(err ? err : results);
             });
         }
     });
 
-    server.route({
-        method: 'GET',
-        path: '/api/v1/assets',
-        handler: function (request, reply) {
-
-            Api.Assets.list(request, function (err, results) {
-                if (err) {
-                    return reply({
-                        error: err.name,
-                        message: err.message
-                    }).code(500);
-                }
-
-                reply(results);
-            });
-        }
-    });
+    // ----------------------
+    // Assets
 
     server.route({
         method: 'POST',
@@ -114,34 +90,9 @@ module.exports = function (route) {
             handler: function (request, reply) {
 
                 Api.Assets.create(request, function (err, results) {
-                    if (err) {
-                        return reply({
-                            error: err.name,
-                            message: err.message
-                        }).code(500);
-                    }
-
-                    reply(results);
+                    reply(err ? err : results);
                 });
             }
-        }
-    });
-
-    server.route({
-        method: 'GET',
-        path: '/api/v1/assets/{id}',
-        handler: function (request, reply) {
-
-            Api.Assets.read(request, function (err, results) {
-                if (err) {
-                    return reply({
-                        error: err.name,
-                        message: err.message
-                    }).code(500);
-                }
-
-                reply(results);
-            });
         }
     });
 
@@ -151,7 +102,7 @@ module.exports = function (route) {
         handler: function (request, reply) {
 
             Api.Assets.update(request, function (err, results) {
-                reply(results);
+                reply(err ? err : results);
             });
         }
     });
@@ -161,21 +112,36 @@ module.exports = function (route) {
         path: '/api/v1/assets/{id}',
         handler: function (request, reply) {
 
-            Api.Assets.destroy(request, function (err, results) {
-
-                if (err) {
-                    return reply({
-                        error: err.name,
-                        message: err.message
-                    }).code(500);
-                }
-
-                reply({
-                    message: 'deleted'
-                });
+            Api.Assets.destroy(request, function (err) {
+                reply(err ? err : results);
             });
         }
     });
+
+    server.route({
+        method: 'GET',
+        path: '/api/v1/assets/{id}',
+        handler: function (request, reply) {
+
+            Api.Assets.read(request, function (err, results) {
+                reply(err ? err : results);
+            });
+        }
+    });
+
+    server.route({
+        method: 'GET',
+        path: '/api/v1/assets',
+        handler: function (request, reply) {
+
+            Api.Assets.list(request, function (err, results) {
+                reply(err ? err : results);
+            });
+        }
+    });
+
+    // ----------------------
+    // Tags
 
     server.route({
         method: 'POST',
@@ -183,16 +149,7 @@ module.exports = function (route) {
         handler: function (request, reply) {
 
             Api.Tags.create(request, function (err, results) {
-                if (err) {
-                    var error = {
-                        error: err.name,
-                        message: err.message
-                    };
-
-                    return reply(error).code(500);
-                }
-
-                reply(results);
+                reply(err ? err : results);
             });
         }
     });
@@ -203,16 +160,7 @@ module.exports = function (route) {
         handler: function (request, reply) {
 
             Api.Tags.update(request, function (err, results) {
-                if (err) {
-                    var error = {
-                        error: err.name,
-                        message: err.message
-                    };
-
-                    return reply(error).code(500);
-                }
-
-                reply(results);
+                reply(err ? err : results);
             });
         }
     });
@@ -223,37 +171,32 @@ module.exports = function (route) {
         handler: function (request, reply) {
 
             Api.Tags.list(request, function (err, results) {
-
-                if (err) {
-                    return reply({
-                        error: err.name,
-                        message: err.message
-                    }).code(500);
-                }
-
-                reply(results);
+                reply(err ? err : results);
             });
         }
     });
 
     server.route({
         method: 'GET',
-        path: '/api/v1/tags/{idOrMethod}',
+        path: '/api/v1/tags/{id}',
         handler: function (request, reply) {
 
             Api.Tags.read(request, function (err, results) {
-                if (err) {
-                    return reply({
-                        error: err.name,
-                        message: err.message
-                    }).code(500);
-                }
-
-                reply(results);
+                reply(err ? err : results);
             });
         }
     });
 
+    server.route({
+        method: 'DELETE',
+        path: '/api/v1/tags/{id}',
+        handler: function (request, reply) {
+
+            Api.Tags.destroy(request, function (err, results) {
+                reply(err ? err : results);
+            });
+        }
+    });
 
     // server.route({
     //     method: 'GET',

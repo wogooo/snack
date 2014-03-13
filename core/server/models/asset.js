@@ -139,21 +139,6 @@ internals.init = function (model, next) {
         next();
     };
 
-    Model.afterCreate = function (next) {
-
-        next();
-    };
-
-    Model.afterUpdate = function (next) {
-
-        next();
-    };
-
-    Model.beforeDestroy = function (next) {
-
-        next();
-    };
-
     models[modelName] = Model;
 
     next();

@@ -11,10 +11,9 @@ function Posts(options) {
 
 Posts.prototype.list = function (args, done) {
 
-    var Asests = this.api.Assets;
-    var Models = this.models;
-
-    var query = args.query,
+    var Models = this.models,
+        Api = this.api,
+        query = args.query,
         list;
 
     var get = Api.Base.listParams(query);
@@ -94,15 +93,16 @@ Posts.prototype.read = function (args, done) {
 Posts.prototype.update = function (args, done) {
 
     var Models = this.models,
-        Api = this.api;
+        Api = this.api,
+        query = args.query,
+        params = args.params,
+        payload = args.payload,
+        clearQueue = false,
+        jobId;
 
-    var query = args.query;
-    var params = args.params;
-    var payload = args.payload;
-
-    var clearQueue = false;
-    if (query.clearQueue === 'true') {
+    if (query.clearQueue) {
         clearQueue = true;
+        jobId = parseInt(query.clearQueue, 10);
     }
 
     this.read(args, function (err, post) {
@@ -110,42 +110,34 @@ Posts.prototype.update = function (args, done) {
 
         if (!post) return done(Boom.notFound());
 
-        if (payload.timestamp) {
+        // Simple version control
+        if (query.version && post._version_ !== query.version) {
 
-            // TODO: Should timestamp be a query var, and not in the payload?
-
-            // Timestamp versioning in effect
-            post.__data.versioned = true;
-
-            // Compare
-            if (post.timestamp !== payload.timestamp) {
-
-                return done(Boom.conflict());
-            }
+            // Return conflict if version (timestamp) doesn't match
+            return done(Boom.conflict());
         }
 
-        if (clearQueue && post.queue) {
+        // Clearing the queue property
+        if (clearQueue) {
 
-            // Pass in the private queue clearing flag
-            post.__data.clearQueue = true;
+            // Pass in the private queue job id
+            post.__data.clearQueue = jobId;
         }
 
         post.updateAttributes(payload, function (err) {
 
-            Api.Base.processRelations(post, payload, function (err) {
+            if (!clearQueue) {
 
-                if (!post.queue && !clearQueue) {
-
+                Api.Base.processRelations(post, payload, function (err) {
                     Api.Base.enqueue(post, 'post.updated', function (err) {
-
                         done(err, !err ? post : null);
                     });
+                });
 
-                } else {
+            } else {
 
-                    done(err, !err ? post : null);
-                }
-            });
+                done(err, !err ? post : null);
+            }
         });
     });
 };

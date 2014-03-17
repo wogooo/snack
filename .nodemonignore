@@ -1,0 +1,8 @@
+# .nodemonignore file
+
+/core/client/*
+/Gruntfile.js
+/tasks/*
+/test*
+/.git/*
+/*.swp

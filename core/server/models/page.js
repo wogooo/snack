@@ -2,12 +2,17 @@ var Hapi = require('hapi');
 var Utils = Hapi.utils;
 var Schema = require('jugglingdb').Schema;
 var _ = require('lodash');
+var Uslug = require('uslug');
 
 var Config = require('../config');
+
+var modelName = 'Page';
 
 var server = {};
 
 var internals = {};
+
+internals.modelName = modelName;
 
 internals.dependencies = ['User', 'Tag', 'Asset'];
 
@@ -21,7 +26,7 @@ internals.init = function (model, next) {
     var schema = model.schema;
     var models = model.models;
 
-    var Page = schema.define('Page', {
+    var Model = schema.define(modelName, {
         id: {
             type: String,
             index: true
@@ -33,7 +38,7 @@ internals.init = function (model, next) {
         type: {
             type: String,
             length: 255,
-            default: 'page'
+            default: modelName.toLowerCase()
         },
         kind: {
             type: String,
@@ -72,52 +77,74 @@ internals.init = function (model, next) {
             default: false,
             index: true
         },
-        timestamp: {
-            type: Number,
-            default: Date.now
-        },
         deleted: {
             type: Boolean,
             default: false,
             index: true
         },
-        queue: {
+        _version_: {
+            type: Number
+        },
+        _queue_: {
             type: String,
             length: 2000,
             default: null
         }
     });
 
-    Page.hasAndBelongsToMany('authors', {
+    Model.hasAndBelongsToMany('authors', {
         model: models.User
     });
 
-    Page.hasAndBelongsToMany('tags', {
+    Model.hasAndBelongsToMany('tags', {
         model: models.Tag
     });
 
-    Page.hasAndBelongsToMany('assets', {
+    Model.hasAndBelongsToMany('assets', {
         model: models.Asset
     });
 
-    Page.beforeUpdate = function (next, data) {
+    Model.beforeValidate = function (next, data) {
 
         // Private data
         var _data = this.__data;
 
-        // Always set a new timestsamp
-        data.timestamp = Date.now();
+        if (!this.key) {
+
+            // TODO: pass keys through config and allow patterns?
+
+            // Key is a little like S3 keys -- in some cases it
+            // would generate a path, but it also supports
+            // subgroupings of items that might otherwise have the
+            // same slug.
+
+            this.key = Uslug(this.kind) + '/' + Uslug(this.title);
+        }
+
+        // Want the updatedAt and version identical
+        var now = Date.now();
+
+        this._version_ = now;
+        this.updatedAt = new Date(now).toJSON();
+
+        next();
+    };
+
+    Model.beforeUpdate = function (next, data) {
+
+        // Private data
+        var _data = this.__data;
 
         if (_data.clearQueue === true) {
 
             // Clearing the queue
-            data.queue = null;
+            data._queue_ = null;
         }
 
         next();
     };
 
-    models.Page = Page;
+    models[modelName] = Model;
 
     next();
 };

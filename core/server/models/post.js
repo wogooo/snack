@@ -3,20 +3,22 @@ var Utils = Hapi.utils;
 var Schema = require('jugglingdb').Schema;
 var Uslug = require('uslug');
 
-
 var modelName = 'Post';
 
 var internals = {};
+
+internals.modelName = modelName;
 
 internals.dependencies = ['User', 'Tag', 'Asset'];
 
 internals.init = function (model, next) {
 
     var Snack = model.snack;
-    var hooks = Snack.config().hooks;
-
+    var Config = model.config;
     var schema = model.schema;
     var models = model.models;
+
+    var hooks = Config().hooks;
 
     var Model = schema.define(modelName, {
         id: {
@@ -28,9 +30,9 @@ internals.init = function (model, next) {
             length: 255
         },
         key: {
+            index: true,
             type: String,
-            length: 255,
-            index: true
+            length: 255
         },
         type: {
             type: String,
@@ -38,6 +40,7 @@ internals.init = function (model, next) {
             default: modelName.toLowerCase()
         },
         kind: {
+            index: true,
             type: String,
             length: 255,
             default: 'article'
@@ -46,15 +49,18 @@ internals.init = function (model, next) {
             type: Schema.Text
         },
         createdAt: {
+            index: true,
             type: Date,
             default: function () {
                 return new Date();
             }
         },
         updatedAt: {
+            index: true,
             type: Date
         },
         publishedAt: {
+            index: true,
             type: Date,
             default: function () {
                 return new Date();
@@ -67,22 +73,21 @@ internals.init = function (model, next) {
             }
         },
         deleted: {
+            index: true,
             type: Boolean,
-            default: false,
-            index: true
+            default: false
         },
-        timestamp: {
-            type: Number,
-            default: Date.now
+        // Private properties, wouldn't get copied
+        // to a revision for instance.
+        _version_: {
+            type: Number
         },
-        queue: {
-            type: String,
-            length: 2000,
-            default: null
+        _queue_: {
+            type: []
         }
     });
 
-    Model.validatesPresenceOf('title', 'key');
+    Model.validatesPresenceOf('title', 'key', '_version_');
 
     // Key must be unqiue!
     Model.validatesUniquenessOf('key', {
@@ -101,34 +106,10 @@ internals.init = function (model, next) {
         model: models.Asset
     });
 
-    // Post.getAll = function (fields, options, callback) {
-    //     fields = fields || [];
-    //     options = options || {};
-
-    //     this.all({
-    //         include: fields
-    //     }, function (err, results) {
-
-    //         if (err) {
-    //             return callback(err);
-    //         }
-
-    //         if (options.toJSON) {
-
-    //             var resultJSON, relations;
-    //             results.forEach(function (result, index) {
-    //                 relations = result.__cachedRelations;
-    //                 resultJSON = result.toJSON();
-    //                 resultJSON = _.extend(resultJSON, relations);
-    //                 results[index] = resultJSON;
-    //             });
-    //         }
-
-    //         callback(err, results);
-    //     });
-    // };
-
     Model.beforeValidate = function (next, data) {
+
+        // Private data
+        var _data = this.__data;
 
         if (!this.key) {
 
@@ -142,11 +123,11 @@ internals.init = function (model, next) {
             this.key = Uslug(this.kind) + '/' + Uslug(this.title);
         }
 
-        if (!this.updatedAt) {
+        // Want the updatedAt and version identical
+        var now = Date.now();
 
-            // Want the updatedAt and timestamp identical
-            data.updatedAt = new Date(this.timestamp).toJSON();
-        }
+        this._version_ = now;
+        this.updatedAt = new Date(now).toJSON();
 
         next();
     };
@@ -156,16 +137,11 @@ internals.init = function (model, next) {
         // Private data
         var _data = this.__data;
 
-        // Always set a new timestsamp
-        var now = Date.now();
-
-        data.timestamp = now;
-        data.updatedAt = new Date(now).toJSON();
-
-        if (_data.clearQueue === true) {
+        if (_data.clearQueue) {
 
             // Clearing the queue
-            data.queue = null;
+            var jobId = _data.clearQueue;
+            this._queue_.remove(jobId);
         }
 
         next();

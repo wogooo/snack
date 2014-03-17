@@ -122,7 +122,7 @@ module.exports = function (route) {
         method: 'GET',
         path: '/api/v1/assets/{id}',
         handler: function (request, reply) {
-
+            console.log('assets get?');
             Api.Assets.read(request, function (err, results) {
                 reply(err ? err : results);
             });

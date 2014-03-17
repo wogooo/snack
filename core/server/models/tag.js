@@ -5,6 +5,8 @@ var modelName = 'Tag';
 
 var internals = {};
 
+internals.modelName = modelName;
+
 internals.dependencies = [];
 
 internals.init = function (model, next) {
@@ -12,6 +14,7 @@ internals.init = function (model, next) {
     var server = model.server;
     var schema = model.schema;
     var models = model.models;
+    var Config = model.config;
 
     var Model = schema.define(modelName, {
         id: {
@@ -23,14 +26,14 @@ internals.init = function (model, next) {
             default: modelName.toLowerCase()
         },
         kind: {
-            type: String,
             index: true,
+            type: String,
             default: 'tags'
         },
         key: {
+            index: true,
             type: String,
-            length: 2000,
-            index: true
+            length: 2000
         },
         name: {
             type: String
@@ -40,21 +43,18 @@ internals.init = function (model, next) {
             default: null
         },
         updatedAt: {
+            index: true,
             type: Date
         },
-        timestamp: {
-            type: Number,
-            default: Date.now,
-            index: true
+        _version_: {
+            type: Number
         },
-        queue: {
-            type: String,
-            length: 2000,
-            default: null
+        _queue_: {
+            type: []
         }
     });
 
-    Model.validatesPresenceOf('name', 'key');
+    Model.validatesPresenceOf('name', 'key', '_version_');
 
     // Key must be unqiue!
     Model.validatesUniquenessOf('key', {
@@ -72,33 +72,25 @@ internals.init = function (model, next) {
             this.key = Uslug(this.kind) + '/' + Uslug(this.name);
         }
 
-        if (!this.updatedAt) {
+        // Want the updatedAt and version identical
+        var now = Date.now();
 
-            // Want the updatedAt and timestamp identical
-            this.updatedAt = new Date(this.timestamp).toJSON();
-        }
+        this._version_ = now;
+        this.updatedAt = new Date(now).toJSON();
 
-        next();
-    };
-
-    Model.beforeSave = function (next, data) {
         next();
     };
 
     Model.beforeUpdate = function (next, data) {
 
         // Private data
-        var _data = this.__data,
-            now = Date.now();
+        var _data = this.__data;
 
-        // Always set a new timestsamp
-        data.timestamp = now;
-        data.updatedAt = new Date(now).toJSON();
-
-        if (_data.clearQueue === true) {
+        if (_data.clearQueue) {
 
             // Clearing the queue
-            data.queue = null;
+            var jobId = _data.clearQueue;
+            this._queue_.remove(jobId);
         }
 
         next();

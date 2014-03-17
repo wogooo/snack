@@ -47,7 +47,7 @@ module.exports = function (grunt) {
             specs: ['core/client/test/**/*.spec.js'],
             scenarios: ['core/client/test/**/*.scenario.js'],
             tpl: {
-                app: ['core/client/app/**/*.tpl.html', '!core/client/app/common/**/*'],
+                app: ['core/client/app/**/*.tpl.html', '!core/client/app/common/**/*.tpl.html'],
                 common: ['core/client/app/common/**/*.tpl.html']
             },
             less: ['core/client/less/stylesheet.less'], // recess:build doesn't accept ** in its file patterns

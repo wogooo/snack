@@ -25,9 +25,9 @@ angular.module('app').run(['i18nNotifications',
         // (in case they are still logged in from a previous session)
         // security.requestCurrentUser();
 
-        i18nNotifications.pushSticky('test', 'success', {
-            foo: 'bar'
-        });
+        // i18nNotifications.pushSticky('test', 'success', {
+        //     foo: 'bar'
+        // });
     }
 ]);
 

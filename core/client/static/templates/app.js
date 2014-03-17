@@ -2,7 +2,26 @@ angular.module('templates.app', ['dashboard/dashboard.tpl.html', 'header.tpl.htm
 
 angular.module("dashboard/dashboard.tpl.html", []).run(["$templateCache", function($templateCache) {
   $templateCache.put("dashboard/dashboard.tpl.html",
-    "<h4>ADMIN DASHBOARD!</h4>\n" +
+    "<h4>Posts</h4>\n" +
+    "  <table class=\"table table-striped-rows table-hover\">\n" +
+    "    <thead>\n" +
+    "      <tr>\n" +
+    "          <th>Title</th>\n" +
+    "          <th>Kind</th>\n" +
+    "          <th>Created</th>\n" +
+    "          <th>Updated</th>\n" +
+    "      </tr>\n" +
+    "    </thead>\n" +
+    "    <tbody>\n" +
+    "    <tr ng-repeat=\"post in posts\">\n" +
+    "      <td>{{post.title}}</td>\n" +
+    "      <td>{{post.kind}}</td>\n" +
+    "      <td>{{post.createdAt}}</td>\n" +
+    "      <td>{{post.updatedAt}}</td>\n" +
+    "    </tr>\n" +
+    "    </tbody>\n" +
+    "  </table>\n" +
+    "</div>\n" +
     "");
 }]);
 

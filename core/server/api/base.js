@@ -1,6 +1,7 @@
 var Async = require('async');
 var Inflection = require('inflection');
 var Hapi = require('hapi');
+var Boom = Hapi.boom;
 var Utils = Hapi.utils;
 
 var internals = {};
@@ -86,6 +87,7 @@ internals.Base.prototype._enqueue = function (hook, item, done) {
         });
 
         var queued = {
+            id: job.id,
             path: queuePath,
             start: self._startJob(job.id)
         };
@@ -95,6 +97,8 @@ internals.Base.prototype._enqueue = function (hook, item, done) {
 };
 
 internals.Base.prototype._enqueueItem = function (model, hook, next) {
+
+    var destroyed = false;
 
     var queueItem = {
         type: model.type,
@@ -108,27 +112,39 @@ internals.Base.prototype._enqueueItem = function (model, hook, next) {
         // cleanup required.
         queueItem.obj = model;
         queueItem.cleanup = false;
+        destroyed = true;
     }
 
-    this._enqueue(hook, queueItem, function (err, queued) {
+    this._enqueue(hook, queueItem, function (err, job) {
 
-        if (queued) {
+        if (err) return next(err);
 
-            var attr = {
-                queue: queued.path
-            };
+        if (job && destroyed) {
+            queued.start();
+            return next();
+        }
 
-            model.updateAttributes(attr, function (err, m) {
+        // Job is queued, and in delayed state
+        if (job) {
 
-                model = m;
-                queued.start();
+            // Place latest queue item at top, for easy reference
+            model._queue_.unshift({
+                id: job.id,
+                path: job.path
+            });
+
+            // Persist to db
+            model.save(function (err) {
+
+                // Finally start the job
+                job.start();
                 next(err);
             });
 
-        } else {
-
-            next(err);
+            return;
         }
+
+        next();
     });
 };
 
@@ -138,7 +154,7 @@ internals.Base.prototype._enqueueArray = function (models, hook, done) {
 
     // .each() might be faster, but sticking to series to avoid
     // overwhelming a DB.
-    Async.each(models, function (model, next) {
+    Async.eachSeries(models, function (model, next) {
 
             self._enqueueItem(model, hook, next);
         },
@@ -150,8 +166,8 @@ internals.Base.prototype._enqueueArray = function (models, hook, done) {
 
 internals.Base.prototype.enqueue = function (models, hook, done) {
 
-    var Config = this.config;
-    var hooks = Config().hooks;
+    var Config = this.config,
+        hooks = Config().hooks;
 
     if (!hooks[hook]) {
 
@@ -214,8 +230,8 @@ internals.Base.prototype._findRelations = function (model, payload) {
         Models = this.models;
 
     var found = {
-        ready: [],
-        process: []
+        existing: [],
+        create: []
     };
 
     var relationInfo = this.getRelationInfo(model.constructor.modelName),
@@ -229,22 +245,47 @@ internals.Base.prototype._findRelations = function (model, payload) {
     var uniqueRel = function (relationName, allRelations) {
 
         var relInfo = relationInfo[relationName];
-        var seen = {};
+        var unique = [];
+        var seenAt = {};
 
-        function uniqueRelations(currentValue, index, array) {
-            var key = currentValue[relInfo.keyFrom];
-            if (!key || !seen[key]) {
-                if (key) {
-                    seen[key] = true;
+        function uniqueRelations(currentValue, index) {
+
+            if (currentValue && currentValue instanceof Object) {
+
+                var key = currentValue[relInfo.keyFrom];
+
+                // jugglingdb instances have no keys???
+                var hasKeys = Boolean(Object.keys(currentValue).length);
+                var isAlive = Boolean(currentValue.constructor && currentValue.constructor.modelName);
+                var isRemove = Boolean(currentValue._remove_ === 'true');
+
+                if (isAlive || hasKeys) {
+
+                    if (!key || typeof seenAt[key] === 'undefined') {
+                        if (key) seenAt[key] = index;
+                        this[index] = currentValue;
+                    }
+
+                    if ((isAlive || isRemove) && typeof seenAt[key] !== 'undefined') {
+
+                        var seenAtIndex = seenAt[key];
+
+                        // prefer living instances, but preserve if removing
+                        if (isAlive && this[seenAtIndex]._remove_ !== 'true') {
+                            this[seenAtIndex] = currentValue;
+                        }
+
+                        if (isRemove) {
+                            this[seenAtIndex] = currentValue;
+                        }
+                    }
                 }
-                return true;
-            } else {
-
-                return false;
             }
-        };
+        }
 
-        return allRelations.filter(uniqueRelations);
+        // Drop nulls
+        allRelations.map(uniqueRelations, unique);
+        return unique;
     };
 
     var placeRelation = function (relationName) {
@@ -257,28 +298,30 @@ internals.Base.prototype._findRelations = function (model, payload) {
                 keyFrom: relInfo.keyFrom,
                 modelName: relInfo.modelName,
                 relationName: relationName,
+                remove: Boolean(item._remove_ === 'true' || item._remove_ === true),
                 data: item
             };
 
-            if (item[relInfo.keyFrom]) {
+            if (!item[relInfo.keyFrom] && processItem.remove !== true) {
 
-                found.ready.push(processItem);
+                found.create.push(processItem);
 
             } else {
 
-                found.process.push(processItem);
+                found.existing.push(processItem);
             }
         };
     };
 
     var l = relationNames.length;
+
     for (var i = 0; i < l; i++) {
 
         relationName = relationNames[i];
         relByName = cachedRelations[relationName] || [];
         relByName = relByName.concat(payload[relationName] || []);
 
-        // Remap to remove possible dupes
+        // Filter to remove possible dupes
         relByName = uniqueRel(relationName, relByName);
 
         handleRelation = placeRelation(relationName);
@@ -304,14 +347,20 @@ internals.Base.prototype._createRelation = function (relations, relation, done) 
         apiMethod = Inflection.pluralize(modelName);
 
     var apiData = {
-        payload: relation.data
+        payload: relation.data,
+        query: {
+            implicit: true
+        }
     };
 
     Api[apiMethod].create(apiData, function (err, model) {
 
         // Err, or, new model
-        relation.data = err ? err : model;
-        relations.ready.push(relation);
+        if (err || model) {
+
+            relation.data = err ? err : model;
+            relations.existing.push(relation);
+        }
 
         done();
     });
@@ -319,14 +368,14 @@ internals.Base.prototype._createRelation = function (relations, relation, done) 
 
 internals.Base.prototype._processRelations = function (relations, done) {
 
-    if (relations.process.length === 0) {
+    if (relations.create.length === 0) {
 
         return done();
     }
 
     var self = this;
 
-    Async.each(relations.process, function (relation, next) {
+    Async.eachSeries(relations.create, function (relation, next) {
 
             self._createRelation(relations, relation, next);
         },
@@ -348,19 +397,34 @@ internals.Base.prototype._resetCachedRelations = function (model) {
     });
 };
 
-internals.Base.prototype._addCachedRelations = function (model, relation, done) {
+internals.Base.prototype._updateCachedRelations = function (model, rel, done) {
 
-    var relData = relation.data,
-        relName = relation.relationName;
+    var relData = rel.data,
+        relName = rel.relationName,
+        relation = model[relName],
+        method = (rel.remove === true) ? 'remove' : 'add';
 
-    model[relName].add(relData, function (err) {
+    var pushRelation = function () {
 
         if (model.__cachedRelations[relName] instanceof Array) {
             model.__cachedRelations[relName].push(relData);
         } else {
             model.__cachedRelations[relName] = relData;
         }
+    };
 
+    if (relData instanceof Error) {
+
+        // Present errored relations to user
+        pushRelation();
+        return done();
+    }
+
+    relation[method](relData, function (err) {
+
+        if (!rel.remove) {
+            pushRelation();
+        }
         done(err);
     });
 };
@@ -370,7 +434,7 @@ internals.Base.prototype.processRelations = function (model, payload, done) {
     var self = this;
     var relations = this._findRelations(model, payload);
 
-    if (!relations.ready.length && !relations.process.length) {
+    if (!relations.create.length && !relations.existing.length) {
 
         return done();
     }
@@ -382,9 +446,9 @@ internals.Base.prototype.processRelations = function (model, payload, done) {
         // Ignore most relation errors, let them appear
         // in the return objects.
 
-        Async.each(relations.ready, function (rel, next) {
+        Async.eachSeries(relations.existing, function (rel, next) {
 
-            self._addCachedRelations(model, rel, next);
+            self._updateCachedRelations(model, rel, next);
 
         }, function (err) {
 
@@ -403,6 +467,46 @@ internals.Base.prototype.keyExists = function (modelName, key, done) {
 
     Models[modelName].count(where, function (err, count) {
         done(err, err ? null : Boolean(count));
+    });
+};
+
+internals.Base.prototype.findUniqueKey = function (modelName, keyBase, keyExt, keyIncrement, done) {
+
+    if (!keyBase) return done(Boom.badImplementation('No base defined for key generation'));
+
+    var self = this,
+        retries = 10,
+        key = '';
+
+    key = keyBase;
+
+    if (typeof keyIncrement === 'number') {
+        key += '-' + keyIncrement;
+        keyIncrement++;
+    } else {
+        keyIncrement = 0;
+    }
+
+    key += keyExt ? keyExt : '';
+
+    this.keyExists(modelName, key, function (err, exists) {
+
+        if (err) return done(err);
+
+        if (exists && keyIncrement < retries) {
+
+            // Try again...
+            return self.findUniqueKey(modelName, keyBase, keyExt, keyIncrement, done);
+
+        } else if (exists && keyIncrement >= retries) {
+
+            // Retries exhausted
+            return done(Boom.badRequest('Could not generate a unique asset key'));
+
+        } else {
+
+            done(null, key);
+        }
     });
 };
 

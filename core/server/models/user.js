@@ -1,6 +1,10 @@
 var Schema = require('jugglingdb').Schema;
 
+var modelName = 'User';
+
 var internals = {};
+
+internals.modelName = modelName;
 
 internals.dependencies = [];
 
@@ -10,16 +14,22 @@ internals.init = function (model, next) {
     var schema = model.schema;
     var models = model.models;
 
-    var User = schema.define('User', {
+    var Model = schema.define(modelName, {
         id: {
             type: String,
             index: true
         },
-        displayName: {
+        type: {
+            type: String,
+            length: 255,
+            default: modelName.toLowerCase()
+        },
+        key: {
+            index: true,
             type: String,
             length: 255
         },
-        name: {
+        displayName: {
             type: String,
             length: 255
         },
@@ -27,25 +37,47 @@ internals.init = function (model, next) {
             type: String,
             length: 255
         },
-        timestamp: {
-            type: Number,
-            default: Date.now,
-            index: true
+        updatedAt: {
+            index: true,
+            type: Date
         },
-        queue: {
+        _version_: {
+            type: Number
+        },
+        _queue_: {
             type: String,
             length: 2000,
             default: null
         }
     });
 
-    User.validatesPresenceOf('name', 'displayName', 'email');
+    Model.validatesPresenceOf('key', 'displayName', '_version_');
 
-    User.validatesUniquenessOf('email', {
-        message: 'Email is not unique.'
+    Model.validatesUniquenessOf('key', {
+        message: 'Key is not unique.'
     });
 
-    models.User = User;
+    Model.beforeValidate = function (next, data) {
+
+        if (!this.key) {
+
+            // Key is a little like S3 keys -- in some cases it
+            // would generate a path, but it also supports
+            // subgroupings of items that might otherwise have the
+            // same slug.
+            this.key = Uslug(this.displayName);
+        }
+
+        // Want the updatedAt and version identical
+        var now = Date.now();
+
+        this._version_ = now;
+        this.updatedAt = new Date(now).toJSON();
+
+        next();
+    };
+
+    models[modelName] = Model;
 
     next();
 };

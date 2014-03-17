@@ -78,7 +78,7 @@ internals.DemonMaster.prototype.init = function (callback) {
     });
 };
 
-internals.DemonMaster.prototype._processCleanUp = function (endpoint) {
+internals.DemonMaster.prototype._processCleanUp = function (jobId, endpoint) {
 
     if (!endpoint) {
 
@@ -87,20 +87,20 @@ internals.DemonMaster.prototype._processCleanUp = function (endpoint) {
         return;
     }
 
-    Nipple.put(endpoint + '?clearQueue=true', noop);
+    Nipple.put(endpoint + '?clearQueue=' + jobId, noop);
 };
 
-internals.DemonMaster.prototype._jobDone = function (id) {
+internals.DemonMaster.prototype._jobDone = function (jobId) {
 
     var self = this;
 
-    Job.get(id, function (err, job) {
+    Job.get(jobId, function (err, job) {
         if (err) return;
 
         if (job.data && job.data.cleanup) {
 
             // Cleanup requested
-            self._processCleanUp(job.data.endpoint);
+            self._processCleanUp(jobId, job.data.endpoint);
             return;
         }
     });
@@ -141,17 +141,7 @@ internals.DemonMaster.prototype._processHandlers = function () {
 
         if (total === 0) {
 
-            // No processes for this hook,
-            // so clear it and callback
-            if (job.data && job.data.cleanup) {
-
-                // Cleanup requested
-
-                // TODO: Should process wait on cleanup response??
-
-                self._processCleanUp(job.data.endpoint);
-            }
-
+            // No processes for this hook
             return done();
         }
 

@@ -11,14 +11,25 @@
         <textarea class="form-control" name="body" id="body" style="width: 700px" rows="10"></textarea>
       </div>
       <div class="form-group">
+
         <label for="assets[0][file]">Asset</label>
         <input type="file" id="assets[0][file]" name="assets[0][file]" />
+
       </div>
       <div class="form-group">
+
         <label for="tags[0][name]">Tag 1</label>
         <input type="text" id="tags[0][name]" name="tags[0][name]" />
+        <label class="checkbox-inline">
+          <input type="checkbox" name="tags[0][_remove_]" value="true"> Remove
+        </label>
+
         <label for="tags[1][name]">Tag 2</label>
         <input type="text" id="tags[1][name]" name="tags[1][name]" />
+        <label class="checkbox-inline">
+          <input type="checkbox" name="tags[1][_remove_]" value="true"> Remove
+        </label>
+
       </div>
 
       <button type="submit" value="Save" class="btn btn-large btn-primary">Save</button>

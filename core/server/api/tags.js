@@ -27,10 +27,12 @@ internals.Tags.prototype.list = function (args, done) {
 internals.Tags.prototype.create = function (args, done) {
 
     var self = this;
-    var Models = this.models;
-    var Api = this.api;
 
-    var payload = args.payload;
+    var Models = this.models,
+        Api = this.api,
+        payload = args.payload || {},
+        query = args.query || {},
+        implicit = (query.implicit === true);
 
     var multi = true,
         tags = [],
@@ -52,11 +54,18 @@ internals.Tags.prototype.create = function (args, done) {
 
             tag = new Models.Tag(item);
 
-            tag.save(function (err, t) {
-                if (err) return next(err);
+            tag.isValid(function (valid) {
 
-                tags.push(t);
-                next();
+                // implicit creation shouldn't return
+                // validation errors.
+                if (!valid && implicit) return done();
+
+                tag.save(function (err, t) {
+                    if (err) return next(err);
+
+                    tags.push(t);
+                    next();
+                });
             });
         },
         function (err) {
@@ -96,16 +105,17 @@ internals.Tags.prototype.read = function (args, done) {
 
 internals.Tags.prototype.update = function (args, done) {
 
-    var Api = this.api;
-    var Models = this.models;
+    var Models = this.models,
+        Api = this.api,
+        query = args.query,
+        params = args.params,
+        payload = args.payload,
+        clearQueue = false,
+        jobId;
 
-    var query = args.query;
-    var params = args.params;
-    var payload = args.payload;
-
-    var clearQueue = false;
-    if (query.clearQueue === 'true') {
+    if (query.clearQueue) {
         clearQueue = true;
+        jobId = parseInt(query.clearQueue, 10);
     }
 
     Models.Tag.find(params.id, function (err, tag) {
@@ -116,34 +126,32 @@ internals.Tags.prototype.update = function (args, done) {
             return done(Boom.notFound());
         }
 
-        if (payload.timestamp) {
+        // Simple version control
+        if (query.version && tag._version_ !== query.version) {
 
-            // Timestamp versioning in effect, compare
-            if (tag.timestamp !== payload.timestamp) {
-                return done(Boom.conflict());
-            }
+            // Return conflict if version (timestamp) doesn't match
+            return done(Boom.conflict());
         }
 
-        if (tag.queue && clearQueue) {
+        if (clearQueue) {
 
             // Pass in the private queue clearing flag
-            tag.__data.clearQueue = clearQueue;
+            tag.__data.clearQueue = jobId;
         }
 
         tag.updateAttributes(payload, function (err, tag) {
 
-            if (!tag.queue && !clearQueue) {
+            if (!clearQueue) {
 
-                Api.Base.enqueue(tag, 'tag.updated', function (err) {
-
-                    if (err) return done(err);
-
-                    done(err, tag ? tag : null);
+                Api.Base.processRelations(tag, payload, function (err) {
+                    Api.Base.enqueue(tag, 'tag.updated', function (err) {
+                        done(err, !err ? tag : null);
+                    });
                 });
 
             } else {
 
-                done(err, tag ? tag : null);
+                done(err, !err ? tag : null);
             }
         });
     });

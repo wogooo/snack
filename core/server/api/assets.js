@@ -14,43 +14,30 @@ function Assets(options) {
 
 Assets.prototype._generateUniqueKey = function (file, done) {
 
-    var Api = this.api;
-    var Config = this.config;
-
     var self = this,
+        Api = this.api,
+        Config = this.config,
         retries = 10,
-        filename,
-        assetKey;
+        assetKey,
+        keyExt,
+        keyBase;
 
-    filename = file.filename;
-
-    file.increment = file.hasOwnProperty('increment') ? file.increment + 1 : 0;
-    file.ext = file.ext || Path.extname(filename);
-    file.basename = file.basename || Path.basename(filename, file.ext);
+    // File needs a time to generate a proper asset key
     file.createdAt = file.createdAt || new Date();
 
+    // Parse, according to user tokens
     assetKey = Config.keyForAsset(file);
 
-    Api.Base.keyExists('Asset', assetKey, function (err, exists) {
+    // Break out pieces necessary for the key finder to increment
+    keyExt = Path.extname(assetKey);
+    keyBase = Path.join(Path.dirname(assetKey), Path.basename(assetKey, keyExt));
+
+    Api.Base.findUniqueKey('Asset', keyBase, keyExt, null, function (err, key) {
 
         if (err) return done(err);
 
-        if (exists && file.increment < retries) {
-
-            // Try again...
-            file.filename = file.basename + '-' + file.increment + file.ext;
-            return self._generateUniqueKey(file, done);
-
-        } else if (exists && file.increment >= retries) {
-
-            // Retires exhausted
-            return done(Boom.badRequest('Could not generate a unique asset key'));
-
-        } else {
-
-            file.key = assetKey;
-            done();
-        }
+        file.key = key;
+        done();
     });
 };
 
@@ -58,7 +45,7 @@ Assets.prototype._generateKeys = function (files, done) {
 
     var self = this;
 
-    Async.each(files, function (file, next) {
+    Async.eachSeries(files, function (file, next) {
 
             self._generateUniqueKey(file, next);
         },
@@ -70,10 +57,13 @@ Assets.prototype._generateKeys = function (files, done) {
         });
 };
 
-Assets.prototype._filesToAssets = function (items, assets, file, done) {
+Assets.prototype._fileToAsset = function (file, options, done) {
 
     var Models = this.models,
         Config = this.config,
+        assets = options.assets,
+        items = options.items,
+        implicit = options.implicit,
         item = items.shift(),
         asset;
 
@@ -89,22 +79,26 @@ Assets.prototype._filesToAssets = function (items, assets, file, done) {
     // Finally, create an asset instance
     asset = new Models.Asset(item);
 
-    asset.save(function (err, a) {
-        if (err) return done(err);
+    asset.isValid(function (valid) {
+        if (!valid && implicit) return done();
 
-        assets.push(a);
-        done();
+        asset.save(function (err, a) {
+            if (err) return done(err);
+
+            assets.push(a);
+            done();
+        });
     });
 };
 
-Assets.prototype._filesToAssets = function (items, assets, files, done) {
+Assets.prototype._filesToAssets = function (files, options, done) {
 
     var self = this;
 
     Async.eachSeries(files, function (file, next) {
 
             // Handle each file in order, turning into assets
-            self._fileToAsset(items, assets, file, next);
+            self._fileToAsset(file, options, next);
 
         },
         function (err) {
@@ -142,12 +136,13 @@ Assets.prototype.list = function (args, done) {
 
 Assets.prototype.create = function (args, done) {
 
-    var Models = this.models;
-    var Api = this.api;
-    var Storage = this.storage;
-    var Config = this.config;
-
-    var payload = args.payload;
+    var Models = this.models,
+        Api = this.api,
+        Storage = this.storage,
+        Config = this.config,
+        payload = args.payload || {},
+        query = args.query || {},
+        implicit = (query.implicit === true);
 
     var self = this,
         multi = true,
@@ -189,7 +184,13 @@ Assets.prototype.create = function (args, done) {
 
             if (err) return done(Boom.badImplementation(err.message));
 
-            self._filesToAssets(items, assets, files, function (err) {
+            var options = {
+                assets: assets,
+                items: items,
+                implicit: implicit
+            };
+
+            self._filesToAssets(files, options, function (err) {
 
                 if (err) return done(err);
 
@@ -218,9 +219,8 @@ Assets.prototype.read = function (args, done) {
     }
 
     Models.Asset[get.method](get.params, function (err, asset) {
-        if (err) {
-            return done(err);
-        }
+
+        if (err) return done(err);
 
         if (!asset) {
             return done(Boom.notFound());
@@ -232,54 +232,49 @@ Assets.prototype.read = function (args, done) {
 
 Assets.prototype.update = function (args, done) {
 
-    var Api = this.api;
-    var Models = this.models;
+    var Models = this.models,
+        Api = this.api,
+        query = args.query,
+        params = args.params,
+        payload = args.payload,
+        clearQueue = false,
+        jobId;
 
-    var query = args.query;
-    var params = args.params;
-    var payload = args.payload;
-
-    var clearQueue = false;
-    if (query.clearQueue === 'true') {
+    if (query.clearQueue) {
         clearQueue = true;
+        jobId = parseInt(query.clearQueue, 10);
     }
 
-    Models.Asset.find(params.id, function (err, asset) {
-
+    this.read(args, function (err, asset) {
         if (err) return done(err);
+        if (!asset) return done(Boom.notFound());
 
-        if (!asset) {
-            return done(Boom.notFound());
+        // Simple version control
+        if (query.version && asset._version_ !== query.version) {
+
+            // Return conflict if version (timestamp) doesn't match
+            return done(Boom.conflict());
         }
 
-        if (payload.timestamp) {
-
-            // Timestamp versioning in effect, compare
-            if (asset.timestamp !== payload.timestamp) {
-                return done(Boom.conflict());
-            }
-        }
-
-        if (asset.queue && clearQueue) {
+        if (clearQueue) {
 
             // Pass in the private queue clearing flag
-            asset.__data.clearQueue = clearQueue;
+            asset.__data.clearQueue = jobId;
         }
 
         asset.updateAttributes(payload, function (err, asset) {
 
-            if (!asset.queue && !clearQueue) {
+            if (!clearQueue) {
 
-                Api.Base.enqueue(asset, 'asset.updated', function (err) {
-
-                    if (err) return done(err);
-
-                    done(err, asset ? asset : null);
+                Api.Base.processRelations(asset, payload, function (err) {
+                    Api.Base.enqueue(asset, 'asset.updated', function (err) {
+                        done(err, !err ? asset : null);
+                    });
                 });
 
             } else {
 
-                done(err, asset ? asset : null);
+                done(err, !err ? asset : null);
             }
         });
     });

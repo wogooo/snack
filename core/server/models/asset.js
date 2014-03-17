@@ -4,12 +4,15 @@ var modelName = 'Asset';
 
 var internals = {};
 
+internals.modelName = modelName;
+
 internals.dependencies = [];
 
 internals.init = function (model, next) {
 
     var Snack = model.snack;
-    var hooks = Snack.config().hooks;
+    var Config = model.config;
+    var hooks = Config().hooks;
 
     var schema = model.schema;
     var models = model.models;
@@ -78,28 +81,39 @@ internals.init = function (model, next) {
             type: Schema.JSON,
             default: null
         },
-        removeLocal: {
+        _removeLocal_: {
             type: Boolean,
             default: false
         },
-        timestamp: {
+        _version_: {
             type: Number,
             default: Date.now,
             index: true
         },
-        queue: {
-            type: String,
-            length: 2000,
-            default: null
+        _queue_: {
+            type: []
         }
     });
 
-    Model.validatesPresenceOf('filename', 'key', 'mimetype', 'bytes');
+    Model.validatesPresenceOf('filename', 'key', 'mimetype', 'bytes', '_version_');
 
     // Key must be unqiue!
     Model.validatesUniquenessOf('key', {
         message: 'Key is not unique.'
     });
+
+
+    Model.beforeValidate = function (next, data) {
+
+        // Want the updatedAt and version identical
+        var now = Date.now();
+
+        this._version_ = now;
+        this.updatedAt = new Date(now).toJSON();
+
+        next();
+    };
+
 
     Model.beforeCreate = function (next, data) {
 
@@ -117,23 +131,19 @@ internals.init = function (model, next) {
     Model.beforeUpdate = function (next, data) {
 
         // Private data
-        var _data = this.__data,
-            now = Date.now();
+        var _data = this.__data;
 
-        // Always set a new timestsamp
-        data.timestamp = now;
-        data.updatedAt = new Date(now).toJSON();
-
-        if (_data.clearQueue === true) {
+        if (_data.clearQueue) {
 
             // Clearing the queue
-            data.queue = null;
+            var jobId = _data.clearQueue;
+            this._queue_.remove(jobId);
         }
 
         if (this.storage !== 'local' && this.storage_was === 'local') {
 
             // Mark asset so cleanup can happen later
-            data.removeLocal = true;
+            data._removeLocal_ = true;
         }
 
         next();

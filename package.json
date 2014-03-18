@@ -1,7 +1,7 @@
 {
   "name": "snack",
   "version": "0.0.1",
-  "description": "Savory, not sweet.",
+  "description": "Savory and sweet.",
   "main": "./core/index",
   "scripts": {
     "start": "node index"

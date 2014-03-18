@@ -1,47 +1,77 @@
-angular.module('resources.base', ['ngResource']);
+angular.module('resources.base', ['ngResource'])
+    .factory('BaseResource', ['$resource',
+        function ($resource) {
 
-angular.module('resources.base').factory('SnackResource', ['$resource',
-    function ($resource) {
+            function BaseResourceFactory(resourceType) {
 
-        function SnackResourceFactory(resourceType) {
-            var apiPath = '/api/v1/' + resourceType;
+                var apiPath = '/api/v1/' + resourceType;
+                var defaultParams = {};
 
-            var thenFactoryMethod = function (httpPromise, successcb, errorcb, isArray) {
-                var scb = successcb || angular.noop;
-                var ecb = errorcb || angular.noop;
+                var resource = $resource(apiPath + '/:id.json', {
+                    id: '@id'
+                }, defaultParams);
 
-                return httpPromise.then(function (response) {
-                    var result;
-                    if (isArray) {
-                        result = [];
-                        for (var i = 0; i < response.items.length; i++) {
-                            result.push(new Resource(response.items[i]));
+                var thenFactoryMethod = function (httpPromise, isArray) {
+
+                    return httpPromise.then(function (response) {
+
+                        var result = {};
+
+                        if (isArray) {
+                            result.items = [];
+                            for (var i = 0; i < response.items.length; i++) {
+                                result.items.push(new Resource(response.items[i]));
+                            }
+                        } else {
+                            result = new Resource(response);
                         }
-                    }
-                    scb(result, response.status, response.headers, response.config);
-                    return result;
-                }, function (response) {
-                    ecb(undefined, response.status, response.headers, response.config);
-                    return undefined;
-                });
-            };
 
-            var Resource = function (data) {
-                angular.extend(this, data);
-            };
+                        return result;
 
-            Resource.all = function (cb, errorcb) {
-                var resource = $resource(apiPath);
-                var httpPromise = resource.get().$promise;
-                return thenFactoryMethod(httpPromise, null, null, true);
-            };
+                    }, function (response) {
 
-            return Resource;
+                        return undefined;
+                    });
+                };
+
+                var Resource = function (data) {
+                    angular.extend(this, data);
+                };
+
+                Resource.list = function (query) {
+                    return Resource.query(query, true);
+                };
+
+                Resource.find = function (id) {
+                    return Resource.query({
+                        id: id
+                    });
+                };
+
+                Resource.query = function (query, isArray) {
+
+                    query = angular.isObject(query) ? query : {};
+
+                    var promise = resource.get(query).$promise;
+                    return thenFactoryMethod(promise, isArray);
+                };
+
+                Resource.prototype.$save = function () {
+                    var promise = resource.post().$promise;
+                    return thenFactoryMethod(promise);
+                };
+
+                Resource.prototype.$update = function () {
+                    var promise = resource.put().$promise;
+                    return thenFactoryMethod(promise);
+                };
+
+                return Resource;
+            }
+
+            return BaseResourceFactory;
         }
-
-        return SnackResourceFactory;
-    }
-]);
+    ]);
 
 // angular.module('mongolabResource', []).factory('mongolabResource', ['MONGOLAB_CONFIG', '$http', '$q',
 //     function (MONGOLAB_CONFIG, $http, $q) {

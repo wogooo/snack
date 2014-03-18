@@ -9,9 +9,30 @@ var internals = {};
 
 internals.modelName = modelName;
 
-internals.dependencies = ['User', 'Tag', 'Asset'];
+internals.dependencies = [];
+
+internals.relations = function (model, next) {
+
+    var models = model.models;
+    var Model = models[modelName];
+    // Model.hasAndBelongsToMany('authors', {
+    //     model: models.User
+    // });
+
+    Model.hasAndBelongsToMany('tags', {
+        model: models.Tag
+    });
+
+    Model.hasAndBelongsToMany('assets', {
+        model: models.Asset
+    });
+
+    next();
+};
 
 internals.init = function (model, next) {
+
+    model.after(internals.relations);
 
     var Snack = model.snack;
     var Config = model.config;
@@ -92,18 +113,6 @@ internals.init = function (model, next) {
     // Key must be unqiue!
     Model.validatesUniquenessOf('key', {
         message: 'Key is not unique.'
-    });
-
-    // Model.hasAndBelongsToMany('authors', {
-    //     model: models.User
-    // });
-
-    Model.hasAndBelongsToMany('tags', {
-        model: models.Tag
-    });
-
-    Model.hasAndBelongsToMany('assets', {
-        model: models.Asset
     });
 
     Model.beforeValidate = function (next, data) {

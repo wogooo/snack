@@ -5,52 +5,54 @@ var Schema = require('jugglingdb').Schema;
 
 var internals = {};
 
-internals.loadOrder = function (models) {
+// internals.loadOrder = function (models) {
 
-    var model, deps;
-    var lastDepIndex, depIndex;
+//     var model, deps;
+//     var lastDepIndex, depIndex;
 
-    var loadOrderTemp;
-    var loadOrder = [];
+//     var loadOrderTemp;
+//     var loadOrder = [];
 
-    for (var m in models) {
+//     for (var m in models) {
 
-        model = models[m];
-        deps = model.dependencies;
+//         model = models[m];
+//         deps = model.dependencies;
 
-        if (deps) {
+//         if (deps) {
 
-            lastDepIndex = -1;
+//             lastDepIndex = -1;
 
-            deps.forEach(function (dep) {
+//             deps.forEach(function (dep) {
 
-                depIndex = loadOrder.indexOf(dep);
-                if (depIndex > lastDepIndex) {
-                    lastDepIndex = depIndex;
-                }
-            });
+//                 depIndex = loadOrder.indexOf(dep);
+//                 if (depIndex > lastDepIndex) {
+//                     lastDepIndex = depIndex;
+//                 }
+//             });
 
-            if (lastDepIndex > -1) {
+//             if (lastDepIndex > -1) {
 
-                loadOrderTemp = loadOrder.splice(lastDepIndex + 1);
-                loadOrder.push(m);
-                loadOrder = loadOrder.concat(loadOrderTemp);
+//                 loadOrderTemp = loadOrder.splice(lastDepIndex + 1);
+//                 loadOrder.push(m);
+//                 loadOrder = loadOrder.concat(loadOrderTemp);
 
-            } else {
+//             } else {
 
-                loadOrder.unshift(m);
-            }
+//                 loadOrder.unshift(m);
+//             }
 
-        } else {
+//         } else {
 
-            loadOrder.unshift(m);
-        }
-    }
+//             loadOrder.unshift(m);
+//         }
+//     }
 
-    return loadOrder;
-};
+//     return loadOrder;
+// };
 
 internals.init = function (server, callback) {
+
+    var _after = [];
 
     var Snack = server.app;
     var Config = Snack.config;
@@ -61,7 +63,7 @@ internals.init = function (server, callback) {
     var requires = {};
     Utils.loadDirModules(__dirname, ['index'], requires);
 
-    var loadOrder = internals.loadOrder(requires);
+    // var loadOrder = internals.loadOrder(requires);
 
     var root = {};
 
@@ -71,15 +73,27 @@ internals.init = function (server, callback) {
     root.models = exports.models;
     root.schema = schema;
 
-    Async.eachSeries(loadOrder, function (loadItem, next) {
+    root.after = function (method) {
 
-        requires[loadItem].init(root, next);
+        _after.push(method);
+    };
+
+    Async.eachSeries(Object.keys(requires), function (requireName, next) {
+
+        requires[requireName].init(root, next);
 
     }, function (err) {
 
-        schema.autoupdate(function () {
+        Async.eachSeries(_after, function (afterItem, next) {
 
-            callback(err, exports.models);
+            afterItem(root, next);
+
+        }, function (err) {
+
+            schema.autoupdate(function () {
+
+                callback(err, exports.models);
+            });
         });
     });
 };

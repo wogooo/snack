@@ -4,6 +4,7 @@ angular.module('app', [
     'ngResource',
     'ngSanitize',
     'dashboard',
+    'posts',
     'services.i18nNotifications',
     'services.localizedMessages',
     'templates.app',

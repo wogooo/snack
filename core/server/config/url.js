@@ -104,6 +104,10 @@ function urlPathForApi(api) {
         urlPath += '/' + api.id;
     }
 
+    if (api.format === 'json') {
+        urlPath += '.json';
+    }
+
     if (api.ids) {
         urlPath += '?ids=' + api.ids.join(',');
     }

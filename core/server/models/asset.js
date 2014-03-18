@@ -6,9 +6,29 @@ var internals = {};
 
 internals.modelName = modelName;
 
-internals.dependencies = [];
+internals.relations = function (model, next) {
+
+    var models = model.models;
+    var Model = models[modelName];
+    // Model.hasAndBelongsToMany('authors', {
+    //     model: models.User
+    // });
+
+    // Model.hasAndBelongsToMany('tags', {
+    //     model: models.Tag
+    // });
+
+    Model.hasAndBelongsToMany('posts', {
+        model: models.Post
+    });
+
+    next();
+};
+
 
 internals.init = function (model, next) {
+
+    model.after(internals.relations);
 
     var Snack = model.snack;
     var Config = model.config;
@@ -154,5 +174,4 @@ internals.init = function (model, next) {
     next();
 };
 
-exports.dependencies = internals.dependencies;
 exports.init = internals.init;

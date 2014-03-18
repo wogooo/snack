@@ -7,8 +7,6 @@ var internals = {};
 
 internals.modelName = modelName;
 
-internals.dependencies = [];
-
 internals.init = function (model, next) {
 
     var server = model.server;
@@ -101,4 +99,4 @@ internals.init = function (model, next) {
     next();
 };
 
-module.exports = internals;
+exports.init = internals.init;

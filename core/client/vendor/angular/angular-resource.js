@@ -1,5 +1,5 @@
 /**
- * @license AngularJS v1.2.14
+ * @license AngularJS v1.3.0-beta.2
  * (c) 2010-2014 Google, Inc. http://angularjs.org
  * License: MIT
  */
@@ -102,7 +102,7 @@ function shallowClearAndCopy(src, dst) {
  *   If the parameter value is prefixed with `@` then the value of that parameter is extracted from
  *   the data object (useful for non-GET operations).
  *
- * @param {Object.&lt;Object&gt;=} actions Hash with declaration of custom action that should extend
+ * @param {Object.<Object>=} actions Hash with declaration of custom action that should extend
  *   the default set of resource actions. The declaration should be created in the format of {@link
  *   ng.$http#usage_parameters $http.config}:
  *
@@ -258,7 +258,7 @@ function shallowClearAndCopy(src, dst) {
 
    ```js
      var User = $resource('/user/:userId', {userId:'@id'});
-     var user = User.get({userId:123}, function() {
+     User.get({userId:123}, function(user) {
        user.abc = true;
        user.$save();
      });
@@ -278,24 +278,34 @@ function shallowClearAndCopy(src, dst) {
        });
      });
    ```
+ *
+ * You can also access the raw `$http` promise via the `$promise` property on the object returned
+ *
+   ```
+     var User = $resource('/user/:userId', {userId:'@id'});
+     User.get({userId:123})
+         .$promise.then(function(user) {
+           $scope.user = user;
+         });
+   ```
 
  * # Creating a custom 'PUT' request
  * In this example we create a custom method on our resource to make a PUT request
  * ```js
- *      var app = angular.module('app', ['ngResource', 'ngRoute']);
+ *    var app = angular.module('app', ['ngResource', 'ngRoute']);
  *
- *      // Some APIs expect a PUT request in the format URL/object/ID
- *      // Here we are creating an 'update' method
- *      app.factory('Notes', ['$resource', function($resource) {
+ *    // Some APIs expect a PUT request in the format URL/object/ID
+ *    // Here we are creating an 'update' method
+ *    app.factory('Notes', ['$resource', function($resource) {
  *    return $resource('/notes/:id', null,
  *        {
  *            'update': { method:'PUT' }
  *        });
- *      }]);
+ *    }]);
  *
- *      // In our controller we get the ID from the URL using ngRoute and $routeParams
- *      // We pass in $routeParams and our Notes factory along with $scope
- *      app.controller('NotesCtrl', ['$scope', '$routeParams', 'Notes',
+ *    // In our controller we get the ID from the URL using ngRoute and $routeParams
+ *    // We pass in $routeParams and our Notes factory along with $scope
+ *    app.controller('NotesCtrl', ['$scope', '$routeParams', 'Notes',
                                       function($scope, $routeParams, Notes) {
  *    // First get a note object from the factory
  *    var note = Notes.get({ id:$routeParams.id });
@@ -305,7 +315,7 @@ function shallowClearAndCopy(src, dst) {
  *    Notes.update({ id:$id }, note);
  *
  *    // This will PUT /notes/ID with the note object in the request payload
- *      }]);
+ *    }]);
  * ```
  */
 angular.module('ngResource', ['ng']).

@@ -1,9 +1,26 @@
-angular.module('resources.posts', ['resources.base']);
+angular.module('resources.posts', ['ngResource']);
 
-angular.module('resources.posts').factory('Posts', ['SnackResource',
-    function ($SnackResource) {
-        var Posts = $SnackResource('posts');
-        return Posts;
+angular.module('resources.posts').factory('PostsResource', ['$resource',
+    function ($resource) {
+
+        var defaultParams = {
+            id: '@id'
+            // bust: function () { return Date.now(); }
+        };
+
+        var actions = {
+            list: {
+                method: 'GET'
+            },
+            find: {
+                method: 'GET'
+            },
+            update: {
+                method: 'PUT'
+            }
+        };
+
+        return $resource('/api/v1/posts/:id.json', defaultParams, actions);
     }
 ]);
 

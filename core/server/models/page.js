@@ -8,18 +8,35 @@ var Config = require('../config');
 
 var modelName = 'Page';
 
-var server = {};
-
 var internals = {};
 
 internals.modelName = modelName;
 
-internals.dependencies = ['User', 'Tag', 'Asset'];
+internals.relations = function (model, next) {
+
+    var models = model.models;
+    var Model = models[modelName];
+    // Model.hasAndBelongsToMany('authors', {
+    //     model: models.User
+    // });
+
+    Model.hasAndBelongsToMany('tags', {
+        model: models.Tag
+    });
+
+    Model.hasAndBelongsToMany('assets', {
+        model: models.Asset
+    });
+
+    next();
+};
+
 
 internals.init = function (model, next) {
 
-    server = model.server;
+    model.after(internals.relations);
 
+    var server = model.server;
     var Snack = model.snack;
     var config = Snack.config();
 
@@ -90,18 +107,6 @@ internals.init = function (model, next) {
             length: 2000,
             default: null
         }
-    });
-
-    Model.hasAndBelongsToMany('authors', {
-        model: models.User
-    });
-
-    Model.hasAndBelongsToMany('tags', {
-        model: models.Tag
-    });
-
-    Model.hasAndBelongsToMany('assets', {
-        model: models.Asset
     });
 
     Model.beforeValidate = function (next, data) {

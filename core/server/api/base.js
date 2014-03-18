@@ -27,7 +27,8 @@ internals.Base.prototype._apiEndpoint = function (type, id) {
     var data = {
         api: {
             type: type,
-            id: id
+            id: id,
+            format: 'json'
         }
     };
 

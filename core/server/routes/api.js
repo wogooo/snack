@@ -27,12 +27,42 @@ module.exports = function (route) {
     });
 
     server.route({
+        method: 'GET',
+        path: '/api/v1/posts.json',
+        handler: function (request, reply) {
+
+            Api.Posts.list(request, function (err, results) {
+                reply(err ? err : results);
+            });
+        }
+    });
+
+    server.route({
         method: 'POST',
         path: '/api/v1/posts',
         config: {
             payload: {
                 output: 'file',
-                parse: true
+                parse: true,
+                allow: 'multipart/form-data'
+            },
+            handler: function (request, reply) {
+
+                Api.Posts.create(request, function (err, results) {
+                    reply(err ? err : results);
+                });
+            }
+        }
+    });
+
+    server.route({
+        method: 'POST',
+        path: '/api/v1/posts.json',
+        config: {
+            payload: {
+                output: 'data',
+                parse: true,
+                allow: ['application/json', 'application/x-www-form-urlencoded']
             },
             handler: function (request, reply) {
 
@@ -46,9 +76,45 @@ module.exports = function (route) {
     server.route({
         method: 'PUT',
         path: '/api/v1/posts/{id}',
+        config: {
+            payload: {
+                output: 'file',
+                parse: true,
+                allow: 'multipart/form-data'
+            },
+            handler: function (request, reply) {
+
+                Api.Posts.update(request, function (err, results) {
+                    reply(err ? err : results);
+                });
+            }
+        }
+    });
+
+    server.route({
+        method: 'PUT',
+        path: '/api/v1/posts/{id}.json',
+        config: {
+            payload: {
+                output: 'data',
+                parse: true,
+                allow: ['application/json', 'application/x-www-form-urlencoded']
+            },
+            handler: function (request, reply) {
+
+                Api.Posts.update(request, function (err, results) {
+                    reply(err ? err : results);
+                });
+            }
+        }
+    });
+
+    server.route({
+        method: 'GET',
+        path: '/api/v1/posts/{id}',
         handler: function (request, reply) {
 
-            Api.Posts.update(request, function (err, results) {
+            Api.Posts.read(request, function (err, results) {
                 reply(err ? err : results);
             });
         }
@@ -56,7 +122,7 @@ module.exports = function (route) {
 
     server.route({
         method: 'GET',
-        path: '/api/v1/posts/{id}',
+        path: '/api/v1/posts/{id}.json',
         handler: function (request, reply) {
 
             Api.Posts.read(request, function (err, results) {
@@ -85,7 +151,26 @@ module.exports = function (route) {
         config: {
             payload: {
                 output: 'file',
-                parse: true
+                parse: true,
+                allow: 'multipart/form-data'
+            },
+            handler: function (request, reply) {
+
+                Api.Assets.create(request, function (err, results) {
+                    reply(err ? err : results);
+                });
+            }
+        }
+    });
+
+    server.route({
+        method: 'POST',
+        path: '/api/v1/assets.json',
+        config: {
+            payload: {
+                output: 'data',
+                parse: true,
+                allow: ['application/json', 'application/x-www-form-urlencoded']
             },
             handler: function (request, reply) {
 
@@ -99,11 +184,36 @@ module.exports = function (route) {
     server.route({
         method: 'PUT',
         path: '/api/v1/assets/{id}',
-        handler: function (request, reply) {
+        config: {
+            payload: {
+                output: 'file',
+                parse: true,
+                allow: 'multipart/form-data'
+            },
+            handler: function (request, reply) {
 
-            Api.Assets.update(request, function (err, results) {
-                reply(err ? err : results);
-            });
+                Api.Assets.update(request, function (err, results) {
+                    reply(err ? err : results);
+                });
+            }
+        }
+    });
+
+    server.route({
+        method: 'PUT',
+        path: '/api/v1/assets/{id}.json',
+        config: {
+            payload: {
+                output: 'data',
+                parse: true,
+                allow: ['application/json', 'application/x-www-form-urlencoded']
+            },
+            handler: function (request, reply) {
+
+                Api.Assets.update(request, function (err, results) {
+                    reply(err ? err : results);
+                });
+            }
         }
     });
 

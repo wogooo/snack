@@ -54,7 +54,8 @@ internals.SendToS3.prototype.updateAsset = function (asset, etag, done) {
     var uri = Config.urlFor('api', {
         api: {
             type: 'asset',
-            id: asset.id
+            id: asset.id,
+            format: 'json'
         }
     }, true);
 
@@ -186,6 +187,7 @@ internals.SendToS3.prototype.deleteS3 = function (asset, done) {
 /*
     Get some data from Snack based on an id.
 */
+
 internals.SendToS3.prototype.fetchData = function (item, done) {
 
     var Config = this.config;

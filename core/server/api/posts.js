@@ -73,13 +73,9 @@ Posts.prototype.read = function (args, done) {
 
     Models.Post[get.method](get.params, function (err, post) {
 
-        if (err) {
-            return done(err);
-        }
+        if (err) return done(err);
 
-        if (!post) {
-            return done(Boom.notFound());
-        }
+        if (!post) return done(Boom.notFound());
 
         Api.Base.loadRelations(post, function (err) {
 
@@ -104,6 +100,16 @@ Posts.prototype.update = function (args, done) {
         clearQueue = true;
         jobId = parseInt(query.clearQueue, 10);
     }
+
+    if (payload) {
+        var priv = /^_\w+_$/;
+        for (var p in payload) {
+            if (p.match(priv)) {
+                delete payload[p];
+            }
+        }
+    }
+
 
     this.read(args, function (err, post) {
         if (err) return done(err);

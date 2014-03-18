@@ -18,9 +18,7 @@ internals.relations = function (model, next) {
     //     model: models.Tag
     // });
 
-    Model.hasAndBelongsToMany('posts', {
-        model: models.Post
-    });
+    Model.hasAndBelongsToMany('posts');
 
     next();
 };

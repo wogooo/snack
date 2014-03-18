@@ -67,6 +67,9 @@ internals.init = function (server, next) {
         loadPacks = [],
         requirePacks = {};
 
+    // TODO: want to differentiate between core and optional plugins somehow...
+    plugins['snack-queue'] = Config().queue;
+
     for (var name in plugins) {
 
         if (plugins[name]) {

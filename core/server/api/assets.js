@@ -226,7 +226,9 @@ Assets.prototype.read = function (args, done) {
             return done(Boom.notFound());
         }
 
-        done(err, asset);
+        Api.Base.loadRelations(asset, function (err) {
+            done(err, asset);
+        });
     });
 };
 

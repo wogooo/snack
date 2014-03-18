@@ -145,8 +145,6 @@ function updateConfig(config) {
         }
     });
 
-    snackConfig.packs.plugins['snack-queue'] = snackConfig.queue;
-
     snackConfig.packageInfo = packageInfo;
 
     ConfigUrl.setConfig(snackConfig);

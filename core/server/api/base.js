@@ -212,7 +212,7 @@ internals.Base.prototype.loadRelations = function (model, done) {
 
     var relationInfo = this.getRelationInfo(model.constructor.modelName);
     var relationNames = Object.keys(relationInfo);
-
+console.log(relationNames);
     Async.eachSeries(relationNames, function (relationName, next) {
 
             model[relationName](next);

@@ -1,6 +1,6 @@
 [{
   "name": "snack-app",
-  "script": "./index.js",
+  "script": "./core/index.js",
   "args": "['app']",
   "instances": "1",
   "error_file": "./logs/snack-app-err.log",
@@ -13,7 +13,7 @@
   }
 }, {
   "name": "snack-demon",
-  "script": "./index.js",
+  "script": "./core/index.js",
   "args": "['demon']",
   "instances": "1",
   "error_file": "./logs/snack-demon-err.log",

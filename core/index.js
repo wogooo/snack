@@ -1,5 +1,8 @@
 var Hapi = require('hapi');
 var Utils = Hapi.utils;
+var Minimist = require('minimist');
+var argv = Minimist(process.argv.slice(2));
+
 var Bootstrap = require('./bootstrap');
 
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
@@ -22,14 +25,14 @@ function start(options) {
 
         Utils.assert(!err, 'Cannot start Snack!', err);
 
-        var load = options.load || [];
+        var SNACK_ENV = options.SNACK_ENV || argv._;
 
-        if (load.indexOf('demon') > -1 || !load.length) {
+        if (SNACK_ENV.indexOf('demon') > -1 || !SNACK_ENV.length) {
 
             startDemon(bootstrap);
         }
 
-        if (load.indexOf('app') > -1 || !load.length) {
+        if (SNACK_ENV.indexOf('app') > -1 || !SNACK_ENV.length) {
 
             startServer(bootstrap);
         }

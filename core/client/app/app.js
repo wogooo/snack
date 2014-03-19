@@ -5,10 +5,10 @@ angular.module('app', [
     'ngSanitize',
     'dashboard',
     'posts',
+    'assets',
     'services.i18nNotifications',
     'services.localizedMessages',
-    'templates.app',
-    'templates.common'
+    'templates.app'
 ]);
 
 angular.module('app').config(['$routeProvider', '$locationProvider',

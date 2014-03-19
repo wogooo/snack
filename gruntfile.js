@@ -47,8 +47,7 @@ module.exports = function (grunt) {
             specs: ['core/client/test/**/*.spec.js'],
             scenarios: ['core/client/test/**/*.scenario.js'],
             tpl: {
-                app: ['core/client/app/**/*.tpl.html', '!core/client/app/common/**/*.tpl.html'],
-                common: ['core/client/app/common/**/*.tpl.html']
+                app: ['core/client/app/**/*.tpl.html']
             },
             less: ['core/client/less/stylesheet.less'], // recess:build doesn't accept ** in its file patterns
             lessWatch: ['core/client/less/**/*.less']
@@ -83,15 +82,15 @@ module.exports = function (grunt) {
                 src: ['<%= src.tpl.app %>'],
                 dest: '<%= distdir %>/templates/app.js',
                 module: 'templates.app'
-            },
-            common: {
-                options: {
-                    base: 'core/client/app/common'
-                },
-                src: ['<%= src.tpl.common %>'],
-                dest: '<%= distdir %>/templates/common.js',
-                module: 'templates.common'
             }
+            // common: {
+            //     options: {
+            //         base: 'core/client/app/common'
+            //     },
+            //     src: ['<%= src.tpl.common %>'],
+            //     dest: '<%= distdir %>/templates/common.js',
+            //     module: 'templates.common'
+            // }
         },
         concat: {
             dist: {
@@ -105,9 +104,13 @@ module.exports = function (grunt) {
                 src: ['core/client/vendor/angular/angular.js', 'core/client/vendor/angular/*.js'],
                 dest: '<%= distdir %>/angular.js'
             },
-            bootstrap: {
-                src: ['core/client/vendor/angular-ui/bootstrap/*.js'],
-                dest: '<%= distdir %>/bootstrap.js'
+            'angular-ui': {
+                src: ['core/client/vendor/angular-ui/**/*.js'],
+                dest: '<%= distdir %>/angular-ui.js'
+            },
+            'angular-flow': {
+                src: ['core/client/vendor/angular-flow/**/*.js'],
+                dest: '<%= distdir %>/angular-flow.js'
             }
         },
         uglify: {
@@ -122,9 +125,13 @@ module.exports = function (grunt) {
                 src: ['<%= concat.angular.src %>'],
                 dest: '<%= distdir %>/angular.js'
             },
-            bootstrap: {
-                src: ['core/client/vendor/angular-ui/bootstrap/*.js'],
-                dest: '<%= distdir %>/bootstrap.js'
+            'angular-ui': {
+                src: ['core/client/vendor/angular-ui/**/*.js'],
+                dest: '<%= distdir %>/angular-ui.js'
+            },
+            'angular-flow': {
+                src: ['core/client/vendor/angular-flow/**/*.js'],
+                dest: '<%= distdir %>/angular-flow.js'
             }
         },
         less: {
@@ -152,11 +159,11 @@ module.exports = function (grunt) {
         },
         watch: {
             all: {
-                files: ['<%= src.js %>', '<%= src.specs %>', '<%= src.lessWatch %>', '<%= src.tpl.app %>', '<%= src.tpl.common %>'],
+                files: ['<%= src.js %>', '<%= src.specs %>', '<%= src.lessWatch %>', '<%= src.tpl.app %>'],
                 tasks: ['default', 'timestamp']
             },
             build: {
-                files: ['<%= src.js %>', '<%= src.specs %>', '<%= src.lessWatch %>', '<%= src.tpl.app %>', '<%= src.tpl.common %>'],
+                files: ['<%= src.js %>', '<%= src.specs %>', '<%= src.lessWatch %>', '<%= src.tpl.app %>'],
                 tasks: ['build', 'timestamp']
             }
         },

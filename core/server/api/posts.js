@@ -111,7 +111,7 @@ Posts.prototype.update = function (args, done) {
     }
 
 
-    this.read(args, function (err, post) {
+    Models.Post.find(params.id, function (err, post) {
         if (err) return done(err);
 
         if (!post) return done(Boom.notFound());
@@ -135,8 +135,13 @@ Posts.prototype.update = function (args, done) {
             if (!clearQueue) {
 
                 Api.Base.processRelations(post, payload, function (err) {
+
                     Api.Base.enqueue(post, 'post.updated', function (err) {
-                        done(err, !err ? post : null);
+
+                        Api.Base.loadRelations(post, function (err) {
+
+                            done(err, !err ? post : null);
+                        });
                     });
                 });
 

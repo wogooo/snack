@@ -212,7 +212,7 @@ internals.Base.prototype.loadRelations = function (model, done) {
 
     var relationInfo = this.getRelationInfo(model.constructor.modelName);
     var relationNames = Object.keys(relationInfo);
-console.log(relationNames);
+
     Async.eachSeries(relationNames, function (relationName, next) {
 
             model[relationName](next);
@@ -258,7 +258,7 @@ internals.Base.prototype._findRelations = function (model, payload) {
                 // jugglingdb instances have no keys???
                 var hasKeys = Boolean(Object.keys(currentValue).length);
                 var isAlive = Boolean(currentValue.constructor && currentValue.constructor.modelName);
-                var isRemove = Boolean(currentValue._remove_ === 'true');
+                var isRemove = Boolean(currentValue._remove_ === 'true' || currentValue._remove_ === true);
 
                 if (isAlive || hasKeys) {
 
@@ -272,7 +272,7 @@ internals.Base.prototype._findRelations = function (model, payload) {
                         var seenAtIndex = seenAt[key];
 
                         // prefer living instances, but preserve if removing
-                        if (isAlive && this[seenAtIndex]._remove_ !== 'true') {
+                        if (isAlive && (this[seenAtIndex]._remove_ !== 'true' || this[seenAtIndex]._remove_ !== true)) {
                             this[seenAtIndex] = currentValue;
                         }
 
@@ -453,7 +453,7 @@ internals.Base.prototype.processRelations = function (model, payload, done) {
 
         }, function (err) {
 
-            done(err);
+            done(err, model.__cachedRelations);
         });
     });
 };

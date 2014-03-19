@@ -2,25 +2,25 @@
   "name": "snack-app",
   "script": "./index.js",
   "args": "['app']",
-  "instances": "2",
+  "instances": "1",
   "error_file": "./logs/snack-app-err.log",
   "out_file": "./logs/snack-app-out.log",
   "pid_file": "./pids/snack-app.pid",
   "exec_mode": "cluster_mode",
   "port": 8008,
   "env": {
-    "NODE_ENV": "production"
+    "NODE_ENV": "development"
   }
 }, {
   "name": "snack-demon",
   "script": "./index.js",
   "args": "['demon']",
-  "instances": "2",
+  "instances": "1",
   "error_file": "./logs/snack-demon-err.log",
   "out_file": "./logs/snack-demon-out.log",
   "pid_file": "./pids/snack-demon.pid",
   "exec_mode": "cluster_mode",
   "env": {
-    "NODE_ENV": "production"
+    "NODE_ENV": "development"
   }
 }]

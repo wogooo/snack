@@ -1,6 +1,6 @@
-/*! snack - v0.0.0 - 2014-03-18
- * Copyright (c) 2014 Michael Shick;
- * Licensed 
+/*! snack - v0.0.1 - 2014-03-18
+ * Copyright (c) 2014 ;
+ * Licensed MIT
  */
 angular.module('app', [
     'ui.bootstrap',
@@ -9,10 +9,10 @@ angular.module('app', [
     'ngSanitize',
     'dashboard',
     'posts',
+    'assets',
     'services.i18nNotifications',
     'services.localizedMessages',
-    'templates.app',
-    'templates.common'
+    'templates.app'
 ]);
 
 angular.module('app').config(['$routeProvider', '$locationProvider',
@@ -79,6 +79,92 @@ angular.module('app').controller('HeaderCtrl', ['$scope', '$location', '$route',
             return false;
             // return httpRequestTracker.hasPendingRequests();
         };
+    }
+]);
+
+angular.module('assets', ['resources.assets'])
+
+.config(['$routeProvider',
+    function ($routeProvider) {
+        $routeProvider.when('/assets/:id/edit', {
+            templateUrl: 'assets/assets-edit.tpl.html',
+            controller: 'AssetsEditCtrl',
+            resolve: {
+                asset: ['$route', 'AssetsResource',
+                    function ($route, AssetsResource) {
+                        return AssetsResource.find({
+                            id: $route.current.params.id
+                        });
+                    }
+                ]
+            }
+        });
+
+        $routeProvider.when('/assets', {
+            templateUrl: 'assets/assets-list.tpl.html',
+            controller: 'AssetsListCtrl',
+            resolve: {
+                assetList: ['AssetsResource',
+                    function (AssetsResource) {
+                        return AssetsResource.list();
+                    }
+                ]
+            }
+        });
+    }
+])
+
+.controller('AssetsListCtrl', ['$scope', '$location', 'assetList',
+    function ($scope, $location, assetList) {
+        $scope.assetList = assetList;
+
+        $scope.editAsset = function (asset) {
+            $location.path('/assets/' + asset.id + '/edit');
+        };
+    }
+])
+
+.controller('AssetsEditCtrl', ['$scope', '$routeParams', '$location', 'asset',
+    function ($scope, $routeParams, $location, asset) {
+
+        $scope.asset = asset;
+
+        $scope.save = function () {
+            asset.$update(function () {
+                $location.path('/assets');
+            });
+        };
+
+        $scope.remove = function () {
+            asset.$remove(function () {
+                $location.path('/assets');
+            });
+        };
+    }
+]);
+
+angular.module('resources.assets', ['ngResource'])
+
+.factory('AssetsResource', ['$resource',
+    function ($resource) {
+
+        var defaultParams = {
+            id: '@id'
+        };
+
+        var actions = {
+            list: {
+                method: 'GET'
+            },
+            find: {
+                method: 'GET'
+            },
+            update: {
+                method: 'PUT'
+            }
+        };
+
+        return $resource('/api/v1/assets/:id.json', defaultParams, actions);
     }
 ]);
 
@@ -282,9 +368,9 @@ angular.module('resources.base', ['ngResource'])
 //     }
 // ]);
 
-angular.module('resources.posts', ['ngResource']);
+angular.module('resources.posts', ['ngResource'])
 
-angular.module('resources.posts').factory('PostsResource', ['$resource',
+.factory('PostsResource', ['$resource',
     function ($resource) {
 
         var defaultParams = {
@@ -509,9 +595,7 @@ angular.module('app').constant('I18N.MESSAGES', {
     'crud.user.remove.success': "A user with id '{{id}}' was removed successfully.",
     'crud.user.remove.error': "Something went wrong when removing user with id '{{id}}'.",
     'crud.user.save.error': "Something went wrong when saving a user...",
-    'crud.project.save.success': "A project with id '{{id}}' was saved successfully.",
-    'crud.project.remove.success': "A project with id '{{id}}' was removed successfully.",
-    'crud.project.save.error': "Something went wrong when saving a project...",
+    'crud.post.save.success': "The post '{{title}}' was saved successfully.",
     'login.reason.notAuthorized': "You do not have the necessary access permissions.  Do you want to login as someone else?",
     'login.reason.notAuthenticated': "You must be logged in to access this part of the application.",
     'login.error.invalidCredentials': "Login failed.  Please check your credentials and try again.",
@@ -576,20 +660,24 @@ angular.module('posts', ['resources.posts'])
     }
 ])
 
-.controller('PostsEditCtrl', ['$scope', '$routeParams', '$location', 'post',
-    function ($scope, $routeParams, $location, post) {
+.controller('PostsEditCtrl', ['$scope', '$routeParams', '$location', 'i18nNotifications', 'post',
+    function ($scope, $routeParams, $location, i18nNotifications, post) {
 
         $scope.post = post;
 
+        var onSave = function () {
+            i18nNotifications.pushForNextRoute('crud.post.save.success', 'success', {
+                title: post.title
+            });
+
+            $location.path('/posts');
+        };
+
         $scope.save = function () {
             if (post.id) {
-                post.$update(function () {
-                    $location.path('/posts');
-                });
+                post.$update(onSave);
             } else {
-                post.$save(function () {
-                    $location.path('/posts');
-                });
+                post.$save(onSave);
             }
         };
 
@@ -598,13 +686,6 @@ angular.module('posts', ['resources.posts'])
                 $location.path('/posts');
             });
         };
-
-        // $scope.onSave = function (user) {
-        //     i18nNotifications.pushForNextRoute('crud.user.save.success', 'success', {
-        //         id: user.$id()
-        //     });
-        //     $location.path('/admin/users');
-        // };
 
         // $scope.onError = function () {
         //     i18nNotifications.pushForCurrentRoute('crud.user.save.error', 'error');
@@ -620,7 +701,117 @@ angular.module('posts', ['resources.posts'])
     }
 ]);
 
-angular.module('templates.app', ['dashboard/dashboard.tpl.html', 'header.tpl.html', 'notifications.tpl.html', 'posts/posts-edit.tpl.html', 'posts/posts-list.tpl.html']);
+angular.module('templates.app', ['assets/assets-edit.tpl.html', 'assets/assets-list.tpl.html', 'dashboard/dashboard.tpl.html', 'header.tpl.html', 'notifications.tpl.html', 'posts/posts-edit.tpl.html', 'posts/posts-list.tpl.html']);
+
+angular.module("assets/assets-edit.tpl.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("assets/assets-edit.tpl.html",
+    "<form name=\"form\" novalidate>\n" +
+    "\n" +
+    "  <legend>Asset</legend>\n" +
+    "\n" +
+    "  <div class=\"form-group\">\n" +
+    "    <label>Title</label>\n" +
+    "    <input type=\"text\" class=\"form-control\" name=\"title\" ng-model=\"asset.title\" />\n" +
+    "  </div>\n" +
+    "  <div class=\"form-group\">\n" +
+    "    <label>Description</label>\n" +
+    "    <textarea class=\"form-control\" name=\"description\" rows=\"10\" ng-model=\"asset.description\"></textarea>\n" +
+    "  </div>\n" +
+    "\n" +
+    "  <div class=\"panel panel-default\">\n" +
+    "    <div class=\"panel-heading\">\n" +
+    "      <h4 class=\"panel-title\">File</h4>\n" +
+    "    </div>\n" +
+    "    <div class=\"panel-body\">\n" +
+    "\n" +
+    "      <figure class=\"row\">\n" +
+    "        <div class=\"col-md-12\">\n" +
+    "          <img class=\"img-thumbnail img-responsive center-block\" ng-src=\"{{asset.url}}\" />\n" +
+    "        </div>\n" +
+    "      </figure>\n" +
+    "\n" +
+    "      <dl class=\"well\">\n" +
+    "        <div class=\"row\">\n" +
+    "          <div class=\"col-xs-6\">\n" +
+    "            <dt>Filename</dt>\n" +
+    "            <dd>{{asset.filename}}</dd>\n" +
+    "            <dt>Size</dt>\n" +
+    "            <dd>{{asset.bytes}}</dd>\n" +
+    "            <dt>Mime</dt>\n" +
+    "            <dd>{{asset.mimetype}}</dd>\n" +
+    "            <dt>Storage</dt>\n" +
+    "            <dd>{{asset.storage}}</dd>\n" +
+    "          </div>\n" +
+    "\n" +
+    "          <div class=\"col-xs-6\">\n" +
+    "            <dt>Type</dt>\n" +
+    "            <dd>{{asset.type}}</dd>\n" +
+    "            <dt>Data</dt>\n" +
+    "            <dd ng-repeat=\"(prop, val) in asset.data\">\n" +
+    "              {{prop}}: {{val}}\n" +
+    "            </dd>\n" +
+    "            <dt>Created</dt>\n" +
+    "            <dd>{{asset.createdAt}}</dd>\n" +
+    "          </div>\n" +
+    "        </div>\n" +
+    "      </dl>\n" +
+    "    </div>\n" +
+    "  </div>\n" +
+    "\n" +
+    "  <div class=\"panel panel-default\">\n" +
+    "\n" +
+    "    <div class=\"panel-heading\">\n" +
+    "      <h4 class=\"panel-title\">\n" +
+    "        <a ng-click=\"isCollapsed = !isCollapsed\">\n" +
+    "          Related Posts\n" +
+    "        </a>\n" +
+    "      </h4>\n" +
+    "    </div>\n" +
+    "\n" +
+    "    <div class=\"panel-collapse collapse\" collapse=\"isCollapsed\">\n" +
+    "      <div class=\"panel-body\">\n" +
+    "        <ul>\n" +
+    "          <li ng-repeat=\"post in asset.posts\">\n" +
+    "            <a ng-href=\"/admin/posts/{{post.id}}/edit\">{{post.title}}</a>\n" +
+    "          </li>\n" +
+    "        </ul>\n" +
+    "      </div>\n" +
+    "    </div>\n" +
+    "\n" +
+    "  </div>\n" +
+    "\n" +
+    "  <hr>\n" +
+    "\n" +
+    "  <button ng-click=\"save()\" class=\"btn btn-large btn-primary\">Save</button>\n" +
+    "\n" +
+    "</form>\n" +
+    "");
+}]);
+
+angular.module("assets/assets-list.tpl.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("assets/assets-list.tpl.html",
+    "<table class=\"table table-striped-rows table-hover\">\n" +
+    "  <thead>\n" +
+    "    <tr>\n" +
+    "        <th>Title</th>\n" +
+    "        <th>Kind</th>\n" +
+    "        <th>Created</th>\n" +
+    "        <th>Actions</th>\n" +
+    "    </tr>\n" +
+    "  </thead>\n" +
+    "  <tbody>\n" +
+    "  <tr ng-repeat=\"asset in assetList.items\">\n" +
+    "    <td>{{asset.title}}</td>\n" +
+    "    <td>{{asset.kind}}</td>\n" +
+    "    <td>{{asset.createdAt | date:'yyyy-MM-dd h:mma'}}</td>\n" +
+    "    <td>\n" +
+    "      <a ng-click=\"editAsset(asset)\">Edit</a>\n" +
+    "    </td>\n" +
+    "  </tr>\n" +
+    "  </tbody>\n" +
+    "</table>\n" +
+    "");
+}]);
 
 angular.module("dashboard/dashboard.tpl.html", []).run(["$templateCache", function($templateCache) {
   $templateCache.put("dashboard/dashboard.tpl.html",
@@ -650,6 +841,7 @@ angular.module("header.tpl.html", []).run(["$templateCache", function($templateC
     "    <div class=\"collapse navbar-collapse\" id=\"navbar-collapse\">\n" +
     "      <ul class=\"nav navbar-nav\">\n" +
     "        <li><a href=\"/admin/posts\">Posts</a></li>\n" +
+    "        <li><a href=\"/admin/assets\">Assets</a></li>\n" +
     "      </ul>\n" +
     "    </div>\n" +
     "  </div>\n" +
@@ -668,24 +860,27 @@ angular.module("notifications.tpl.html", []).run(["$templateCache", function($te
 
 angular.module("posts/posts-edit.tpl.html", []).run(["$templateCache", function($templateCache) {
   $templateCache.put("posts/posts-edit.tpl.html",
-    "<div class=\"well\">\n" +
-    "  <form name=\"form\" novalidate>\n" +
-    "    <legend>Post</legend>\n" +
-    "    <div class=\"form-group\">\n" +
-    "      <label>Title</label>\n" +
-    "      <input type=\"text\" class=\"form-control\" name=\"title\" style=\"width: 700px\" ng-model=\"post.title\" />\n" +
-    "    </div>\n" +
-    "    <div class=\"form-group\">\n" +
-    "      <label>Body</label>\n" +
-    "      <textarea class=\"form-control\" name=\"body\" style=\"width: 700px\" rows=\"10\" ng-model=\"post.body\"></textarea>\n" +
-    "    </div>\n" +
-    "    <hr>\n" +
+    "<form name=\"form\" novalidate>\n" +
+    "  <legend>Post</legend>\n" +
+    "  <div class=\"form-group\">\n" +
+    "    <label>Title</label>\n" +
+    "    <input type=\"text\" class=\"form-control\" name=\"title\" ng-model=\"post.title\" />\n" +
+    "  </div>\n" +
+    "  <div class=\"form-group\">\n" +
+    "    <label>Body</label>\n" +
+    "    <textarea class=\"form-control\" name=\"body\" rows=\"10\" ng-model=\"post.body\"></textarea>\n" +
+    "  </div>\n" +
     "\n" +
-    "    <button ng-click=\"save()\" class=\"btn btn-large btn-primary\">Save</button>\n" +
-    "    <button ng-click=\"remove()\" class=\"btn btn-large btn-danger\">Remove</button>\n" +
+    "  <div class=\"form-group\">\n" +
+    "    <input type=\"file\" class=\"form-control\" />\n" +
+    "  </div>\n" +
     "\n" +
-    "  </form>\n" +
-    "</div>\n" +
+    "  <hr>\n" +
+    "\n" +
+    "  <button ng-click=\"save()\" class=\"btn btn-large btn-primary\">Save</button>\n" +
+    "  <button ng-click=\"remove()\" class=\"btn btn-large btn-danger\">Remove</button>\n" +
+    "\n" +
+    "</form>\n" +
     "");
 }]);
 
@@ -717,6 +912,3 @@ angular.module("posts/posts-list.tpl.html", []).run(["$templateCache", function(
     "</div>\n" +
     "");
 }]);
-
-angular.module('templates.common', []);
-

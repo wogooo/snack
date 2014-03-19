@@ -1,6 +1,6 @@
-angular.module('resources.posts', ['ngResource']);
+angular.module('resources.posts', ['ngResource'])
 
-angular.module('resources.posts').factory('PostsResource', ['$resource',
+.factory('PostsResource', ['$resource',
     function ($resource) {
 
         var defaultParams = {

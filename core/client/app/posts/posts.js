@@ -56,20 +56,24 @@ angular.module('posts', ['resources.posts'])
     }
 ])
 
-.controller('PostsEditCtrl', ['$scope', '$routeParams', '$location', 'post',
-    function ($scope, $routeParams, $location, post) {
+.controller('PostsEditCtrl', ['$scope', '$routeParams', '$location', 'i18nNotifications', 'post',
+    function ($scope, $routeParams, $location, i18nNotifications, post) {
 
         $scope.post = post;
 
+        var onSave = function () {
+            i18nNotifications.pushForNextRoute('crud.post.save.success', 'success', {
+                title: post.title
+            });
+
+            $location.path('/posts');
+        };
+
         $scope.save = function () {
             if (post.id) {
-                post.$update(function () {
-                    $location.path('/posts');
-                });
+                post.$update(onSave);
             } else {
-                post.$save(function () {
-                    $location.path('/posts');
-                });
+                post.$save(onSave);
             }
         };
 
@@ -78,13 +82,6 @@ angular.module('posts', ['resources.posts'])
                 $location.path('/posts');
             });
         };
-
-        // $scope.onSave = function (user) {
-        //     i18nNotifications.pushForNextRoute('crud.user.save.success', 'success', {
-        //         id: user.$id()
-        //     });
-        //     $location.path('/admin/users');
-        // };
 
         // $scope.onError = function () {
         //     i18nNotifications.pushForCurrentRoute('crud.user.save.error', 'error');

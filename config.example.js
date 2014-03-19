@@ -1,12 +1,13 @@
-var path = require('path'),
-    config;
+var config;
 
 config = {
     development: {
-
-        url: 'http://localhost:8008',
-
-        db: {
+        'name': 'Snack',
+        'url': 'http://localhost:8008',
+        'paths': {
+            assetsRelPathPattern: ':year/:month/:day/:filename'
+        },
+        'db': {
             engine: 'rethink',
             host: 'localhost',
             port: 28015,
@@ -16,45 +17,65 @@ config = {
             connectionIdle: 30000,
             authKey: 'test'
         },
-
-        cache: {
-            engine: 'redis',
+        'queue': {
+            attempts: 3
+        },
+        'redis': {
             host: 'localhost',
             port: 6379
         },
-        security: {
-            dbName: 'angular-app',
-            usersCollection: 'users'
-        },
-        server: {
-            host: '0.0.0.0',
+        'server': {
+            host: 'localhost',
             port: 8008,
-            securePort: 8433,
-            logLevel: 'debug'
-            // distFolder: path.resolve(__dirname, '../client/dist'),
-            // viewsFolder: path.resolve(__dirname, './views'),
-            // staticUrl: '/static',
-            // cookieSecret: 'angular-app'
+            options: {
+                payload: {
+                    maxBytes: 20000000 // 20 MB
+                }
+            }
         },
-        auth: {
-            twitter: {
+        'logging': {
+            level: 'DEBUG'
+        },
+        'auth': {
+            'twitter': {
                 consumerKey: 'xxx',
                 consumerSecret: 'xxx'
             },
-            facebook: {
+            'facebook': {
                 clientID: 'xxx',
                 clientSecret: 'xxx'
             }
         },
-        log: {
-            level: 'debug'
+        'packs': {
+            'demons': {
+                'snack-solr-indexing': {
+                    'solr': {
+                        host: 'localhost',
+                        port: 8983,
+                        path: '/solr/test'
+                    }
+                }
+            },
+            'plugins': {
+                'snack-solr-indexing': {
+                    'endpoint': '/api/v1/search',
+                    'solr': {
+                        host: 'localhost',
+                        port: 8983,
+                        path: '/solr/test'
+                    }
+                }
+            }
         }
     },
 
     production: {
-        url: 'http://example.com',
-
-        db: {
+        'name': 'Snack',
+        'url': 'http://localhost:8008',
+        'paths': {
+            assetsRelPathPattern: ':year/:month/:day/:filename'
+        },
+        'db': {
             engine: 'rethink',
             host: 'localhost',
             port: 28015,
@@ -64,37 +85,55 @@ config = {
             connectionIdle: 30000,
             authKey: 'test'
         },
-        cache: {
-            engine: 'redis',
+        'queue': {
+            attempts: 3
+        },
+        'redis': {
             host: 'localhost',
             port: 6379
         },
-        security: {
-            dbName: 'angular-app',
-            usersCollection: 'users'
-        },
-        server: {
-            host: '0.0.0.0',
+        'server': {
+            host: 'localhost',
             port: 8008,
-            securePort: 8433,
-            logLevel: 'debug'
-            // distFolder: path.resolve(__dirname, '../client/dist'),
-            // viewsFolder: path.resolve(__dirname, './views'),
-            // staticUrl: '/static',
-            // cookieSecret: 'angular-app'
+            options: {
+                payload: {
+                    maxBytes: 20000000 // 20 MB
+                }
+            }
         },
-        auth: {
-            twitter: {
+        'logging': {
+            level: 'ERROR'
+        },
+        'auth': {
+            'twitter': {
                 consumerKey: 'xxx',
                 consumerSecret: 'xxx'
             },
-            facebook: {
+            'facebook': {
                 clientID: 'xxx',
                 clientSecret: 'xxx'
             }
         },
-        log: {
-            level: 'debug'
+        'packs': {
+            'demons': {
+                'snack-solr-indexing': {
+                    'solr': {
+                        host: 'localhost',
+                        port: 8983,
+                        path: '/solr/test'
+                    }
+                }
+            },
+            'plugins': {
+                'snack-solr-indexing': {
+                    'endpoint': '/api/v1/search',
+                    'solr': {
+                        host: 'localhost',
+                        port: 8983,
+                        path: '/solr/test'
+                    }
+                }
+            }
         }
     }
 };

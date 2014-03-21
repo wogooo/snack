@@ -32,7 +32,8 @@
     "fs-extra": "^0.8.1",
     "image-size": "^0.2.1",
     "catbox-redis": "^1.0.0",
-    "uslug": "^1.0.3"
+    "uslug": "^1.0.3",
+    "aws-sdk": "^2.0.0-rc12"
   },
   "devDependencies": {
     "grunt": "^0.4.2",
@@ -61,10 +62,12 @@
     "type": "git",
     "url": "git://github.com/snackco/snack.git"
   },
-  "licenses": [{
-    "type": "MIT",
-    "url": "http://github.com/snackco/snack/raw/master/LICENSE"
-  }],
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "http://github.com/snackco/snack/raw/master/LICENSE"
+    }
+  ],
   "bugs": {
     "url": "https://github.com/snackco/snack/issues"
   }

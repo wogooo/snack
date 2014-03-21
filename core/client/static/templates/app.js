@@ -168,8 +168,18 @@ angular.module("posts/posts-edit.tpl.html", []).run(["$templateCache", function(
     "    <textarea class=\"form-control\" name=\"body\" rows=\"10\" ng-model=\"post.body\"></textarea>\n" +
     "  </div>\n" +
     "\n" +
-    "  <div class=\"form-group\">\n" +
-    "    <input type=\"file\" class=\"form-control\" />\n" +
+    "  <div class=\"panel panel-default\">\n" +
+    "    <div class=\"panel-heading\">\n" +
+    "      <h4 class=\"panel-title\">Assets</h4>\n" +
+    "    </div>\n" +
+    "    <div class=\"panel-body\">\n" +
+    "      <div class=\"form-group\">\n" +
+    "        <label>Title</label>\n" +
+    "        <input type=\"text\" class=\"form-control\" name=\"title\" ng-model=\"asset.title\" />\n" +
+    "        <label>File</label>\n" +
+    "        <input type=\"file\" ng-model=\"file\" change=\"upload(file)\" />\n" +
+    "      </div>\n" +
+    "    </div>\n" +
     "  </div>\n" +
     "\n" +
     "  <hr>\n" +

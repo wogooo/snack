@@ -169,12 +169,29 @@ module.exports = function (route) {
         config: {
             payload: {
                 output: 'data',
-                parse: true,
-                allow: ['application/json', 'application/x-www-form-urlencoded']
+                parse: true
             },
             handler: function (request, reply) {
 
                 Api.Assets.create(request, function (err, results) {
+                    reply(err ? err : results);
+                });
+            }
+        }
+    });
+
+    server.route({
+        method: 'POST',
+        path: '/api/v1/files',
+        config: {
+            payload: {
+                output: 'stream',
+                parse: true,
+                allow: ['image/jpeg', 'image/png']
+            },
+            handler: function (request, reply) {
+
+                Api.Assets.storeFile(request, function (err, results) {
                     reply(err ? err : results);
                 });
             }

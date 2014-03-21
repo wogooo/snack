@@ -1,4 +1,4 @@
-angular.module('posts', ['resources.posts'])
+angular.module('posts', ['resources.posts', 'resources.assets'])
 
 .config(['$routeProvider',
     function ($routeProvider) {
@@ -8,7 +8,7 @@ angular.module('posts', ['resources.posts'])
             resolve: {
                 post: ['PostsResource',
                     function (PostsResource) {
-                        return new PostsResource;
+                        return new PostsResource();
                     }
                 ]
             }
@@ -56,8 +56,8 @@ angular.module('posts', ['resources.posts'])
     }
 ])
 
-.controller('PostsEditCtrl', ['$scope', '$routeParams', '$location', 'i18nNotifications', 'post',
-    function ($scope, $routeParams, $location, i18nNotifications, post) {
+.controller('PostsEditCtrl', ['$scope', '$routeParams', '$location', 'i18nNotifications', 'AssetsResource', 'post',
+    function ($scope, $routeParams, $location, i18nNotifications, AssetsResource, post) {
 
         $scope.post = post;
 
@@ -83,16 +83,67 @@ angular.module('posts', ['resources.posts'])
             });
         };
 
-        // $scope.onError = function () {
-        //     i18nNotifications.pushForCurrentRoute('crud.user.save.error', 'error');
-        // };
+        AssetsResource($scope);
 
-        // $scope.onRemove = function (user) {
-        //     i18nNotifications.pushForNextRoute('crud.user.remove.success', 'success', {
-        //         id: user.$id()
-        //     });
-        //     $location.path('/admin/users');
-        // };
+        // var uploader = $fileUploader.create({
+        //     scope: $scope,
+        //     url: '/api/v1/assets',
+        //     formData: [{
+        //         title: 'test uploader'
+        //     }],
+        //     filters: [
 
+        //         function (item) {
+        //             console.info('filter1', item);
+        //             return true;
+        //         }
+        //     ]
+        // });
+
+        // $scope.uploader = uploader;
+
+        // uploader.bind('afteraddingfile', function (event, item) {
+        //     console.info('After adding a file', item);
+        // });
+
+        // uploader.bind('whenaddingfilefailed', function (event, item) {
+        //     console.info('When adding a file failed', item);
+        // });
+
+        // uploader.bind('afteraddingall', function (event, items) {
+        //     console.info('After adding all files', items);
+        // });
+
+        // uploader.bind('beforeupload', function (event, item) {
+        //     console.info('Before upload', item);
+        // });
+
+        // uploader.bind('progress', function (event, item, progress) {
+        //     console.info('Progress: ' + progress, item);
+        // });
+
+        // uploader.bind('success', function (event, xhr, item, response) {
+        //     console.info('Success', xhr, item, response);
+        // });
+
+        // uploader.bind('cancel', function (event, xhr, item) {
+        //     console.info('Cancel', xhr, item);
+        // });
+
+        // uploader.bind('error', function (event, xhr, item, response) {
+        //     console.info('Error', xhr, item, response);
+        // });
+
+        // uploader.bind('complete', function (event, xhr, item, response) {
+        //     console.info('Complete', xhr, item, response);
+        // });
+
+        // uploader.bind('progressall', function (event, progress) {
+        //     console.info('Total progress: ' + progress);
+        // });
+
+        // uploader.bind('completeall', function (event, items) {
+        //     console.info('Complete all', items);
+        // });
     }
 ]);

@@ -1,4 +1,6 @@
 var Fs = require('fs-extra');
+var Hapi = require('hapi');
+var Crypto = require('crypto');
 var Path = require('path');
 var Async = require('async');
 var Mime = require('mime');
@@ -8,7 +10,7 @@ var Config = require('../config');
 
 var internals = {};
 
-internals.typeOfAsset = function (mimeType) {
+internals.typeOfFile = function (mimeType) {
 
     var imageTypes = {
         'image/gif': true,
@@ -27,96 +29,132 @@ internals.typeOfAsset = function (mimeType) {
     return;
 };
 
-internals.writeFile = function (oldPath, newPath, done) {
+// internals.writeFile = function (oldPath, newPath, done) {
 
-    var basename = Path.basename(newPath);
-    var newDirs = newPath.replace(basename, '');
+//     var basename = Path.basename(newPath);
+//     var newDirs = newPath.replace(basename, '');
 
-    Fs.mkdirs(newDirs, function (err) {
+//     Fs.mkdirs(newDirs, function (err) {
+
+//         if (err) return done(err);
+
+//         Fs.rename(oldPath, newPath, function (err) {
+
+//             done(err);
+//         });
+//     });
+// };
+
+internals.writeFile = function (stream, path, done) {
+
+    var basename = Path.basename(path),
+        dirs = path.replace(basename, ''),
+        md5sum = Crypto.createHash('md5'),
+        etag;
+
+    Fs.mkdirs(dirs, function (err) {
 
         if (err) return done(err);
 
-        Fs.rename(oldPath, newPath, function (err) {
+        // internals.writeFile(file.path, newPath, finalize);
+        var write = Fs.createWriteStream(path);
 
-            done(err);
+        stream.pipe(write);
+
+        stream.on('data', function (chunk) {
+            md5sum.update(chunk);
+        });
+
+        stream.on('error', function () {
+            done(Hapi.error.badImplementation('Error reading file'));
+        });
+
+        stream.on('end', function () {
+            etag = md5sum.digest('hex');
+            write.end();
+        });
+
+        write.on('finish', function () {
+            done(null, etag);
         });
     });
 };
 
-internals._createAsset = function (file, done) {
+internals._storeFile = function (stream, file, done) {
 
     var filename = file.filename,
         assetsPath = Config().paths.assetsPath,
-        newPath = Path.join(assetsPath, file.key),
+        writePath = Path.join(assetsPath, file.key),
         mimeType,
-        typeOfAsset,
-        fileData = {},
+        typeOfFile,
         dimensions,
-        assetObj;
+        etag,
+        fileObj;
 
-    var finalize = function (err) {
+    var finalize = function (err, etag) {
 
         if (err) return done(err);
 
-        mimeType = Mime.lookup(newPath);
-        typeOfAsset = internals.typeOfAsset(mimeType);
+        mimeType = Mime.lookup(writePath);
 
-        if (typeOfAsset === 'image') {
-            dimensions = Size(newPath);
-            fileData.height = dimensions.height || 0;
-            fileData.width = dimensions.width || 0;
-        }
-
-        assetObj = {
-            filename: Path.basename(newPath),
+        fileObj = {
+            filename: Path.basename(writePath),
+            etag: etag,
             key: file.key,
             bytes: file.bytes,
             mimetype: mimeType,
-            data: fileData,
             createdAt: file.createdAt,
             storage: 'local'
         };
 
-        done(null, assetObj);
+        typeOfFile = internals.typeOfFile(mimeType);
+
+        if (typeOfFile === 'image') {
+            dimensions = Size(writePath);
+            fileObj.height = dimensions.height || 0;
+            fileObj.width = dimensions.width || 0;
+        }
+
+        done(null, fileObj);
     };
 
-    internals.writeFile(file.path, newPath, finalize);
+    internals.writeFile(stream, writePath, finalize);
 };
 
-internals.save = function (fileObjOrArr, done) {
+internals.save = function (stream, file, done) {
 
-    var assets = [];
+    // var files = [];
 
-    if (fileObjOrArr instanceof Array) {
+    // if (fileObjOrArr instanceof Array) {
 
-        var fileArr = fileObjOrArr;
+    //     var fileArr = fileObjOrArr;
 
-        Async.eachSeries(fileArr, function (fileObj, next) {
+    //     Async.eachSeries(fileArr, function (file, next) {
 
-                internals._createAsset(fileObj, function (err, asset) {
-                    if (err) return next(err);
+    //             internals._storeFile(file, function (err, fileObj) {
+    //                 if (err) return next(err);
 
-                    assets.push(asset);
-                    next();
-                });
-            },
-            function (err) {
-                if (err) return done(err);
+    //                 files.push(fileObj);
+    //                 next();
+    //             });
+    //         },
+    //         function (err) {
+    //             if (err) return done(err);
 
-                done(null, assets);
-            });
+    //             done(null, files);
+    //         });
 
-    } else {
+    // } else {
 
-        var fileObj = fileObjOrArr;
+    //     var file = fileObjOrArr;
 
-        internals._createAsset(fileObj, function (err, asset) {
-            if (err) return next(err);
+    internals._storeFile(stream, file, function (err, file) {
 
-            assets.push(asset);
-            done(null, assets);
-        });
-    }
+        if (err) return done(err);
+
+        done(null, file);
+    });
+    // }
 };
 
 internals.exists = function (key, done) {
@@ -127,10 +165,16 @@ internals.exists = function (key, done) {
     Fs.exists(assetPath, done);
 };
 
-module.exports = function (server) {
+module.exports = function (storage, next) {
 
-    return {
-        save: internals.save,
-        exists: internals.exists
+    storage.exports.Local = {
+        save: function (stream, file, cb) {
+            internals.save(stream, file, cb);
+        },
+        exists: function (stream, file, cb) {
+            internals.exists(stream, file, cb);
+        }
     };
+
+    next();
 };

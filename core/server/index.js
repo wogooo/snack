@@ -14,6 +14,8 @@ var Routes = require('./routes');
 var Api = require('./api');
 var Models = require('./models');
 
+var envVal = process.env.NODE_ENV;
+
 function messages(tags, log) {
 
     if (tags.error) {
@@ -31,8 +33,6 @@ function messages(tags, log) {
         console.log(('Error: ' + log).red);
         return;
     }
-
-    var envVal = process.env.NODE_ENV;
 
     // Startup & Shutdown messages
     if (envVal === 'production') {
@@ -173,7 +173,7 @@ function setup() {
         },
         function (err) {
             if (err) {
-                server.log(['error', 'registration'], 'One or more core services didn\'t load.');
+                server.log(['error', 'registration'], 'One or more core includes didn\'t load.');
             }
 
             start(server);

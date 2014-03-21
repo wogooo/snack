@@ -41,71 +41,79 @@ Assets.prototype._generateUniqueKey = function (file, done) {
     });
 };
 
-Assets.prototype._generateKeys = function (files, done) {
+// Assets.prototype._generateKeys = function (files, done) {
 
-    var self = this;
+//     var self = this;
 
-    Async.eachSeries(files, function (file, next) {
+//     Async.eachSeries(files, function (file, next) {
 
-            self._generateUniqueKey(file, next);
-        },
-        function (err) {
+//             self._generateUniqueKey(file, next);
+//         },
+//         function (err) {
 
-            // Unique keys modify mutable file objs,
-            // just need to know we're done.
-            done(err);
-        });
-};
+//             // Unique keys modify mutable file objs,
+//             // just need to know we're done.
+//             done(err);
+//         });
+// };
 
 Assets.prototype._fileToAsset = function (file, options, done) {
 
     var Models = this.models,
         Config = this.config,
-        assets = options.assets,
-        items = options.items,
+        item = options.item || {},
         implicit = options.implicit,
-        item = items.shift(),
-        asset;
+        asset = options.asset;
 
     // Merge file props onto
     // item properties (title, description).
     item = Utils.merge(item, file);
 
-    // Create an asset url from the file obj
-    item.url = Config.urlFor('asset', {
-        asset: item
-    }, true);
+    if (asset) {
 
-    // Finally, create an asset instance
-    asset = new Models.Asset(item);
+        asset.storage = file.storage;
+        asset.data = file.data;
+        asset.mimetype = file.mimetype;
+
+    } else {
+
+        asset = new Models.Asset(item);
+    }
+
+    // Create an asset url from the file obj
+    if (asset.storage) {
+
+        asset.url = Config.urlFor('asset', {
+            asset: asset
+        }, true);
+    }
 
     asset.isValid(function (valid) {
+
         if (!valid && implicit) return done();
 
-        asset.save(function (err, a) {
-            if (err) return done(err);
+        asset.save(function (err) {
 
-            assets.push(a);
-            done();
+            done(err, asset);
         });
     });
 };
 
-Assets.prototype._filesToAssets = function (files, options, done) {
+// Assets.prototype._filesToAssets = function (files, options, done) {
 
-    var self = this;
+//     var self = this;
 
-    Async.eachSeries(files, function (file, next) {
+//     Async.eachSeries(files, function (file, next) {
 
-            // Handle each file in order, turning into assets
-            self._fileToAsset(file, options, next);
+//             // Handle each file in order, turning into assets
+//             self._fileToAsset(file, options, next);
 
-        },
-        function (err) {
+//         },
+//         function (err) {
 
-            done(err);
-        });
-};
+//             done(err);
+//         });
+// };
 
 Assets.prototype.list = function (args, done) {
 
@@ -134,77 +142,193 @@ Assets.prototype.list = function (args, done) {
     });
 };
 
-Assets.prototype.create = function (args, done) {
+Assets.prototype._finalizeFile = function (file, options, done) {
 
-    var Models = this.models,
-        Api = this.api,
-        Storage = this.storage,
-        Config = this.config,
-        payload = args.payload || {},
-        query = args.query || {},
-        implicit = (query.implicit === true);
+    options = options || {};
 
-    var self = this,
-        multi = true,
-        assets = [],
-        files = [],
-        items = [];
+    var Api = this.api;
 
-    // Can create 1 or many assets at once.
-    if (payload.items) {
-
-        payload.items.forEach(function (item) {
-
-            files.push(item.file);
-            delete item.file;
-
-            items.push(item);
-        });
-
-    } else if (payload.file) {
-
-        // Can't have that in there...
-        files.push(payload.file);
-        delete payload.file;
-
-        items.push(payload);
-        multi = false;
-
-    } else {
-
-        return done(Boom.badRequest('No files uploaded'));
-    }
-
-    this._generateKeys(files, function (err) {
+    this._fileToAsset(file, options, function (err, asset) {
 
         if (err) return done(err);
 
-        // Save our files, always returns an array.
-        Storage.Local.save(files, function (err, files) {
+        if (asset.storage) {
 
-            if (err) return done(Boom.badImplementation(err.message));
+            // Queue everything up.
+            Api.Base.enqueue(asset, 'asset.created', function (err) {
 
-            var options = {
-                assets: assets,
-                items: items,
-                implicit: implicit
-            };
-
-            self._filesToAssets(files, options, function (err) {
-
-                if (err) return done(err);
-
-                // Queue everything up.
-                Api.Base.enqueue(assets, 'asset.created', function (err) {
-
-                    if (err) return done(err);
-
-                    done(err, multi ? assets : assets[0]);
-                });
+                done(err, err ? null : asset);
             });
+
+        } else {
+
+            done(null, asset);
+        }
+    });
+};
+
+/*
+    Storing a file requires an existing asset, which provides
+    a key for storage. If the storage completes this method
+    returns the updated, complete asset and triggers the `asset.created`
+    task.
+*/
+Assets.prototype.storeFile = function (args, done) {
+
+    var self = this,
+        Models = this.models,
+        Storage = this.storage,
+        headers = args.headers,
+        params = args.params || {},
+        fileStream = args.payload;
+
+    if (!fileStream) {
+
+        return done(Boom.badRequest('No asset id provided or no file present'));
+    }
+
+    var file = {
+        filename: headers['x-file-name'],
+        bytes: headers['x-file-size'],
+        createdAt: new Date(),
+    };
+
+    this._generateUniqueKey(file, function (err) {
+
+        Storage.Local.save(fileStream, file, function (err, file) {
+
+            if (err) return done(err);
+
+            self._finalizeFile(file, null, done);
         });
     });
 };
+
+Assets.prototype.create = function (args, done) {
+
+    var self = this,
+        Storage = this.storage,
+        payload = args.payload || {},
+        query = args.query || {},
+        implicit = (query.implicit === true),
+        file = payload.file,
+        store;
+
+    if (file) {
+
+        item = payload;
+        delete item.file;
+
+        if (file.path) {
+            store = true;
+        }
+
+    } else {
+
+        return done(Boom.badRequest('No file uploaded'));
+    }
+
+    var options = {
+        item: item,
+        implicit: implicit
+    };
+
+    this._generateUniqueKey(file, function (err) {
+
+        if (err) return done(err);
+
+        if (store) {
+
+            // Save our files
+            Storage.S3.save(file, function (err, file) {
+
+                // Always returns an array.
+                self._finalizeFile(file, options, done);
+            });
+
+        } else {
+
+            // Just creating an asset object, but the file isn't
+            // yet ready, so don't queue it.
+            self._finalizeFile(file, options, done);
+        }
+    });
+};
+
+// Assets.prototype.create = function (args, done) {
+
+//     var Models = this.models,
+//         Api = this.api,
+//         Storage = this.storage,
+//         Config = this.config,
+//         payload = args.payload || {},
+//         query = args.query || {},
+//         implicit = (query.implicit === true);
+
+//     var self = this,
+//         multi = true,
+//         assets = [],
+//         files = [],
+//         items = [];
+
+//     // TODO: Only supporting one at a time right now!
+//     //
+//     // Can create 1 or many assets at once.
+//     // if (payload.items) {
+
+//     //     payload.items.forEach(function (item) {
+
+//     //         files.push(item.file);
+//     //         delete item.file;
+
+//     //         items.push(item);
+//     //     });
+
+//     // } else if (payload.file) {
+//     console.log(payload);
+//     if (payload.file) {
+//         // Can't have that in there...
+//         files.push(payload.file);
+//         delete payload.file;
+
+//         items.push(payload);
+//         multi = false;
+
+//     } else {
+
+//         return done(Boom.badRequest('No files uploaded'));
+//     }
+
+//     this._generateKeys(files, function (err) {
+
+//         if (err) return done(err);
+
+//         // Save our files, always returns an array.
+//         Storage.Local.save(files, function (err, files) {
+
+//             if (err) return done(Boom.badImplementation(err.message));
+
+//             var options = {
+//                 assets: assets,
+//                 items: items,
+//                 implicit: implicit
+//             };
+
+//             self._filesToAssets(files, options, function (err) {
+
+//                 if (err) return done(err);
+
+//                 // Queue everything up.
+//                 Api.Base.enqueue(assets, 'asset.created', function (err) {
+
+//                     if (err) return done(err);
+
+//                     done(err, multi ? assets : assets[0]);
+//                 });
+//             });
+//         });
+//     });
+// };
 
 Assets.prototype.read = function (args, done) {
 

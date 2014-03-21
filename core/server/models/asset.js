@@ -57,8 +57,7 @@ internals.init = function (model, next) {
         mimetype: String,
         bytes: Number,
         storage: {
-            type: String,
-            default: 'local'
+            type: String
         },
         key: {
             type: String,
@@ -95,6 +94,8 @@ internals.init = function (model, next) {
         description: {
             type: Schema.Text
         },
+        height: Number,
+        width: Number,
         data: {
             type: Schema.JSON,
             default: null

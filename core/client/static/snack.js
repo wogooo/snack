@@ -1,4 +1,4 @@
-/*! snack - v0.0.1 - 2014-03-18
+/*! snack - v0.0.1 - 2014-03-20
  * Copyright (c) 2014 ;
  * Licensed MIT
  */
@@ -143,28 +143,61 @@ angular.module('assets', ['resources.assets'])
     }
 ]);
 
-angular.module('resources.assets', ['ngResource'])
+angular.module('resources.assets', ['ur.file', 'ngResource'])
 
 .factory('AssetsResource', ['$resource',
+
     function ($resource) {
 
-        var defaultParams = {
-            id: '@id'
-        };
+        function AssetsResourceFactory($scope) {
 
-        var actions = {
-            list: {
-                method: 'GET'
-            },
-            find: {
-                method: 'GET'
-            },
-            update: {
-                method: 'PUT'
+            var defaultParams = {
+                id: '@id'
+            };
+
+            var actions = {
+                list: {
+                    method: 'GET'
+                },
+                find: {
+                    method: 'GET'
+                },
+                update: {
+                    method: 'PUT'
+                }
+            };
+
+            var AssetsResource = $resource('/api/v1/assets/:id.json', defaultParams, actions);
+            var Files = $resource('/api/v1/files');
+
+            if ($scope) {
+
+                angular.extend($scope, {
+
+                    asset: {},
+                    file: {},
+
+                    upload: function (file) {
+
+                        // assetsResource.file = {
+                        //     filename: file.name,
+                        //     bytes: file.size,
+                        //     mimetype: file.type
+                        // };
+
+                        // assetsResource.$save(function () {
+                            Files.prototype.$save.call(file, function (self, headers) {
+                                console.log(self, headers);
+                            });
+                        // });
+                    }
+                });
             }
-        };
 
-        return $resource('/api/v1/assets/:id.json', defaultParams, actions);
+            return AssetsResource;
+        }
+
+        return AssetsResourceFactory;
     }
 ]);
 
@@ -602,7 +635,7 @@ angular.module('app').constant('I18N.MESSAGES', {
     'login.error.serverError': "There was a problem with authenticating: {{exception}}."
 });
 
-angular.module('posts', ['resources.posts'])
+angular.module('posts', ['resources.posts', 'resources.assets'])
 
 .config(['$routeProvider',
     function ($routeProvider) {
@@ -612,7 +645,7 @@ angular.module('posts', ['resources.posts'])
             resolve: {
                 post: ['PostsResource',
                     function (PostsResource) {
-                        return new PostsResource;
+                        return new PostsResource();
                     }
                 ]
             }
@@ -660,8 +693,8 @@ angular.module('posts', ['resources.posts'])
     }
 ])
 
-.controller('PostsEditCtrl', ['$scope', '$routeParams', '$location', 'i18nNotifications', 'post',
-    function ($scope, $routeParams, $location, i18nNotifications, post) {
+.controller('PostsEditCtrl', ['$scope', '$routeParams', '$location', 'i18nNotifications', 'AssetsResource', 'post',
+    function ($scope, $routeParams, $location, i18nNotifications, AssetsResource, post) {
 
         $scope.post = post;
 
@@ -687,17 +720,68 @@ angular.module('posts', ['resources.posts'])
             });
         };
 
-        // $scope.onError = function () {
-        //     i18nNotifications.pushForCurrentRoute('crud.user.save.error', 'error');
-        // };
+        AssetsResource($scope);
 
-        // $scope.onRemove = function (user) {
-        //     i18nNotifications.pushForNextRoute('crud.user.remove.success', 'success', {
-        //         id: user.$id()
-        //     });
-        //     $location.path('/admin/users');
-        // };
+        // var uploader = $fileUploader.create({
+        //     scope: $scope,
+        //     url: '/api/v1/assets',
+        //     formData: [{
+        //         title: 'test uploader'
+        //     }],
+        //     filters: [
 
+        //         function (item) {
+        //             console.info('filter1', item);
+        //             return true;
+        //         }
+        //     ]
+        // });
+
+        // $scope.uploader = uploader;
+
+        // uploader.bind('afteraddingfile', function (event, item) {
+        //     console.info('After adding a file', item);
+        // });
+
+        // uploader.bind('whenaddingfilefailed', function (event, item) {
+        //     console.info('When adding a file failed', item);
+        // });
+
+        // uploader.bind('afteraddingall', function (event, items) {
+        //     console.info('After adding all files', items);
+        // });
+
+        // uploader.bind('beforeupload', function (event, item) {
+        //     console.info('Before upload', item);
+        // });
+
+        // uploader.bind('progress', function (event, item, progress) {
+        //     console.info('Progress: ' + progress, item);
+        // });
+
+        // uploader.bind('success', function (event, xhr, item, response) {
+        //     console.info('Success', xhr, item, response);
+        // });
+
+        // uploader.bind('cancel', function (event, xhr, item) {
+        //     console.info('Cancel', xhr, item);
+        // });
+
+        // uploader.bind('error', function (event, xhr, item, response) {
+        //     console.info('Error', xhr, item, response);
+        // });
+
+        // uploader.bind('complete', function (event, xhr, item, response) {
+        //     console.info('Complete', xhr, item, response);
+        // });
+
+        // uploader.bind('progressall', function (event, progress) {
+        //     console.info('Total progress: ' + progress);
+        // });
+
+        // uploader.bind('completeall', function (event, items) {
+        //     console.info('Complete all', items);
+        // });
     }
 ]);
 
@@ -871,8 +955,18 @@ angular.module("posts/posts-edit.tpl.html", []).run(["$templateCache", function(
     "    <textarea class=\"form-control\" name=\"body\" rows=\"10\" ng-model=\"post.body\"></textarea>\n" +
     "  </div>\n" +
     "\n" +
-    "  <div class=\"form-group\">\n" +
-    "    <input type=\"file\" class=\"form-control\" />\n" +
+    "  <div class=\"panel panel-default\">\n" +
+    "    <div class=\"panel-heading\">\n" +
+    "      <h4 class=\"panel-title\">Assets</h4>\n" +
+    "    </div>\n" +
+    "    <div class=\"panel-body\">\n" +
+    "      <div class=\"form-group\">\n" +
+    "        <label>Title</label>\n" +
+    "        <input type=\"text\" class=\"form-control\" name=\"title\" ng-model=\"asset.title\" />\n" +
+    "        <label>File</label>\n" +
+    "        <input type=\"file\" ng-model=\"file\" change=\"upload(file)\" />\n" +
+    "      </div>\n" +
+    "    </div>\n" +
     "  </div>\n" +
     "\n" +
     "  <hr>\n" +

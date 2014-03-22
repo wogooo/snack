@@ -1,7 +1,7 @@
 <table class="table table-striped-rows table-hover">
   <thead>
     <tr>
-        <th>Title</th>
+        <th>Filename</th>
         <th>Kind</th>
         <th>Created</th>
         <th>Actions</th>
@@ -9,7 +9,7 @@
   </thead>
   <tbody>
   <tr ng-repeat="asset in assetList.items">
-    <td>{{asset.title}}</td>
+    <td>{{asset.filename}}</td>
     <td>{{asset.kind}}</td>
     <td>{{asset.createdAt | date:'yyyy-MM-dd h:mma'}}</td>
     <td>

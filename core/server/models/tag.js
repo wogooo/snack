@@ -7,7 +7,29 @@ var internals = {};
 
 internals.modelName = modelName;
 
-internals.init = function (model, next) {
+internals.relations = function (model, next) {
+
+    var models = model.models;
+    var Model = models[modelName];
+
+    Model.hasAndBelongsToMany('posts', {
+        model: models.Post
+    });
+
+    Model.hasAndBelongsToMany('assets', {
+        model: models.Asset
+    });
+
+    Model.hasAndBelongsToMany('pages', {
+        model: models.Page
+    });
+
+    next();
+};
+
+internals.register = function (model, next) {
+
+    model.after(internals.relations);
 
     var server = model.server;
     var schema = model.schema;
@@ -21,12 +43,14 @@ internals.init = function (model, next) {
         },
         type: {
             type: String,
+            length: 255,
             default: modelName.toLowerCase()
         },
         kind: {
             index: true,
             type: String,
-            default: 'tags'
+            length: 255,
+            default: 'tag'
         },
         key: {
             index: true,
@@ -99,4 +123,4 @@ internals.init = function (model, next) {
     next();
 };
 
-exports.init = internals.init;
+exports.register = internals.register;

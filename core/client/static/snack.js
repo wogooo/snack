@@ -1,4 +1,4 @@
-/*! snack - v0.0.1 - 2014-03-20
+/*! snack - v0.0.1 - 2014-03-22
  * Copyright (c) 2014 ;
  * Licensed MIT
  */
@@ -143,61 +143,230 @@ angular.module('assets', ['resources.assets'])
     }
 ]);
 
-angular.module('resources.assets', ['ur.file', 'ngResource'])
+angular.module('models.asset', ['ur.file', 'ngResource'])
 
-.factory('AssetsResource', ['$resource',
+.factory('Asset', ['$resource', '$q',
 
-    function ($resource) {
+    function ($resource, $q) {
 
-        function AssetsResourceFactory($scope) {
+        var apiUrl = '/api/v1/assets/:id.json';
 
-            var defaultParams = {
-                id: '@id'
-            };
+        var defaultParams = {
+            id: '@id'
+        };
 
-            var actions = {
-                list: {
-                    method: 'GET'
-                },
-                find: {
-                    method: 'GET'
-                },
-                update: {
-                    method: 'PUT'
-                }
-            };
-
-            var AssetsResource = $resource('/api/v1/assets/:id.json', defaultParams, actions);
-            var Files = $resource('/api/v1/files');
-
-            if ($scope) {
-
-                angular.extend($scope, {
-
-                    asset: {},
-                    file: {},
-
-                    upload: function (file) {
-
-                        // assetsResource.file = {
-                        //     filename: file.name,
-                        //     bytes: file.size,
-                        //     mimetype: file.type
-                        // };
-
-                        // assetsResource.$save(function () {
-                            Files.prototype.$save.call(file, function (self, headers) {
-                                console.log(self, headers);
-                            });
-                        // });
-                    }
-                });
+        var actions = {
+            update: {
+                method: 'PUT'
             }
+        };
 
-            return AssetsResource;
-        }
+        var Asset = $resource(apiUrl, defaultParams, actions);
+        var Files = $resource('/api/v1/files');
 
-        return AssetsResourceFactory;
+        Asset.prototype.$upload = function (file) {
+
+            var asset = this;
+            var deferred = $q.defer();
+
+            Files.prototype.$save.call(file, function (self, headers) {
+
+                angular.extend(asset, self);
+                deferred.resolve();
+            });
+
+            return deferred.promise;
+        };
+
+        return Asset;
+    }
+]);
+
+angular.module('models.assetList', ['ngResource', 'models.asset'])
+
+.factory('AssetList', ['$resource', 'Asset',
+
+    function ($resource, Asset) {
+
+        var apiUrl = '/api/v1/assets.json';
+
+        var defaultParams = {};
+
+        var actions = {
+            get: {
+                method: 'GET',
+                interceptor: {
+                    response: function (response) {
+
+                        var resource = response.resource;
+
+                        // Vivify posts in list
+                        for (var i = 0; i < resource.items.length; i++) {
+                            resource.items[i] = new Asset(resource.items[i]);
+                        }
+
+                        return response;
+                    },
+                    responseError: function (response) {
+                        console.log('asset interceptor err');
+                    }
+                }
+            }
+        };
+
+        return $resource(apiUrl, defaultParams, actions);
+    }
+]);
+
+angular.module('models.post', ['ngResource', 'models.asset'])
+
+.factory('Post', ['$resource', '$q', 'Asset',
+
+    function ($resource, $q, Asset) {
+
+        var apiUrl = '/api/v1/posts/:id.json';
+
+        var defaultParams = {
+            id: '@id'
+        };
+
+        var actions = {
+            update: {
+                method: 'PUT',
+                interceptor: {
+                    response: function (response) {
+
+                        var resource = response.resource;
+
+                        // Vivify assets in post
+                        for (var i = 0; i < resource.assets.length; i++) {
+                            resource.assets[i] = new Asset(resource.assets[i]);
+                        }
+
+                        return response;
+                    },
+                    responseError: function (response) {
+                        console.log('interceptor err');
+                    }
+                }
+            },
+            get: {
+                method: 'GET',
+                interceptor: {
+                    response: function (response) {
+
+                        var resource = response.resource;
+
+                        // Vivify assets in post
+                        for (var i = 0; i < resource.assets.length; i++) {
+                            resource.assets[i] = new Asset(resource.assets[i]);
+                        }
+
+                        return response;
+                    },
+                    responseError: function (response) {
+                        console.log('interceptor err');
+                    }
+                }
+            }
+        };
+
+        var Post = $resource(apiUrl, defaultParams, actions);
+
+        Post.prototype.$createAsset = function (file) {
+
+            var post = this;
+            var asset = new Asset();
+            var deferred = $q.defer();
+
+            post.assets = post.assets || [];
+
+            asset.$upload(file).then(function () {
+
+                // Bring the asset into the post.
+                post.assets.push(asset);
+
+                if (post.id) {
+
+                    // Persist the association.
+                    post.$update();
+                }
+
+                deferred.resolve();
+            });
+
+            return deferred.promise;
+        };
+
+        return Post;
+    }
+]);
+
+angular.module('models.postList', ['ngResource', 'models.post'])
+
+.factory('PostList', ['$resource', 'Post',
+
+    function ($resource, Post) {
+
+        var apiUrl = '/api/v1/posts.json';
+
+        var defaultParams = {
+            id: '@id'
+        };
+
+        var actions = {
+            get: {
+                method: 'GET',
+                interceptor: {
+                    response: function (response) {
+
+                        var resource = response.resource;
+
+                        // Vivify posts in list
+                        for (var i = 0; i < resource.items.length; i++) {
+                            resource.items[i] = new Post(resource.items[i]);
+                        }
+
+                        return response;
+                    },
+                    responseError: function (response) {
+                        console.log('interceptor err');
+                    }
+                }
+            }
+        };
+
+        return $resource(apiUrl, defaultParams, actions);
+    }
+]);
+
+angular.module('resources.assets', ['models.asset', 'models.assetList'])
+
+.factory('AssetsResource', ['Asset', 'AssetList',
+
+    function (Asset, AssetList) {
+
+        var Resource = function (data) {
+
+            if (data.type === 'asset') {
+
+                return new Asset(data);
+
+            } else if (data.type === 'assetList') {
+
+                return new AssetList(data);
+            }
+        };
+
+        Resource.list = function (query) {
+            return AssetList.get(query);
+        };
+
+        Resource.find = function (query) {
+            return Asset.get(query);
+        };
+
+        return Resource;
     }
 ]);
 
@@ -401,30 +570,39 @@ angular.module('resources.base', ['ngResource'])
 //     }
 // ]);
 
-angular.module('resources.posts', ['ngResource'])
+angular.module('resources.posts', ['models.post', 'models.postList'])
 
-.factory('PostsResource', ['$resource',
-    function ($resource) {
+.factory('PostsResource', ['Post', 'PostList',
 
-        var defaultParams = {
-            id: '@id'
-            // bust: function () { return Date.now(); }
-        };
+    function (Post, PostList) {
 
-        var actions = {
-            list: {
-                method: 'GET'
-            },
-            find: {
-                method: 'GET'
-            },
-            update: {
-                method: 'PUT'
+        // function PostsResourceFactory() {
+
+        var Resource = function (data) {
+
+            if (data.type === 'post') {
+
+                return new Post(data);
+
+            } else if (data.type === 'postList') {
+
+                return new PostList(data);
             }
         };
 
-        return $resource('/api/v1/posts/:id.json', defaultParams, actions);
+        Resource.list = function (query) {
+            return PostList.get(query);
+        };
+
+        Resource.find = function (query) {
+            return Post.get(query);
+        };
+
+        return Resource;
     }
+
+    // return PostsResourceFactory();
+    // }
 ]);
 
 // angular.module('resources.projects').factory('Projects', ['mongolabResource',
@@ -635,7 +813,7 @@ angular.module('app').constant('I18N.MESSAGES', {
     'login.error.serverError': "There was a problem with authenticating: {{exception}}."
 });
 
-angular.module('posts', ['resources.posts', 'resources.assets'])
+angular.module('posts', ['resources.posts', 'resources.assets', 'textAngular'])
 
 .config(['$routeProvider',
     function ($routeProvider) {
@@ -645,7 +823,7 @@ angular.module('posts', ['resources.posts', 'resources.assets'])
             resolve: {
                 post: ['PostsResource',
                     function (PostsResource) {
-                        return new PostsResource();
+                        return new PostsResource({ type: 'post' });
                     }
                 ]
             }
@@ -681,6 +859,7 @@ angular.module('posts', ['resources.posts', 'resources.assets'])
 
 .controller('PostsListCtrl', ['$scope', '$location', 'postList',
     function ($scope, $location, postList) {
+
         $scope.postList = postList;
 
         $scope.editPost = function (post) {
@@ -693,8 +872,8 @@ angular.module('posts', ['resources.posts', 'resources.assets'])
     }
 ])
 
-.controller('PostsEditCtrl', ['$scope', '$routeParams', '$location', 'i18nNotifications', 'AssetsResource', 'post',
-    function ($scope, $routeParams, $location, i18nNotifications, AssetsResource, post) {
+.controller('PostsEditCtrl', ['$scope', '$modal', '$routeParams', '$location', 'i18nNotifications', 'post',
+    function ($scope, $modal, $routeParams, $location, i18nNotifications, post) {
 
         $scope.post = post;
 
@@ -720,7 +899,32 @@ angular.module('posts', ['resources.posts', 'resources.assets'])
             });
         };
 
-        AssetsResource($scope);
+        $scope.file = {};
+
+        $scope.createAsset = function (file) {
+            post.$createAsset(file).then(function () {
+                $scope.file = {};
+            });
+        };
+
+        $scope.editAsset = function (asset) {
+
+            var modalInstance = $modal.open({
+                templateUrl: 'assets/assets-edit.tpl.html',
+                controller: 'AssetsEditCtrl',
+                resolve: {
+                    asset: function () {
+                        return asset;
+                    }
+                }
+            });
+
+            // modalInstance.result.then(function (selectedItem) {
+            //     $scope.selected = selectedItem;
+            // }, function () {
+            //     $log.info('Modal dismissed at: ' + new Date());
+            // });
+        };
 
         // var uploader = $fileUploader.create({
         //     scope: $scope,
@@ -793,56 +997,52 @@ angular.module("assets/assets-edit.tpl.html", []).run(["$templateCache", functio
     "\n" +
     "  <legend>Asset</legend>\n" +
     "\n" +
+    "  <div class=\"well well-lg\">\n" +
+    "    <figure class=\"row\">\n" +
+    "      <div class=\"col-md-12\">\n" +
+    "        <img class=\"img-thumbnail img-responsive center-block\" ng-src=\"{{asset.url}}\" />\n" +
+    "      </div>\n" +
+    "    </figure>\n" +
+    "  </div>\n" +
+    "\n" +
+    "  <div class=\"well well-lg\">\n" +
+    "    <dl>\n" +
+    "      <div class=\"row\">\n" +
+    "        <div class=\"col-xs-6\">\n" +
+    "          <dt>Filename</dt>\n" +
+    "          <dd>{{asset.filename}}</dd>\n" +
+    "          <dt>Size</dt>\n" +
+    "          <dd>{{asset.bytes}}</dd>\n" +
+    "          <dt>Mime</dt>\n" +
+    "          <dd>{{asset.mimetype}}</dd>\n" +
+    "          <dt>Storage</dt>\n" +
+    "          <dd>{{asset.storage}}</dd>\n" +
+    "        </div>\n" +
+    "\n" +
+    "        <div class=\"col-xs-6\">\n" +
+    "          <dt>Type</dt>\n" +
+    "          <dd>{{asset.type}}</dd>\n" +
+    "          <dt>Height</dt>\n" +
+    "          <dd>{{asset.height}}</dd>\n" +
+    "          <dt>Width</dt>\n" +
+    "          <dd>{{asset.width}}</dd>\n" +
+    "          <dt>Created</dt>\n" +
+    "          <dd>{{asset.createdAt}}</dd>\n" +
+    "        </div>\n" +
+    "      </div>\n" +
+    "    </dl>\n" +
+    "  </div>\n" +
+    "\n" +
     "  <div class=\"form-group\">\n" +
     "    <label>Title</label>\n" +
     "    <input type=\"text\" class=\"form-control\" name=\"title\" ng-model=\"asset.title\" />\n" +
     "  </div>\n" +
     "  <div class=\"form-group\">\n" +
     "    <label>Description</label>\n" +
-    "    <textarea class=\"form-control\" name=\"description\" rows=\"10\" ng-model=\"asset.description\"></textarea>\n" +
+    "    <textarea class=\"form-control\" name=\"description\" rows=\"2\" ng-model=\"asset.description\"></textarea>\n" +
     "  </div>\n" +
     "\n" +
-    "  <div class=\"panel panel-default\">\n" +
-    "    <div class=\"panel-heading\">\n" +
-    "      <h4 class=\"panel-title\">File</h4>\n" +
-    "    </div>\n" +
-    "    <div class=\"panel-body\">\n" +
-    "\n" +
-    "      <figure class=\"row\">\n" +
-    "        <div class=\"col-md-12\">\n" +
-    "          <img class=\"img-thumbnail img-responsive center-block\" ng-src=\"{{asset.url}}\" />\n" +
-    "        </div>\n" +
-    "      </figure>\n" +
-    "\n" +
-    "      <dl class=\"well\">\n" +
-    "        <div class=\"row\">\n" +
-    "          <div class=\"col-xs-6\">\n" +
-    "            <dt>Filename</dt>\n" +
-    "            <dd>{{asset.filename}}</dd>\n" +
-    "            <dt>Size</dt>\n" +
-    "            <dd>{{asset.bytes}}</dd>\n" +
-    "            <dt>Mime</dt>\n" +
-    "            <dd>{{asset.mimetype}}</dd>\n" +
-    "            <dt>Storage</dt>\n" +
-    "            <dd>{{asset.storage}}</dd>\n" +
-    "          </div>\n" +
-    "\n" +
-    "          <div class=\"col-xs-6\">\n" +
-    "            <dt>Type</dt>\n" +
-    "            <dd>{{asset.type}}</dd>\n" +
-    "            <dt>Data</dt>\n" +
-    "            <dd ng-repeat=\"(prop, val) in asset.data\">\n" +
-    "              {{prop}}: {{val}}\n" +
-    "            </dd>\n" +
-    "            <dt>Created</dt>\n" +
-    "            <dd>{{asset.createdAt}}</dd>\n" +
-    "          </div>\n" +
-    "        </div>\n" +
-    "      </dl>\n" +
-    "    </div>\n" +
-    "  </div>\n" +
-    "\n" +
-    "  <div class=\"panel panel-default\">\n" +
+    "  <div class=\"panel panel-default\" ng-show=\"asset.posts\">\n" +
     "\n" +
     "    <div class=\"panel-heading\">\n" +
     "      <h4 class=\"panel-title\">\n" +
@@ -877,7 +1077,7 @@ angular.module("assets/assets-list.tpl.html", []).run(["$templateCache", functio
     "<table class=\"table table-striped-rows table-hover\">\n" +
     "  <thead>\n" +
     "    <tr>\n" +
-    "        <th>Title</th>\n" +
+    "        <th>Filename</th>\n" +
     "        <th>Kind</th>\n" +
     "        <th>Created</th>\n" +
     "        <th>Actions</th>\n" +
@@ -885,7 +1085,7 @@ angular.module("assets/assets-list.tpl.html", []).run(["$templateCache", functio
     "  </thead>\n" +
     "  <tbody>\n" +
     "  <tr ng-repeat=\"asset in assetList.items\">\n" +
-    "    <td>{{asset.title}}</td>\n" +
+    "    <td>{{asset.filename}}</td>\n" +
     "    <td>{{asset.kind}}</td>\n" +
     "    <td>{{asset.createdAt | date:'yyyy-MM-dd h:mma'}}</td>\n" +
     "    <td>\n" +
@@ -911,7 +1111,7 @@ angular.module("header.tpl.html", []).run(["$templateCache", function($templateC
     "  <div class=\"container\">\n" +
     "    <!-- Brand and toggle get grouped for better mobile display -->\n" +
     "    <div class=\"navbar-header\">\n" +
-    "      <button type=\"button\" class=\"navbar-toggle\" data-toggle=\"collapse\" data-target=\"#navbar-collapse\">\n" +
+    "      <button ng-init=\"navCollapsed = true\" ng-click=\"navCollapsed = !navCollapsed\" type=\"button\" class=\"navbar-toggle\">\n" +
     "        <span class=\"sr-only\">Toggle navigation</span>\n" +
     "        <span class=\"icon-bar\"></span>\n" +
     "        <span class=\"icon-bar\"></span>\n" +
@@ -922,7 +1122,7 @@ angular.module("header.tpl.html", []).run(["$templateCache", function($templateC
     "    </div>\n" +
     "\n" +
     "    <!-- Collect the nav links, forms, and other content for toggling -->\n" +
-    "    <div class=\"collapse navbar-collapse\" id=\"navbar-collapse\">\n" +
+    "    <div class=\"collapse navbar-collapse\" id=\"navbar-collapse\" collapse=\"navCollapsed\">\n" +
     "      <ul class=\"nav navbar-nav\">\n" +
     "        <li><a href=\"/admin/posts\">Posts</a></li>\n" +
     "        <li><a href=\"/admin/assets\">Assets</a></li>\n" +
@@ -946,27 +1146,58 @@ angular.module("posts/posts-edit.tpl.html", []).run(["$templateCache", function(
   $templateCache.put("posts/posts-edit.tpl.html",
     "<form name=\"form\" novalidate>\n" +
     "  <legend>Post</legend>\n" +
-    "  <div class=\"form-group\">\n" +
-    "    <label>Title</label>\n" +
-    "    <input type=\"text\" class=\"form-control\" name=\"title\" ng-model=\"post.title\" />\n" +
-    "  </div>\n" +
-    "  <div class=\"form-group\">\n" +
-    "    <label>Body</label>\n" +
-    "    <textarea class=\"form-control\" name=\"body\" rows=\"10\" ng-model=\"post.body\"></textarea>\n" +
-    "  </div>\n" +
     "\n" +
-    "  <div class=\"panel panel-default\">\n" +
-    "    <div class=\"panel-heading\">\n" +
-    "      <h4 class=\"panel-title\">Assets</h4>\n" +
-    "    </div>\n" +
-    "    <div class=\"panel-body\">\n" +
+    "  <div class=\"row\">\n" +
+    "    <div class=\"col-sm-8\">\n" +
     "      <div class=\"form-group\">\n" +
-    "        <label>Title</label>\n" +
-    "        <input type=\"text\" class=\"form-control\" name=\"title\" ng-model=\"asset.title\" />\n" +
-    "        <label>File</label>\n" +
-    "        <input type=\"file\" ng-model=\"file\" change=\"upload(file)\" />\n" +
+    "        <label>Headline</label>\n" +
+    "        <text-angular name=\"headline\" ng-model=\"post.headline\" ta-toolbar-group-class=\"btn-group btn-group-sm\" ta-toolbar=\"[['bold','italics']]\"></text-angular>\n" +
+    "      </div>\n" +
+    "      <div class=\"form-group\">\n" +
+    "        <label>Body</label>\n" +
+    "        <text-angular\n" +
+    "          name=\"body\"\n" +
+    "          ng-model=\"post.body\"\n" +
+    "          ta-toolbar-group-class=\"btn-group btn-group-sm\"\n" +
+    "          ta-text-editor-class=\"ta-form-textarea\"\n" +
+    "          ta-html-editor-class=\"ta-form-textarea\"\n" +
+    "          ta-toolbar=\"[['h1','h2','h3'],['p','ol','ul'],['bold','italics', 'underline']]\"></text-angular>\n" +
     "      </div>\n" +
     "    </div>\n" +
+    "\n" +
+    "    <div class=\"col-sm-4\">\n" +
+    "\n" +
+    "      <div class=\"panel panel-default\">\n" +
+    "        <div class=\"panel-heading\">\n" +
+    "          <h4 class=\"panel-title\">Tags</h4>\n" +
+    "        </div>\n" +
+    "        <div class=\"panel-body\"></div>\n" +
+    "      </div>\n" +
+    "\n" +
+    "      <div class=\"panel panel-default\">\n" +
+    "        <div class=\"panel-heading\">\n" +
+    "          <h4 class=\"panel-title\">Assets</h4>\n" +
+    "        </div>\n" +
+    "        <div class=\"panel-body\">\n" +
+    "\n" +
+    "          <div class=\"row\">\n" +
+    "            <div ng-repeat=\"asset in post.assets\">\n" +
+    "              <div class=\"col-xs-6 col-md-4\">\n" +
+    "                <a class=\"thumbnail\" ng-click=\"editAsset(asset)\">\n" +
+    "                  <img ng-src=\"{{asset.url}}\" />\n" +
+    "                </a>\n" +
+    "              </div>\n" +
+    "            </div>\n" +
+    "          </div>\n" +
+    "\n" +
+    "          <div class=\"form-group\">\n" +
+    "            <label>File</label>\n" +
+    "            <input type=\"file\" ng-model=\"file\" change=\"createAsset(file)\" />\n" +
+    "          </div>\n" +
+    "        </div>\n" +
+    "      </div>\n" +
+    "    </div>\n" +
+    "\n" +
     "  </div>\n" +
     "\n" +
     "  <hr>\n" +
@@ -975,6 +1206,7 @@ angular.module("posts/posts-edit.tpl.html", []).run(["$templateCache", function(
     "  <button ng-click=\"remove()\" class=\"btn btn-large btn-danger\">Remove</button>\n" +
     "\n" +
     "</form>\n" +
+    "\n" +
     "");
 }]);
 

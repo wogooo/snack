@@ -10,21 +10,27 @@ internals.relations = function (model, next) {
 
     var models = model.models;
     var Model = models[modelName];
-    // Model.hasAndBelongsToMany('authors', {
-    //     model: models.User
-    // });
 
-    // Model.hasAndBelongsToMany('tags', {
-    //     model: models.Tag
-    // });
+    Model.belongsTo('owner', {
+        model: models.User
+    });
 
-    Model.hasAndBelongsToMany('posts');
+    Model.hasAndBelongsToMany('tags', {
+        model: models.Tag
+    });
+
+    Model.hasAndBelongsToMany('posts', {
+        model: models.Post
+    });
+
+    Model.hasAndBelongsToMany('pages', {
+        model: models.Page
+    });
 
     next();
 };
 
-
-internals.init = function (model, next) {
+internals.register = function (model, next) {
 
     model.after(internals.relations);
 
@@ -42,6 +48,7 @@ internals.init = function (model, next) {
         },
         type: {
             type: String,
+            length: 255,
             default: modelName.toLowerCase()
         },
         kind: {
@@ -100,10 +107,6 @@ internals.init = function (model, next) {
             type: Schema.JSON,
             default: null
         },
-        _removeLocal_: {
-            type: Boolean,
-            default: false
-        },
         _version_: {
             type: Number,
             default: Date.now,
@@ -121,7 +124,6 @@ internals.init = function (model, next) {
         message: 'Key is not unique.'
     });
 
-
     Model.beforeValidate = function (next, data) {
 
         // Want the updatedAt and version identical
@@ -132,7 +134,6 @@ internals.init = function (model, next) {
 
         next();
     };
-
 
     Model.beforeCreate = function (next, data) {
 
@@ -173,4 +174,4 @@ internals.init = function (model, next) {
     next();
 };
 
-exports.init = internals.init;
+exports.register = internals.register;

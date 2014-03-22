@@ -11,7 +11,7 @@ internals.Base = function (options) {
     this.server = options.server;
     this.config = options.config;
     this.api = options.api;
-    this.models = options.models.models;
+    this.models = options.models;
 };
 
 internals.Base.prototype._apiEndpoint = function (type, id) {
@@ -206,6 +206,12 @@ internals.Base.prototype.getRelationInfo = function (modelName) {
     });
 
     return relationInfo;
+};
+
+internals.Base.prototype._getRelationNames = function (modelName) {
+
+    var relationInfo = this.getRelationInfo(modelName);
+    return Object.keys(relationInfo);
 };
 
 internals.Base.prototype.loadRelations = function (model, done) {
@@ -511,7 +517,7 @@ internals.Base.prototype.findUniqueKey = function (modelName, keyBase, keyExt, k
     });
 };
 
-internals.listParams = function (options) {
+internals.Base.prototype.listParams = function (options) {
 
     var get = {
         order: 'createdAt',
@@ -545,6 +551,8 @@ internals.listParams = function (options) {
 
     if (options.relations) {
         get.include = options.relations.split(',');
+    } else if (options.modelName) {
+        get.include = this._getRelationNames(options.modelName);
     }
 
     return get;
@@ -591,7 +599,6 @@ module.exports = function (root) {
     var expose;
 
     expose = new internals.Base(root);
-    expose.listParams = internals.listParams;
     expose.readParams = internals.readParams;
 
     return expose;

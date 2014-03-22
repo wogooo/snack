@@ -145,6 +145,7 @@ module.exports = function (route) {
     // ----------------------
     // Assets
 
+    // Handle multipart uploads
     server.route({
         method: 'POST',
         path: '/api/v1/assets',
@@ -163,13 +164,15 @@ module.exports = function (route) {
         }
     });
 
+    // Handle JSON asset provisioning
     server.route({
         method: 'POST',
         path: '/api/v1/assets.json',
         config: {
             payload: {
                 output: 'data',
-                parse: true
+                parse: true,
+                allow: ['application/json', 'application/x-www-form-urlencoded']
             },
             handler: function (request, reply) {
 
@@ -180,14 +183,34 @@ module.exports = function (route) {
         }
     });
 
+    // Handle HTML5-style file uploads as streams (preferred)
+    // TODO: Consider explicit allows, or user-configurable allows.
     server.route({
         method: 'POST',
         path: '/api/v1/files',
         config: {
             payload: {
                 output: 'stream',
-                parse: true,
-                allow: ['image/jpeg', 'image/png']
+                parse: true
+                // allow: ['image/jpeg', 'image/png']
+            },
+            handler: function (request, reply) {
+
+                Api.Assets.storeFile(request, function (err, results) {
+                    reply(err ? err : results);
+                });
+            }
+        }
+    });
+
+    server.route({
+        method: 'PUT',
+        path: '/api/v1/files/{id}',
+        config: {
+            payload: {
+                output: 'stream',
+                parse: true
+                // allow: ['image/jpeg', 'image/png']
             },
             handler: function (request, reply) {
 

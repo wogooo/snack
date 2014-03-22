@@ -1,57 +1,29 @@
-angular.module('resources.assets', ['ur.file', 'ngResource'])
+angular.module('resources.assets', ['models.asset', 'models.assetList'])
 
-.factory('AssetsResource', ['$resource',
+.factory('AssetsResource', ['Asset', 'AssetList',
 
-    function ($resource) {
+    function (Asset, AssetList) {
 
-        function AssetsResourceFactory($scope) {
+        var Resource = function (data) {
 
-            var defaultParams = {
-                id: '@id'
-            };
+            if (data.type === 'asset') {
 
-            var actions = {
-                list: {
-                    method: 'GET'
-                },
-                find: {
-                    method: 'GET'
-                },
-                update: {
-                    method: 'PUT'
-                }
-            };
+                return new Asset(data);
 
-            var AssetsResource = $resource('/api/v1/assets/:id.json', defaultParams, actions);
-            var Files = $resource('/api/v1/files');
+            } else if (data.type === 'assetList') {
 
-            if ($scope) {
-
-                angular.extend($scope, {
-
-                    asset: {},
-                    file: {},
-
-                    upload: function (file) {
-
-                        // assetsResource.file = {
-                        //     filename: file.name,
-                        //     bytes: file.size,
-                        //     mimetype: file.type
-                        // };
-
-                        // assetsResource.$save(function () {
-                            Files.prototype.$save.call(file, function (self, headers) {
-                                console.log(self, headers);
-                            });
-                        // });
-                    }
-                });
+                return new AssetList(data);
             }
+        };
 
-            return AssetsResource;
-        }
+        Resource.list = function (query) {
+            return AssetList.get(query);
+        };
 
-        return AssetsResourceFactory;
+        Resource.find = function (query) {
+            return Asset.get(query);
+        };
+
+        return Resource;
     }
 ]);

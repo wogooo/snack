@@ -8,7 +8,7 @@ var internals = {};
 internals.Tags = function (options) {
 
     this.server = options.server;
-    this.models = options.models.models;
+    this.models = options.models;
     this.config = options.config;
     this.api = options.api;
     this.hooks = options.config().hooks;

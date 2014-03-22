@@ -2,6 +2,7 @@ var internals = {};
 
 var Fs = require('fs');
 var AWS = require('aws-sdk');
+var Url = require('url');
 
 var internals = {};
 
@@ -86,6 +87,7 @@ internals.S3.prototype.put = function (fileStream, fileData, done) {
         // res = { ETag: '"ec1c6e9a89c47eabd992445c27052e69"' }
         fileData.etag = res.ETag.replace('"', '');
         fileData.storage = 's3';
+        fileData.url = Url.resolve(settings.url, fileData.key);
 
         done(null, fileData);
     });
@@ -126,7 +128,7 @@ internals.S3.prototype.update = function (fileData, done) {
 /*
     Delete an object from S3 if it exists.
 */
-internals.S3.prototype.delete = function (fileKey, done) {
+internals.S3.prototype.destroy = function (fileKey, done) {
 
     var settings = this._settings;
     var client = this.client;
@@ -153,6 +155,7 @@ internals.S3.prototype.delete = function (fileKey, done) {
 
 module.exports = function (storage, next) {
 
+    var Providers = storage.providers;
     var Server = storage.server;
     var Snack = storage.snack;
     var Config = Snack.config;
@@ -168,7 +171,7 @@ module.exports = function (storage, next) {
             return next(err);
         }
 
-        storage.exports.S3 = {
+        Providers.S3 = {
             save: function (fileStream, fileData, cb) {
                 S3.put(fileStream, fileData, cb);
             },
@@ -178,8 +181,8 @@ module.exports = function (storage, next) {
             exists: function (fileKey, cb) {
                 S3.exists(fileKey, cb);
             },
-            delete: function (fileKey, cb) {
-                S3['delete'](fileKey, cb);
+            destroy: function (fileKey, cb) {
+                S3.destroy(fileKey, cb);
             }
         };
 

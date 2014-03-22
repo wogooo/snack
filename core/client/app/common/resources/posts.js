@@ -1,27 +1,36 @@
-angular.module('resources.posts', ['ngResource'])
+angular.module('resources.posts', ['models.post', 'models.postList'])
 
-.factory('PostsResource', ['$resource',
-    function ($resource) {
+.factory('PostsResource', ['Post', 'PostList',
 
-        var defaultParams = {
-            id: '@id'
-            // bust: function () { return Date.now(); }
-        };
+    function (Post, PostList) {
 
-        var actions = {
-            list: {
-                method: 'GET'
-            },
-            find: {
-                method: 'GET'
-            },
-            update: {
-                method: 'PUT'
+        // function PostsResourceFactory() {
+
+        var Resource = function (data) {
+
+            if (data.type === 'post') {
+
+                return new Post(data);
+
+            } else if (data.type === 'postList') {
+
+                return new PostList(data);
             }
         };
 
-        return $resource('/api/v1/posts/:id.json', defaultParams, actions);
+        Resource.list = function (query) {
+            return PostList.get(query);
+        };
+
+        Resource.find = function (query) {
+            return Post.get(query);
+        };
+
+        return Resource;
     }
+
+    // return PostsResourceFactory();
+    // }
 ]);
 
 // angular.module('resources.projects').factory('Projects', ['mongolabResource',

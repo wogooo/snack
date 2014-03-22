@@ -97,15 +97,25 @@ function urlPathForApi(api) {
 
     var urlPath = '';
 
-    var apiType = Inflection.pluralize(api.type).toLowerCase();
-    urlPath = snackConfig.api.basePath + '/v' + snackConfig.api.version + '/' + apiType;
+    var collection;
+
+    if (api.collection) {
+
+        collection = api.collection;
+
+    } else {
+
+        collection = Inflection.pluralize(api.type);
+    }
+
+    urlPath = snackConfig.api.basePath + '/v' + snackConfig.api.version + '/' + collection;
 
     if (api.id) {
         urlPath += '/' + api.id;
     }
 
-    if (api.format === 'json') {
-        urlPath += '.json';
+    if (api.format) {
+        urlPath += '.' + api.format;
     }
 
     if (api.ids) {

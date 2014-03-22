@@ -1,5 +1,6 @@
 var Hapi = require('hapi');
 var Utils = Hapi.utils;
+var HtmlStrip = require('htmlstrip-native').html_strip;
 var Schema = require('jugglingdb').Schema;
 var Uslug = require('uslug');
 
@@ -9,13 +10,12 @@ var internals = {};
 
 internals.modelName = modelName;
 
-internals.dependencies = [];
-
 internals.relations = function (model, next) {
 
     var models = model.models;
     var Model = models[modelName];
-    // Model.hasAndBelongsToMany('authors', {
+
+    // Model.belongsTo('owner', {
     //     model: models.User
     // });
 
@@ -30,7 +30,7 @@ internals.relations = function (model, next) {
     next();
 };
 
-internals.init = function (model, next) {
+internals.register = function (model, next) {
 
     model.after(internals.relations);
 
@@ -49,6 +49,9 @@ internals.init = function (model, next) {
         title: {
             type: String,
             length: 255
+        },
+        headline: {
+            type: Schema.Text
         },
         key: {
             index: true,
@@ -100,15 +103,16 @@ internals.init = function (model, next) {
         },
         // Private properties, wouldn't get copied
         // to a revision for instance.
-        _version_: {
-            type: Number
-        },
-        _queue_: {
-            type: []
+        _queue_: [],
+        _version_: Number,
+        _created_: {
+            index: true,
+            type: Boolean,
+            default: false
         }
     });
 
-    Model.validatesPresenceOf('title', 'key', '_version_');
+    Model.validatesPresenceOf('_version_');
 
     // Key must be unqiue!
     Model.validatesUniquenessOf('key', {
@@ -130,6 +134,10 @@ internals.init = function (model, next) {
             // same slug.
 
             this.key = Uslug(this.kind) + '/' + Uslug(this.title);
+        }
+
+        if (!this.title && this.headline) {
+            this.title = HtmlStrip(this.headline, { 'compact_whitespace': true });
         }
 
         // Want the updatedAt and version identical
@@ -161,5 +169,4 @@ internals.init = function (model, next) {
     next();
 };
 
-exports.dependencies = internals.dependencies;
-exports.init = internals.init;
+exports.register = internals.register;

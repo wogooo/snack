@@ -6,13 +6,40 @@ var internals = {};
 
 internals.modelName = modelName;
 
-internals.init = function (model, next) {
+internals.relations = function (model, next) {
+
+    var models = model.models;
+    var Model = models[modelName];
+
+    // Model.hasMany('posts', {
+    //     model: models.Post
+    // });
+
+    Model.hasMany('assets', {
+        model: models.Asset
+    });
+
+    Model.hasMany('pages', {
+        model: models.Page
+    });
+
+    next();
+};
+
+internals.register = function (model, next) {
+
+    model.after(internals.relations);
 
     var server = model.server;
     var schema = model.schema;
     var models = model.models;
 
     var Model = schema.define(modelName, {
+        modelName: {
+            type: String,
+            length: 255,
+            default: modelName
+        },
         id: {
             type: String,
             index: true
@@ -80,4 +107,4 @@ internals.init = function (model, next) {
     next();
 };
 
-exports.init = internals.init;
+exports.register = internals.register;

@@ -5,7 +5,7 @@ var Boom = Hapi.boom;
 
 function Posts(options) {
 
-    this.models = options.snack.models.models;
+    this.models = options.snack.models;
     this.api = options.api;
 }
 
@@ -14,9 +14,11 @@ Posts.prototype.list = function (args, done) {
     var Models = this.models,
         Api = this.api,
         query = args.query,
+        options = query,
         list;
 
-    var get = Api.Base.listParams(query);
+    options.modelName = 'Post';
+    var get = Api.Base.listParams(options);
 
     Models.Post.all(get, function (err, posts) {
 

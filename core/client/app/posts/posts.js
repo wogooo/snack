@@ -1,4 +1,4 @@
-angular.module('posts', ['resources.posts', 'resources.assets'])
+angular.module('posts', ['resources.posts', 'resources.assets', 'textAngular'])
 
 .config(['$routeProvider',
     function ($routeProvider) {
@@ -8,7 +8,7 @@ angular.module('posts', ['resources.posts', 'resources.assets'])
             resolve: {
                 post: ['PostsResource',
                     function (PostsResource) {
-                        return new PostsResource();
+                        return new PostsResource({ type: 'post' });
                     }
                 ]
             }
@@ -44,6 +44,7 @@ angular.module('posts', ['resources.posts', 'resources.assets'])
 
 .controller('PostsListCtrl', ['$scope', '$location', 'postList',
     function ($scope, $location, postList) {
+
         $scope.postList = postList;
 
         $scope.editPost = function (post) {
@@ -56,8 +57,8 @@ angular.module('posts', ['resources.posts', 'resources.assets'])
     }
 ])
 
-.controller('PostsEditCtrl', ['$scope', '$routeParams', '$location', 'i18nNotifications', 'AssetsResource', 'post',
-    function ($scope, $routeParams, $location, i18nNotifications, AssetsResource, post) {
+.controller('PostsEditCtrl', ['$scope', '$modal', '$routeParams', '$location', 'i18nNotifications', 'post',
+    function ($scope, $modal, $routeParams, $location, i18nNotifications, post) {
 
         $scope.post = post;
 
@@ -83,7 +84,32 @@ angular.module('posts', ['resources.posts', 'resources.assets'])
             });
         };
 
-        AssetsResource($scope);
+        $scope.file = {};
+
+        $scope.createAsset = function (file) {
+            post.$createAsset(file).then(function () {
+                $scope.file = {};
+            });
+        };
+
+        $scope.editAsset = function (asset) {
+
+            var modalInstance = $modal.open({
+                templateUrl: 'assets/assets-edit.tpl.html',
+                controller: 'AssetsEditCtrl',
+                resolve: {
+                    asset: function () {
+                        return asset;
+                    }
+                }
+            });
+
+            // modalInstance.result.then(function (selectedItem) {
+            //     $scope.selected = selectedItem;
+            // }, function () {
+            //     $log.info('Modal dismissed at: ' + new Date());
+            // });
+        };
 
         // var uploader = $fileUploader.create({
         //     scope: $scope,

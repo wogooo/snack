@@ -1,26 +1,57 @@
 <form name="form" novalidate>
   <legend>Post</legend>
-  <div class="form-group">
-    <label>Title</label>
-    <input type="text" class="form-control" name="title" ng-model="post.title" />
-  </div>
-  <div class="form-group">
-    <label>Body</label>
-    <textarea class="form-control" name="body" rows="10" ng-model="post.body"></textarea>
-  </div>
 
-  <div class="panel panel-default">
-    <div class="panel-heading">
-      <h4 class="panel-title">Assets</h4>
-    </div>
-    <div class="panel-body">
+  <div class="row">
+    <div class="col-sm-8">
       <div class="form-group">
-        <label>Title</label>
-        <input type="text" class="form-control" name="title" ng-model="asset.title" />
-        <label>File</label>
-        <input type="file" ng-model="file" change="upload(file)" />
+        <label>Headline</label>
+        <text-angular name="headline" ng-model="post.headline" ta-toolbar-group-class="btn-group btn-group-sm" ta-toolbar="[['bold','italics']]"></text-angular>
+      </div>
+      <div class="form-group">
+        <label>Body</label>
+        <text-angular
+          name="body"
+          ng-model="post.body"
+          ta-toolbar-group-class="btn-group btn-group-sm"
+          ta-text-editor-class="ta-form-textarea"
+          ta-html-editor-class="ta-form-textarea"
+          ta-toolbar="[['h1','h2','h3'],['p','ol','ul'],['bold','italics', 'underline']]"></text-angular>
       </div>
     </div>
+
+    <div class="col-sm-4">
+
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h4 class="panel-title">Tags</h4>
+        </div>
+        <div class="panel-body"></div>
+      </div>
+
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h4 class="panel-title">Assets</h4>
+        </div>
+        <div class="panel-body">
+
+          <div class="row">
+            <div ng-repeat="asset in post.assets">
+              <div class="col-xs-6 col-md-4">
+                <a class="thumbnail" ng-click="editAsset(asset)">
+                  <img ng-src="{{asset.url}}" />
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>File</label>
+            <input type="file" ng-model="file" change="createAsset(file)" />
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <hr>
@@ -29,3 +60,4 @@
   <button ng-click="remove()" class="btn btn-large btn-danger">Remove</button>
 
 </form>
+

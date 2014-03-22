@@ -16,9 +16,10 @@ internals.relations = function (model, next) {
 
     var models = model.models;
     var Model = models[modelName];
-    // Model.hasAndBelongsToMany('authors', {
-    //     model: models.User
-    // });
+
+    Model.belongsTo('owner', {
+        model: models.User
+    });
 
     Model.hasAndBelongsToMany('tags', {
         model: models.Tag
@@ -32,7 +33,7 @@ internals.relations = function (model, next) {
 };
 
 
-internals.init = function (model, next) {
+internals.register = function (model, next) {
 
     model.after(internals.relations);
 
@@ -58,9 +59,10 @@ internals.init = function (model, next) {
             default: modelName.toLowerCase()
         },
         kind: {
+            index: true,
             type: String,
             length: 255,
-            default: 'simple'
+            default: 'page'
         },
         content: {
             type: Schema.Text
@@ -154,5 +156,4 @@ internals.init = function (model, next) {
     next();
 };
 
-exports.dependencies = internals.dependencies;
-exports.init = internals.init;
+exports.register = internals.register;

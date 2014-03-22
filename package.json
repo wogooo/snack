@@ -33,7 +33,8 @@
     "image-size": "^0.2.1",
     "catbox-redis": "^1.0.0",
     "uslug": "^1.0.3",
-    "aws-sdk": "^2.0.0-rc12"
+    "aws-sdk": "^2.0.0-rc12",
+    "htmlstrip-native": "0.0.2"
   },
   "devDependencies": {
     "grunt": "^0.4.2",

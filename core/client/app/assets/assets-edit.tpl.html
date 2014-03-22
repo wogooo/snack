@@ -2,56 +2,52 @@
 
   <legend>Asset</legend>
 
+  <div class="well well-lg">
+    <figure class="row">
+      <div class="col-md-12">
+        <img class="img-thumbnail img-responsive center-block" ng-src="{{asset.url}}" />
+      </div>
+    </figure>
+  </div>
+
+  <div class="well well-lg">
+    <dl>
+      <div class="row">
+        <div class="col-xs-6">
+          <dt>Filename</dt>
+          <dd>{{asset.filename}}</dd>
+          <dt>Size</dt>
+          <dd>{{asset.bytes}}</dd>
+          <dt>Mime</dt>
+          <dd>{{asset.mimetype}}</dd>
+          <dt>Storage</dt>
+          <dd>{{asset.storage}}</dd>
+        </div>
+
+        <div class="col-xs-6">
+          <dt>Type</dt>
+          <dd>{{asset.type}}</dd>
+          <dt>Height</dt>
+          <dd>{{asset.height}}</dd>
+          <dt>Width</dt>
+          <dd>{{asset.width}}</dd>
+          <dt>Created</dt>
+          <dd>{{asset.createdAt}}</dd>
+        </div>
+      </div>
+    </dl>
+  </div>
+
   <div class="form-group">
     <label>Title</label>
     <input type="text" class="form-control" name="title" ng-model="asset.title" />
   </div>
   <div class="form-group">
     <label>Description</label>
-    <textarea class="form-control" name="description" rows="10" ng-model="asset.description"></textarea>
+    <textarea class="form-control" name="description" rows="2" ng-model="asset.description"></textarea>
   </div>
 
-  <div class="panel panel-default">
-    <div class="panel-heading">
-      <h4 class="panel-title">File</h4>
-    </div>
-    <div class="panel-body">
-
-      <figure class="row">
-        <div class="col-md-12">
-          <img class="img-thumbnail img-responsive center-block" ng-src="{{asset.url}}" />
-        </div>
-      </figure>
-
-      <dl class="well">
-        <div class="row">
-          <div class="col-xs-6">
-            <dt>Filename</dt>
-            <dd>{{asset.filename}}</dd>
-            <dt>Size</dt>
-            <dd>{{asset.bytes}}</dd>
-            <dt>Mime</dt>
-            <dd>{{asset.mimetype}}</dd>
-            <dt>Storage</dt>
-            <dd>{{asset.storage}}</dd>
-          </div>
-
-          <div class="col-xs-6">
-            <dt>Type</dt>
-            <dd>{{asset.type}}</dd>
-            <dt>Data</dt>
-            <dd ng-repeat="(prop, val) in asset.data">
-              {{prop}}: {{val}}
-            </dd>
-            <dt>Created</dt>
-            <dd>{{asset.createdAt}}</dd>
-          </div>
-        </div>
-      </dl>
-    </div>
-  </div>
-
-  <div class="panel panel-default">
+  <div class="panel panel-default" ng-show="asset.posts">
 
     <div class="panel-heading">
       <h4 class="panel-title">

@@ -1,4 +1,5 @@
 var Fs = require('fs-extra');
+var Url = require('url');
 var Hapi = require('hapi');
 var Crypto = require('crypto');
 var Path = require('path');
@@ -29,23 +30,7 @@ internals.typeOfFile = function (mimeType) {
     return;
 };
 
-// internals.writeFile = function (oldPath, newPath, done) {
-
-//     var basename = Path.basename(newPath);
-//     var newDirs = newPath.replace(basename, '');
-
-//     Fs.mkdirs(newDirs, function (err) {
-
-//         if (err) return done(err);
-
-//         Fs.rename(oldPath, newPath, function (err) {
-
-//             done(err);
-//         });
-//     });
-// };
-
-internals.writeFile = function (stream, path, done) {
+internals.writeFile = function (fileStream, path, done) {
 
     var basename = Path.basename(path),
         dirs = path.replace(basename, ''),
@@ -56,72 +41,61 @@ internals.writeFile = function (stream, path, done) {
 
         if (err) return done(err);
 
-        // internals.writeFile(file.path, newPath, finalize);
-        var write = Fs.createWriteStream(path);
+        var writeStream = Fs.createWriteStream(path);
 
-        stream.pipe(write);
+        fileStream.pipe(writeStream);
 
-        stream.on('data', function (chunk) {
+        fileStream.on('data', function (chunk) {
             md5sum.update(chunk);
         });
 
-        stream.on('error', function () {
+        fileStream.on('error', function () {
             done(Hapi.error.badImplementation('Error reading file'));
         });
 
-        stream.on('end', function () {
+        fileStream.on('end', function () {
             etag = md5sum.digest('hex');
-            write.end();
+            writeStream.end();
         });
 
-        write.on('finish', function () {
+        writeStream.on('finish', function () {
             done(null, etag);
         });
     });
 };
 
-internals._storeFile = function (stream, file, done) {
+internals._storeFile = function (fileStream, fileData, done) {
 
-    var filename = file.filename,
-        assetsPath = Config().paths.assetsPath,
-        writePath = Path.join(assetsPath, file.key),
-        mimeType,
+    var assetsPath = Config().paths.assetsPath,
+        writePath = Path.join(assetsPath, fileData.key),
         typeOfFile,
-        dimensions,
-        etag,
-        fileObj;
+        dimensions;
 
     var finalize = function (err, etag) {
 
         if (err) return done(err);
 
-        mimeType = Mime.lookup(writePath);
+        fileData.etag = etag;
+        fileData.storage = 'local';
+        fileData.url = Config.urlFor('asset', {
+            asset: fileData
+        }, true);
 
-        fileObj = {
-            filename: Path.basename(writePath),
-            etag: etag,
-            key: file.key,
-            bytes: file.bytes,
-            mimetype: mimeType,
-            createdAt: file.createdAt,
-            storage: 'local'
-        };
-
-        typeOfFile = internals.typeOfFile(mimeType);
+        typeOfFile = internals.typeOfFile(fileData.mimetype);
 
         if (typeOfFile === 'image') {
             dimensions = Size(writePath);
-            fileObj.height = dimensions.height || 0;
-            fileObj.width = dimensions.width || 0;
+            fileData.height = dimensions.height || 0;
+            fileData.width = dimensions.width || 0;
         }
 
-        done(null, fileObj);
+        done(null, fileData);
     };
 
-    internals.writeFile(stream, writePath, finalize);
+    internals.writeFile(fileStream, writePath, finalize);
 };
 
-internals.save = function (stream, file, done) {
+internals.save = function (fileStream, fileData, done) {
 
     // var files = [];
 
@@ -148,11 +122,11 @@ internals.save = function (stream, file, done) {
 
     //     var file = fileObjOrArr;
 
-    internals._storeFile(stream, file, function (err, file) {
+    internals._storeFile(fileStream, fileData, function (err, fileData) {
 
         if (err) return done(err);
 
-        done(null, file);
+        done(null, fileData);
     });
     // }
 };
@@ -167,12 +141,21 @@ internals.exists = function (key, done) {
 
 module.exports = function (storage, next) {
 
-    storage.exports.Local = {
-        save: function (stream, file, cb) {
-            internals.save(stream, file, cb);
+    var Providers = storage.providers;
+
+    Providers.Local = {
+        save: function (fileStream, fileData, cb) {
+            internals.save(fileStream, fileData, cb);
         },
-        exists: function (stream, file, cb) {
-            internals.exists(stream, file, cb);
+        exists: function (fileKey, cb) {
+            internals.exists(fileKey, cb);
+        },
+        update: function (fileData, cb) {
+            cb();
+            // internals.exists(fileData, cb);
+        },
+        destroy: function (fileKey, cb) {
+            cb();
         }
     };
 

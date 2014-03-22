@@ -2,7 +2,7 @@
   <div class="container">
     <!-- Brand and toggle get grouped for better mobile display -->
     <div class="navbar-header">
-      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapse">
+      <button ng-init="navCollapsed = true" ng-click="navCollapsed = !navCollapsed" type="button" class="navbar-toggle">
         <span class="sr-only">Toggle navigation</span>
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
@@ -13,7 +13,7 @@
     </div>
 
     <!-- Collect the nav links, forms, and other content for toggling -->
-    <div class="collapse navbar-collapse" id="navbar-collapse">
+    <div class="collapse navbar-collapse" id="navbar-collapse" collapse="navCollapsed">
       <ul class="nav navbar-nav">
         <li><a href="/admin/posts">Posts</a></li>
         <li><a href="/admin/assets">Assets</a></li>

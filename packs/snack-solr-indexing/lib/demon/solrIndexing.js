@@ -2,6 +2,7 @@
 
 var Nipple = require('nipple');
 var Helios = require('helios');
+var HtmlStrip = require('htmlstrip-native').html_strip;
 
 // JS loves long not. Solves some problems with _version_
 var JSONbig = require('json-bigint');
@@ -111,6 +112,23 @@ internals.SolrIndexing.prototype.mapValue = function (field, model) {
     if (field instanceof Object) {
 
         mapped.value = this.mapValue(field.value, model).value;
+
+        if (field.stripHtml) {
+
+            var htmlStripOptions = { 'compact_whitespace': true };
+
+            if (mapped.value && mapped.value.forEach) {
+
+                mapped.value = mapped.value.map(function (v) {
+                    return HtmlStrip(mapped.value, htmlStripOptions);
+                });
+
+            } else if (mapped.value) {
+
+                mapped.value = HtmlStrip(mapped.value, htmlStripOptions);
+            }
+        }
+
         mapped.boost = field.boost || 0;
         return mapped;
     }

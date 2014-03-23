@@ -120,12 +120,12 @@ internals.SolrIndexing.prototype.mapValue = function (field, model) {
             if (mapped.value && mapped.value.forEach) {
 
                 mapped.value = mapped.value.map(function (v) {
-                    return HtmlStrip(mapped.value, htmlStripOptions);
+                    return HtmlStrip(mapped.value, htmlStripOptions).trim();
                 });
 
             } else if (mapped.value) {
 
-                mapped.value = HtmlStrip(mapped.value, htmlStripOptions);
+                mapped.value = HtmlStrip(mapped.value, htmlStripOptions).trim();
             }
         }
 

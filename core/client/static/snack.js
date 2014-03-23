@@ -1,4 +1,4 @@
-/*! snack - v0.0.1 - 2014-03-22
+/*! snack - v0.0.1 - 2014-03-23
  * Copyright (c) 2014 ;
  * Licensed MIT
  */
@@ -886,6 +886,12 @@ angular.module('posts', ['resources.posts', 'resources.assets', 'textAngular'])
         };
 
         $scope.save = function () {
+
+            var pRegex = /^<p>(.*?)<\/p>$/;
+            if (post.headline.search(pRegex) > -1) {
+                post.headline = pRegex.exec(post.headline)[1];
+            }
+
             if (post.id) {
                 post.$update(onSave);
             } else {

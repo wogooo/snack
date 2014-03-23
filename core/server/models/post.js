@@ -137,7 +137,7 @@ internals.register = function (model, next) {
         }
 
         if (!this.title && this.headline) {
-            this.title = HtmlStrip(this.headline, { 'compact_whitespace': true });
+            this.title = HtmlStrip(this.headline, { 'compact_whitespace': true }).trim();
         }
 
         // Want the updatedAt and version identical

@@ -157,6 +157,10 @@ module.exports = function (grunt) {
             build: {
                 files: ['<%= src.js %>', '<%= src.specs %>', '<%= src.lessWatch %>', '<%= src.tpl.app %>'],
                 tasks: ['build', 'timestamp']
+            },
+            app: {
+                files: ['<%= src.js %>', '<%= src.specs %>', '<%= src.tpl.app %>'],
+                tasks: ['build', 'timestamp']
             }
         },
         jshint: {

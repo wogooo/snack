@@ -19,12 +19,15 @@ angular.module('models.asset', ['ur.file', 'ngResource'])
         var Asset = $resource(apiUrl, defaultParams, actions);
         var Files = $resource('/api/v1/files');
 
-        Asset.prototype.$upload = function (file) {
+        Asset.prototype.$upload = function (upload) {
 
             var asset = this;
             var deferred = $q.defer();
 
-            Files.prototype.$save.call(file, function (self, headers) {
+            // TODO: custom upload XHR, so I can get progress into the upload
+            // scope.
+
+            Files.prototype.$save.call(upload.file, function (self, headers) {
 
                 angular.extend(asset, self);
                 deferred.resolve();

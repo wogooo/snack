@@ -4,44 +4,15 @@ var HtmlStrip = require('htmlstrip-native').html_strip;
 var Schema = require('jugglingdb').Schema;
 var Uslug = require('uslug');
 
-var modelName = 'Post';
-
 var internals = {};
 
-internals.modelName = modelName;
+internals.name = 'Post';
 
-internals.relations = function (model, next) {
+internals.definition = function () {
 
-    var models = model.models;
-    var Model = models[modelName];
+    var modelName = internals.name;
 
-    // Model.belongsTo('owner', {
-    //     model: models.User
-    // });
-
-    Model.hasAndBelongsToMany('tags', {
-        model: models.Tag
-    });
-
-    Model.hasAndBelongsToMany('assets', {
-        model: models.Asset
-    });
-
-    next();
-};
-
-internals.register = function (model, next) {
-
-    model.after(internals.relations);
-
-    var Snack = model.snack;
-    var Config = model.config;
-    var schema = model.schema;
-    var models = model.models;
-
-    var hooks = Config().hooks;
-
-    var Model = schema.define(modelName, {
+    return {
         id: {
             type: String,
             index: true
@@ -101,23 +72,59 @@ internals.register = function (model, next) {
             type: Boolean,
             default: false
         },
+
         // Private properties, wouldn't get copied
         // to a revision for instance.
         _queue_: [],
         _version_: Number,
-        _created_: {
+
+        // Model has not been finalized yet, so `created` hook hasn't
+        // been fired, shouldn't appear in indexes, etc.
+        _draft_: {
             index: true,
             type: Boolean,
-            default: false
+            default: true
         }
+    };
+};
+
+internals.relations = function (model, next) {
+
+    var modelName = internals.name;
+    var models = model.models;
+    var Model = models[modelName];
+
+    Model.belongsTo('owner', {
+        model: models.User
     });
+
+    Model.hasAndBelongsToMany('tags', {
+        model: models.Tag
+    });
+
+    Model.hasAndBelongsToMany('assets', {
+        model: models.Asset
+    });
+
+    next();
+};
+
+internals.register = function (model, next) {
+
+    var Snack = model.snack,
+        schema = model.schema,
+        modelName = internals.name,
+        definition = internals.definition(),
+        Model;
+
+    Model = schema.define(modelName, definition);
 
     Model.validatesPresenceOf('_version_');
 
     // Key must be unqiue!
-    Model.validatesUniquenessOf('key', {
-        message: 'Key is not unique.'
-    });
+    // Model.validatesUniquenessOf('key', {
+    //     message: 'Key is not unique.'
+    // });
 
     Model.beforeValidate = function (next, data) {
 
@@ -136,7 +143,7 @@ internals.register = function (model, next) {
             this.key = Uslug(this.kind) + '/' + Uslug(this.title);
         }
 
-        if (!this.title && this.headline) {
+        if (this.headline) {
             this.title = HtmlStrip(this.headline, { 'compact_whitespace': true }).trim();
         }
 
@@ -164,9 +171,12 @@ internals.register = function (model, next) {
         next();
     };
 
-    models[modelName] = Model;
+    model.expose(Model);
+    model.after(internals.relations);
 
     next();
 };
 
+exports.name = internals.name;
+exports.definition = internals.definition;
 exports.register = internals.register;

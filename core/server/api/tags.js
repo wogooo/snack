@@ -16,11 +16,27 @@ internals.Tags = function (options) {
 
 internals.Tags.prototype.list = function (args, done) {
 
-    var Models = this.models;
+    var Models = this.models,
+        Api = this.api,
+        query = args.query,
+        options = query,
+        list;
 
-    Models.Tag.all(function (err, tags) {
+    var get = Api.Base.listParams(options);
 
-        done(err, err ? null : tags);
+    Models.Tag.all(get, function (err, tags) {
+
+        list = {
+            type: 'tagList',
+            sort: get.order.split(' ')[1].toLowerCase(),
+            order: get.order.split(' ')[0],
+            offset: get.skip,
+            limit: get.limit,
+            count: tags.length,
+            items: tags
+        };
+
+        done(err, err ? null : list);
     });
 };
 

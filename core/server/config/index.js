@@ -84,10 +84,10 @@ function updateConfig(config) {
             'asset.updated': true,
             'asset.deleted': true,
             'asset.destroyed': true,
-            'tag.created': true,
-            'tag.updated': true,
-            'tag.deleted': true,
-            'tag.destroyed': true
+            'tag.created': false,
+            'tag.updated': false,
+            'tag.deleted': false,
+            'tag.destroyed': false
         },
         server: {
             'port': serverPort,

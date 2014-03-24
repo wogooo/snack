@@ -1,13 +1,28 @@
-angular.module('models.post', ['ngResource', 'models.asset'])
+angular.module('models.post', ['ngResource', 'models.asset', 'models.tag'])
 
-.factory('Post', ['$resource', '$q', 'Asset',
+.factory('Post', ['$resource', '$q', 'Asset', 'Tag',
 
-    function ($resource, $q, Asset) {
+    function ($resource, $q, Asset, Tag) {
 
         var apiUrl = '/api/v1/posts/:id.json';
 
         var defaultParams = {
             id: '@id'
+        };
+
+        var enliven = function (response) {
+            var resource = response.resource;
+
+            // Vivify assets in post
+            for (var a = 0; a < resource.assets.length; a++) {
+                resource.assets[a] = new Asset(resource.assets[a]);
+            }
+
+            for (var t = 0; t < resource.tags.length; t++) {
+                resource.tags[t] = new Tag(resource.tags[t]);
+            }
+
+            return response;
         };
 
         var actions = {
@@ -16,16 +31,10 @@ angular.module('models.post', ['ngResource', 'models.asset'])
                 interceptor: {
                     response: function (response) {
 
-                        var resource = response.resource;
-
-                        // Vivify assets in post
-                        for (var i = 0; i < resource.assets.length; i++) {
-                            resource.assets[i] = new Asset(resource.assets[i]);
-                        }
-
-                        return response;
+                        return enliven(response);
                     },
                     responseError: function (response) {
+
                         console.log('interceptor err');
                     }
                 }
@@ -35,16 +44,10 @@ angular.module('models.post', ['ngResource', 'models.asset'])
                 interceptor: {
                     response: function (response) {
 
-                        var resource = response.resource;
-
-                        // Vivify assets in post
-                        for (var i = 0; i < resource.assets.length; i++) {
-                            resource.assets[i] = new Asset(resource.assets[i]);
-                        }
-
-                        return response;
+                        return enliven(response);
                     },
                     responseError: function (response) {
+
                         console.log('interceptor err');
                     }
                 }
@@ -53,7 +56,7 @@ angular.module('models.post', ['ngResource', 'models.asset'])
 
         var Post = $resource(apiUrl, defaultParams, actions);
 
-        Post.prototype.$createAsset = function (file) {
+        Post.prototype.$createAsset = function (data) {
 
             var post = this;
             var asset = new Asset();
@@ -61,7 +64,7 @@ angular.module('models.post', ['ngResource', 'models.asset'])
 
             post.assets = post.assets || [];
 
-            asset.$upload(file).then(function () {
+            asset.$upload(data).then(function () {
 
                 // Bring the asset into the post.
                 post.assets.push(asset);
@@ -77,6 +80,63 @@ angular.module('models.post', ['ngResource', 'models.asset'])
 
             return deferred.promise;
         };
+
+        Post.prototype.$updateTag = function (data) {
+
+            var post = this;
+
+            data.posts = [{
+                id: post.id
+            }];
+
+            var deferred = $q.defer();
+
+            post.tags = post.tags || [];
+
+            if (data.id) {
+
+                var tag = data;
+                tag.$update(function () {
+                    post.tags.push(tag);
+                    deferred.resolve();
+                });
+
+            } else {
+
+                var tag = new Tag(data);
+                tag.$save(function () {
+                    post.tags.push(tag);
+                    deferred.resolve();
+                });
+            }
+
+            return deferred.promise;
+        };
+
+        Post.prototype.$removeTag = function (tag) {
+
+            var post = this;
+
+            tag.posts = [{
+                id: post.id,
+                _remove_: true
+            }];
+
+            var deferred = $q.defer();
+
+            tag.$update(function () {
+                angular.forEach(post.tags, function (postTag, tagIndex) {
+                    if (postTag.id === tag.id) {
+                        post.tags.splice(tagIndex, 1);
+                    }
+                });
+
+                deferred.resolve();
+            });
+
+            return deferred.promise;
+        };
+
 
         return Post;
     }

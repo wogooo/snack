@@ -3,55 +3,89 @@ var Utils = Hapi.utils;
 var Async = require('async');
 var Schema = require('jugglingdb').Schema;
 
-var models = [
-    './asset',
-    './page',
-    './post',
-    './tag',
-    './user'
-];
-
 var internals = {};
 
-internals.init = function (server, callback) {
+internals.Models = function (options) {
 
-    var _after = [];
+    options = options || {};
 
-    var Config = server.app.config;
+    this._models = {};
+    this._after = [];
 
-    var db = Config().db;
-    var schema = new Schema(db.engine, db);
+    this.server = options.server;
+    this.config = options.config;
+
+    Utils.assert(options.db, 'Database configuration not defined!');
+
+    this.schema = new Schema(options.db.engine, options.db);
+};
+
+internals.Models.prototype.register = function (names, done) {
+
+    var self = this;
 
     var root = {};
 
-    root.server = server;
-    root.snack = server.app;
-    root.config = server.app.config;
-    root.schema = schema;
-    root.models = exports;
+    root.server = this.server;
+    root.snack = this.server.app;
+    root.config = this.config;
+    root.schema = this.schema;
+    root.models = this._models;
+
+    root.expose = function (Model) {
+
+        self._models[Model.modelName] = Model;
+    };
 
     root.after = function (method) {
 
-        _after.push(method);
+        self._after.push(method);
     };
 
-    Async.eachSeries(models, function (modelName, next) {
+    Async.eachSeries(names, function (modelName, next) {
 
         require(modelName).register(root, next);
 
     }, function (err) {
 
-        Async.eachSeries(_after, function (afterItem, next) {
+        Async.eachSeries(self._after, function (afterItem, next) {
 
             afterItem(root, next);
 
         }, function (err) {
 
-            schema.autoupdate(function () {
+            self.schema.autoupdate(function () {
 
-                callback(err, root.models);
+                done(err, self._models);
             });
         });
+    });
+};
+
+internals.init = function (server, next) {
+
+    var Snack = server.app;
+
+    var config = {
+        server: server,
+        config: Snack.config,
+        db: Snack.config().db
+    };
+
+    var models = new internals.Models(config);
+
+    var modelNames = [
+        './asset',
+        './page',
+        './post',
+        './tag',
+        './user'
+    ];
+
+    models.register(modelNames, function (err, _models) {
+
+        Utils.merge(exports, _models);
+        next(err);
     });
 };
 

@@ -32,8 +32,6 @@ internals.relations = function (model, next) {
 
 internals.register = function (model, next) {
 
-    model.after(internals.relations);
-
     var Snack = model.snack;
     var Config = model.config;
     var hooks = Config().hooks;
@@ -169,7 +167,8 @@ internals.register = function (model, next) {
         next();
     };
 
-    models[modelName] = Model;
+    model.expose(Model);
+    model.after(internals.relations);
 
     next();
 };

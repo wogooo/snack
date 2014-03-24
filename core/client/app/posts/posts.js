@@ -1,4 +1,4 @@
-angular.module('posts', ['resources.posts', 'resources.assets', 'textAngular'])
+angular.module('posts', ['resources.posts', 'resources.assets', 'resources.tags', 'textAngular'])
 
 .config(['$routeProvider',
     function ($routeProvider) {
@@ -8,7 +8,9 @@ angular.module('posts', ['resources.posts', 'resources.assets', 'textAngular'])
             resolve: {
                 post: ['PostsResource',
                     function (PostsResource) {
-                        return new PostsResource({ type: 'post' });
+                        return new PostsResource({
+                            type: 'post'
+                        });
                     }
                 ]
             }
@@ -57,8 +59,8 @@ angular.module('posts', ['resources.posts', 'resources.assets', 'textAngular'])
     }
 ])
 
-.controller('PostsEditCtrl', ['$scope', '$modal', '$routeParams', '$location', 'i18nNotifications', 'post',
-    function ($scope, $modal, $routeParams, $location, i18nNotifications, post) {
+.controller('PostsEditCtrl', ['$scope', '$modal', '$routeParams', '$location', 'i18nNotifications', 'TagsResource', 'post',
+    function ($scope, $modal, $routeParams, $location, i18nNotifications, TagsResource, post) {
 
         $scope.post = post;
 
@@ -72,6 +74,7 @@ angular.module('posts', ['resources.posts', 'resources.assets', 'textAngular'])
 
         $scope.save = function () {
 
+            // Necessary right now because of textAngular behavior
             var pRegex = /^<p>(.*?)<\/p>$/;
             if (post.headline.search(pRegex) > -1) {
                 post.headline = pRegex.exec(post.headline)[1];
@@ -90,11 +93,11 @@ angular.module('posts', ['resources.posts', 'resources.assets', 'textAngular'])
             });
         };
 
-        $scope.file = {};
+        $scope.upload = {};
 
-        $scope.createAsset = function (file) {
-            post.$createAsset(file).then(function () {
-                $scope.file = {};
+        $scope.createAsset = function (upload) {
+            post.$createAsset(upload).then(function () {
+                $scope.upload = {};
             });
         };
 
@@ -109,73 +112,37 @@ angular.module('posts', ['resources.posts', 'resources.assets', 'textAngular'])
                     }
                 }
             });
-
-            // modalInstance.result.then(function (selectedItem) {
-            //     $scope.selected = selectedItem;
-            // }, function () {
-            //     $log.info('Modal dismissed at: ' + new Date());
-            // });
         };
 
-        // var uploader = $fileUploader.create({
-        //     scope: $scope,
-        //     url: '/api/v1/assets',
-        //     formData: [{
-        //         title: 'test uploader'
-        //     }],
-        //     filters: [
+        $scope.selectedTag = undefined;
 
-        //         function (item) {
-        //             console.info('filter1', item);
-        //             return true;
-        //         }
-        //     ]
-        // });
+        $scope.tagsAutocomplete = function (val) {
 
-        // $scope.uploader = uploader;
+            var q = {
+                key: 'tag/' + val
+            };
 
-        // uploader.bind('afteraddingfile', function (event, item) {
-        //     console.info('After adding a file', item);
-        // });
+            return TagsResource.list(q)
+                .$promise
+                .then(function (response) {
+                    var data = response.data;
+                    var tags = [];
+                    angular.forEach(data.items, function (item) {
+                        tags.push(item);
+                    });
+                    return tags;
+                });
+        };
 
-        // uploader.bind('whenaddingfilefailed', function (event, item) {
-        //     console.info('When adding a file failed', item);
-        // });
+        $scope.addTag = function (tag) {
+            post.$updateTag(tag)
+                .then(function () {
+                    $scope.selectedTag = undefined;
+                });
+        };
 
-        // uploader.bind('afteraddingall', function (event, items) {
-        //     console.info('After adding all files', items);
-        // });
-
-        // uploader.bind('beforeupload', function (event, item) {
-        //     console.info('Before upload', item);
-        // });
-
-        // uploader.bind('progress', function (event, item, progress) {
-        //     console.info('Progress: ' + progress, item);
-        // });
-
-        // uploader.bind('success', function (event, xhr, item, response) {
-        //     console.info('Success', xhr, item, response);
-        // });
-
-        // uploader.bind('cancel', function (event, xhr, item) {
-        //     console.info('Cancel', xhr, item);
-        // });
-
-        // uploader.bind('error', function (event, xhr, item, response) {
-        //     console.info('Error', xhr, item, response);
-        // });
-
-        // uploader.bind('complete', function (event, xhr, item, response) {
-        //     console.info('Complete', xhr, item, response);
-        // });
-
-        // uploader.bind('progressall', function (event, progress) {
-        //     console.info('Total progress: ' + progress);
-        // });
-
-        // uploader.bind('completeall', function (event, items) {
-        //     console.info('Complete all', items);
-        // });
+        $scope.removeTag = function (tag) {
+            post.$removeTag(tag);
+        };
     }
 ]);

@@ -6,45 +6,15 @@ var Uslug = require('uslug');
 
 var Config = require('../config');
 
-var modelName = 'Page';
-
 var internals = {};
 
-internals.modelName = modelName;
+internals.name = 'Page';
 
-internals.relations = function (model, next) {
+internals.definition = function () {
 
-    var models = model.models;
-    var Model = models[modelName];
+    var modelName = internals.name;
 
-    Model.belongsTo('owner', {
-        model: models.User
-    });
-
-    Model.hasAndBelongsToMany('tags', {
-        model: models.Tag
-    });
-
-    Model.hasAndBelongsToMany('assets', {
-        model: models.Asset
-    });
-
-    next();
-};
-
-
-internals.register = function (model, next) {
-
-    model.after(internals.relations);
-
-    var server = model.server;
-    var Snack = model.snack;
-    var config = Snack.config();
-
-    var schema = model.schema;
-    var models = model.models;
-
-    var Model = schema.define(modelName, {
+    return {
         id: {
             type: String,
             index: true
@@ -109,7 +79,39 @@ internals.register = function (model, next) {
             length: 2000,
             default: null
         }
+    };
+};
+
+internals.relations = function (model, next) {
+
+    var modelName = internals.name,
+        models = model.models,
+        Model = models[modelName];
+
+    Model.belongsTo('owner', {
+        model: models.User
     });
+
+    Model.hasAndBelongsToMany('tags', {
+        model: models.Tag
+    });
+
+    Model.hasAndBelongsToMany('assets', {
+        model: models.Asset
+    });
+
+    next();
+};
+
+internals.register = function (model, next) {
+
+    var Snack = model.snack,
+        schema = model.schema,
+        modelName = internals.name,
+        definition = internals.definition(),
+        Model;
+
+    Model = schema.define(modelName, definition);
 
     Model.beforeValidate = function (next, data) {
 
@@ -151,9 +153,12 @@ internals.register = function (model, next) {
         next();
     };
 
-    models[modelName] = Model;
+    model.expose(Model);
+    model.after(internals.relations);
 
     next();
 };
 
+exports.name = internals.name;
+exports.definition = internals.definition;
 exports.register = internals.register;

@@ -29,8 +29,6 @@ internals.relations = function (model, next) {
 
 internals.register = function (model, next) {
 
-    model.after(internals.relations);
-
     var server = model.server;
     var schema = model.schema;
     var models = model.models;
@@ -58,7 +56,8 @@ internals.register = function (model, next) {
             length: 2000
         },
         name: {
-            type: String
+            type: Schema.Text,
+            limit: 255
         },
         description: {
             type: Schema.Text,
@@ -118,7 +117,8 @@ internals.register = function (model, next) {
         next();
     };
 
-    models[modelName] = Model;
+    model.expose(Model);
+    model.after(internals.relations);
 
     next();
 };

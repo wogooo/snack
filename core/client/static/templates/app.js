@@ -159,18 +159,26 @@ angular.module("posts/posts-edit.tpl.html", []).run(["$templateCache", function(
     "  <div class=\"row\">\n" +
     "    <div class=\"col-sm-8\">\n" +
     "      <div class=\"form-group\">\n" +
-    "        <label>Headline</label>\n" +
-    "        <text-angular name=\"headline\" ng-model=\"post.headline\" ta-toolbar-group-class=\"btn-group btn-group-sm\" ta-toolbar=\"[['bold','italics']]\"></text-angular>\n" +
+    "        <label class=\"sr-only\">Headline</label>\n" +
+    "        <text-angular\n" +
+    "          placeholder=\"[Snappy Headline]\"\n" +
+    "          name=\"headline\"\n" +
+    "          ng-model=\"post.headline\"\n" +
+    "          ta-toolbar-group-class=\"btn-group btn-group-sm\"\n" +
+    "          ta-toolbar=\"[['bold','italics']]\"\n" +
+    "          ta-text-editor-class=\"ta-form-control ta-input-lg\"\n" +
+    "          ta-html-editor-class=\"ta-form-control ta-input-lg\"></text-angular>\n" +
     "      </div>\n" +
     "      <div class=\"form-group\">\n" +
-    "        <label>Body</label>\n" +
+    "        <label class=\"sr-only\">Body</label>\n" +
     "        <text-angular\n" +
+    "          placeholder=\"[The story.]\"\n" +
     "          name=\"body\"\n" +
     "          ng-model=\"post.body\"\n" +
     "          ta-toolbar-group-class=\"btn-group btn-group-sm\"\n" +
+    "          ta-toolbar=\"[['h1','h2','h3'],['p','ol','ul'],['bold','italics', 'underline']]\"\n" +
     "          ta-text-editor-class=\"ta-form-textarea\"\n" +
-    "          ta-html-editor-class=\"ta-form-textarea\"\n" +
-    "          ta-toolbar=\"[['h1','h2','h3'],['p','ol','ul'],['bold','italics', 'underline']]\"></text-angular>\n" +
+    "          ta-html-editor-class=\"ta-form-textarea\"></text-angular>\n" +
     "      </div>\n" +
     "    </div>\n" +
     "\n" +
@@ -180,7 +188,28 @@ angular.module("posts/posts-edit.tpl.html", []).run(["$templateCache", function(
     "        <div class=\"panel-heading\">\n" +
     "          <h4 class=\"panel-title\">Tags</h4>\n" +
     "        </div>\n" +
-    "        <div class=\"panel-body\"></div>\n" +
+    "        <div class=\"panel-body\">\n" +
+    "\n" +
+    "          <div ng-repeat=\"tag in post.tags\">\n" +
+    "            <h4>\n" +
+    "              <span class=\"label label-info\">{{tag.name}}</span>\n" +
+    "              <button type=\"button\" class=\"close\" aria-hidden=\"true\" ng-click=\"removeTag(tag)\">&times;</button>\n" +
+    "            </h4>\n" +
+    "          </div>\n" +
+    "\n" +
+    "          <div class=\"form-group\">\n" +
+    "            <label class=\"sr-only\">New Tag</label>\n" +
+    "            <input\n" +
+    "              type=\"text\"\n" +
+    "              placeholder=\"New tag...\"\n" +
+    "              typeahead=\"tag as tag.name for tag in tagsAutocomplete($viewValue) | filter:$viewValue\"\n" +
+    "              ng-model=\"selectedTag\"\n" +
+    "              typeahead-loading=\"loadingTags\"\n" +
+    "              typeahead-on-select=\"addTag(selectedTag)\" />\n" +
+    "            <i ng-show=\"loadingTags\" class=\"glyphicon glyphicon-refresh\"></i>\n" +
+    "          </div>\n" +
+    "\n" +
+    "        </div>\n" +
     "      </div>\n" +
     "\n" +
     "      <div class=\"panel panel-default\">\n" +
@@ -201,7 +230,7 @@ angular.module("posts/posts-edit.tpl.html", []).run(["$templateCache", function(
     "\n" +
     "          <div class=\"form-group\">\n" +
     "            <label>File</label>\n" +
-    "            <input type=\"file\" ng-model=\"file\" change=\"createAsset(file)\" />\n" +
+    "            <input type=\"file\" ng-model=\"upload.file\" change=\"createAsset(upload)\" />\n" +
     "          </div>\n" +
     "        </div>\n" +
     "      </div>\n" +

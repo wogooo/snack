@@ -1,4 +1,4 @@
-/*! snack - v0.0.1 - 2014-03-23
+/*! snack - v0.0.1 - 2014-03-24
  * Copyright (c) 2014 ;
  * Licensed MIT
  */
@@ -164,12 +164,15 @@ angular.module('models.asset', ['ur.file', 'ngResource'])
         var Asset = $resource(apiUrl, defaultParams, actions);
         var Files = $resource('/api/v1/files');
 
-        Asset.prototype.$upload = function (file) {
+        Asset.prototype.$upload = function (upload) {
 
             var asset = this;
             var deferred = $q.defer();
 
-            Files.prototype.$save.call(file, function (self, headers) {
+            // TODO: custom upload XHR, so I can get progress into the upload
+            // scope.
+
+            Files.prototype.$save.call(upload.file, function (self, headers) {
 
                 angular.extend(asset, self);
                 deferred.resolve();
@@ -218,16 +221,31 @@ angular.module('models.assetList', ['ngResource', 'models.asset'])
     }
 ]);
 
-angular.module('models.post', ['ngResource', 'models.asset'])
+angular.module('models.post', ['ngResource', 'models.asset', 'models.tag'])
 
-.factory('Post', ['$resource', '$q', 'Asset',
+.factory('Post', ['$resource', '$q', 'Asset', 'Tag',
 
-    function ($resource, $q, Asset) {
+    function ($resource, $q, Asset, Tag) {
 
         var apiUrl = '/api/v1/posts/:id.json';
 
         var defaultParams = {
             id: '@id'
+        };
+
+        var enliven = function (response) {
+            var resource = response.resource;
+
+            // Vivify assets in post
+            for (var a = 0; a < resource.assets.length; a++) {
+                resource.assets[a] = new Asset(resource.assets[a]);
+            }
+
+            for (var t = 0; t < resource.tags.length; t++) {
+                resource.tags[t] = new Tag(resource.tags[t]);
+            }
+
+            return response;
         };
 
         var actions = {
@@ -236,16 +254,10 @@ angular.module('models.post', ['ngResource', 'models.asset'])
                 interceptor: {
                     response: function (response) {
 
-                        var resource = response.resource;
-
-                        // Vivify assets in post
-                        for (var i = 0; i < resource.assets.length; i++) {
-                            resource.assets[i] = new Asset(resource.assets[i]);
-                        }
-
-                        return response;
+                        return enliven(response);
                     },
                     responseError: function (response) {
+
                         console.log('interceptor err');
                     }
                 }
@@ -255,16 +267,10 @@ angular.module('models.post', ['ngResource', 'models.asset'])
                 interceptor: {
                     response: function (response) {
 
-                        var resource = response.resource;
-
-                        // Vivify assets in post
-                        for (var i = 0; i < resource.assets.length; i++) {
-                            resource.assets[i] = new Asset(resource.assets[i]);
-                        }
-
-                        return response;
+                        return enliven(response);
                     },
                     responseError: function (response) {
+
                         console.log('interceptor err');
                     }
                 }
@@ -273,7 +279,7 @@ angular.module('models.post', ['ngResource', 'models.asset'])
 
         var Post = $resource(apiUrl, defaultParams, actions);
 
-        Post.prototype.$createAsset = function (file) {
+        Post.prototype.$createAsset = function (data) {
 
             var post = this;
             var asset = new Asset();
@@ -281,7 +287,7 @@ angular.module('models.post', ['ngResource', 'models.asset'])
 
             post.assets = post.assets || [];
 
-            asset.$upload(file).then(function () {
+            asset.$upload(data).then(function () {
 
                 // Bring the asset into the post.
                 post.assets.push(asset);
@@ -297,6 +303,63 @@ angular.module('models.post', ['ngResource', 'models.asset'])
 
             return deferred.promise;
         };
+
+        Post.prototype.$updateTag = function (data) {
+
+            var post = this;
+
+            data.posts = [{
+                id: post.id
+            }];
+
+            var deferred = $q.defer();
+
+            post.tags = post.tags || [];
+
+            if (data.id) {
+
+                var tag = data;
+                tag.$update(function () {
+                    post.tags.push(tag);
+                    deferred.resolve();
+                });
+
+            } else {
+
+                var tag = new Tag(data);
+                tag.$save(function () {
+                    post.tags.push(tag);
+                    deferred.resolve();
+                });
+            }
+
+            return deferred.promise;
+        };
+
+        Post.prototype.$removeTag = function (tag) {
+
+            var post = this;
+
+            tag.posts = [{
+                id: post.id,
+                _remove_: true
+            }];
+
+            var deferred = $q.defer();
+
+            tag.$update(function () {
+                angular.forEach(post.tags, function (postTag, tagIndex) {
+                    if (postTag.id === tag.id) {
+                        post.tags.splice(tagIndex, 1);
+                    }
+                });
+
+                deferred.resolve();
+            });
+
+            return deferred.promise;
+        };
+
 
         return Post;
     }
@@ -325,6 +388,68 @@ angular.module('models.postList', ['ngResource', 'models.post'])
                         // Vivify posts in list
                         for (var i = 0; i < resource.items.length; i++) {
                             resource.items[i] = new Post(resource.items[i]);
+                        }
+
+                        return response;
+                    },
+                    responseError: function (response) {
+                        console.log('interceptor err');
+                    }
+                }
+            }
+        };
+
+        return $resource(apiUrl, defaultParams, actions);
+    }
+]);
+
+angular.module('models.tag', ['ngResource'])
+
+.factory('Tag', ['$resource',
+
+    function ($resource) {
+
+        var apiUrl = '/api/v1/tags/:id.json';
+
+        var defaultParams = {
+            id: '@id'
+        };
+
+        var actions = {
+            update: {
+                method: 'PUT'
+            }
+        };
+
+        var Tag = $resource(apiUrl, defaultParams, actions);
+
+        return Tag;
+    }
+]);
+
+angular.module('models.tagList', ['ngResource', 'models.tag'])
+
+.factory('TagList', ['$resource', 'Tag',
+
+    function ($resource, Tag) {
+
+        var apiUrl = '/api/v1/tags.json?autocomplete=:key';
+
+        var defaultParams = {
+            key: '@key'
+        };
+
+        var actions = {
+            get: {
+                method: 'GET',
+                interceptor: {
+                    response: function (response) {
+
+                        var resource = response.resource;
+
+                        // Vivify tags in list
+                        for (var i = 0; i < resource.items.length; i++) {
+                            resource.items[i] = new Tag(resource.items[i]);
                         }
 
                         return response;
@@ -654,6 +779,36 @@ angular.module('resources.posts', ['models.post', 'models.postList'])
 //     }
 // ]);
 
+angular.module('resources.tags', ['models.tag', 'models.tagList'])
+
+.factory('TagsResource', ['Tag', 'TagList',
+
+    function (Tag, TagList) {
+
+        var Resource = function (data) {
+
+            if (data.type === 'tag') {
+
+                return new Tag(data);
+
+            } else if (data.type === 'tagList') {
+
+                return new TagList(data);
+            }
+        };
+
+        Resource.list = function (query) {
+            return TagList.get(query);
+        };
+
+        Resource.find = function (query) {
+            return Tag.get(query);
+        };
+
+        return Resource;
+    }
+]);
+
 angular.module('services.i18nNotifications', ['services.notifications', 'services.localizedMessages'])
     .factory('i18nNotifications', ['localizedMessages', 'notifications',
         function (localizedMessages, notifications) {
@@ -813,7 +968,7 @@ angular.module('app').constant('I18N.MESSAGES', {
     'login.error.serverError': "There was a problem with authenticating: {{exception}}."
 });
 
-angular.module('posts', ['resources.posts', 'resources.assets', 'textAngular'])
+angular.module('posts', ['resources.posts', 'resources.assets', 'resources.tags', 'textAngular'])
 
 .config(['$routeProvider',
     function ($routeProvider) {
@@ -823,7 +978,9 @@ angular.module('posts', ['resources.posts', 'resources.assets', 'textAngular'])
             resolve: {
                 post: ['PostsResource',
                     function (PostsResource) {
-                        return new PostsResource({ type: 'post' });
+                        return new PostsResource({
+                            type: 'post'
+                        });
                     }
                 ]
             }
@@ -872,8 +1029,8 @@ angular.module('posts', ['resources.posts', 'resources.assets', 'textAngular'])
     }
 ])
 
-.controller('PostsEditCtrl', ['$scope', '$modal', '$routeParams', '$location', 'i18nNotifications', 'post',
-    function ($scope, $modal, $routeParams, $location, i18nNotifications, post) {
+.controller('PostsEditCtrl', ['$scope', '$modal', '$routeParams', '$location', 'i18nNotifications', 'TagsResource', 'post',
+    function ($scope, $modal, $routeParams, $location, i18nNotifications, TagsResource, post) {
 
         $scope.post = post;
 
@@ -887,6 +1044,7 @@ angular.module('posts', ['resources.posts', 'resources.assets', 'textAngular'])
 
         $scope.save = function () {
 
+            // Necessary right now because of textAngular behavior
             var pRegex = /^<p>(.*?)<\/p>$/;
             if (post.headline.search(pRegex) > -1) {
                 post.headline = pRegex.exec(post.headline)[1];
@@ -905,11 +1063,11 @@ angular.module('posts', ['resources.posts', 'resources.assets', 'textAngular'])
             });
         };
 
-        $scope.file = {};
+        $scope.upload = {};
 
-        $scope.createAsset = function (file) {
-            post.$createAsset(file).then(function () {
-                $scope.file = {};
+        $scope.createAsset = function (upload) {
+            post.$createAsset(upload).then(function () {
+                $scope.upload = {};
             });
         };
 
@@ -924,74 +1082,38 @@ angular.module('posts', ['resources.posts', 'resources.assets', 'textAngular'])
                     }
                 }
             });
-
-            // modalInstance.result.then(function (selectedItem) {
-            //     $scope.selected = selectedItem;
-            // }, function () {
-            //     $log.info('Modal dismissed at: ' + new Date());
-            // });
         };
 
-        // var uploader = $fileUploader.create({
-        //     scope: $scope,
-        //     url: '/api/v1/assets',
-        //     formData: [{
-        //         title: 'test uploader'
-        //     }],
-        //     filters: [
+        $scope.selectedTag = undefined;
 
-        //         function (item) {
-        //             console.info('filter1', item);
-        //             return true;
-        //         }
-        //     ]
-        // });
+        $scope.tagsAutocomplete = function (val) {
 
-        // $scope.uploader = uploader;
+            var q = {
+                key: 'tag/' + val
+            };
 
-        // uploader.bind('afteraddingfile', function (event, item) {
-        //     console.info('After adding a file', item);
-        // });
+            return TagsResource.list(q)
+                .$promise
+                .then(function (response) {
+                    var data = response.data;
+                    var tags = [];
+                    angular.forEach(data.items, function (item) {
+                        tags.push(item);
+                    });
+                    return tags;
+                });
+        };
 
-        // uploader.bind('whenaddingfilefailed', function (event, item) {
-        //     console.info('When adding a file failed', item);
-        // });
+        $scope.addTag = function (tag) {
+            post.$updateTag(tag)
+                .then(function () {
+                    $scope.selectedTag = undefined;
+                });
+        };
 
-        // uploader.bind('afteraddingall', function (event, items) {
-        //     console.info('After adding all files', items);
-        // });
-
-        // uploader.bind('beforeupload', function (event, item) {
-        //     console.info('Before upload', item);
-        // });
-
-        // uploader.bind('progress', function (event, item, progress) {
-        //     console.info('Progress: ' + progress, item);
-        // });
-
-        // uploader.bind('success', function (event, xhr, item, response) {
-        //     console.info('Success', xhr, item, response);
-        // });
-
-        // uploader.bind('cancel', function (event, xhr, item) {
-        //     console.info('Cancel', xhr, item);
-        // });
-
-        // uploader.bind('error', function (event, xhr, item, response) {
-        //     console.info('Error', xhr, item, response);
-        // });
-
-        // uploader.bind('complete', function (event, xhr, item, response) {
-        //     console.info('Complete', xhr, item, response);
-        // });
-
-        // uploader.bind('progressall', function (event, progress) {
-        //     console.info('Total progress: ' + progress);
-        // });
-
-        // uploader.bind('completeall', function (event, items) {
-        //     console.info('Complete all', items);
-        // });
+        $scope.removeTag = function (tag) {
+            post.$removeTag(tag);
+        };
     }
 ]);
 
@@ -1156,18 +1278,26 @@ angular.module("posts/posts-edit.tpl.html", []).run(["$templateCache", function(
     "  <div class=\"row\">\n" +
     "    <div class=\"col-sm-8\">\n" +
     "      <div class=\"form-group\">\n" +
-    "        <label>Headline</label>\n" +
-    "        <text-angular name=\"headline\" ng-model=\"post.headline\" ta-toolbar-group-class=\"btn-group btn-group-sm\" ta-toolbar=\"[['bold','italics']]\"></text-angular>\n" +
+    "        <label class=\"sr-only\">Headline</label>\n" +
+    "        <text-angular\n" +
+    "          placeholder=\"[Snappy Headline]\"\n" +
+    "          name=\"headline\"\n" +
+    "          ng-model=\"post.headline\"\n" +
+    "          ta-toolbar-group-class=\"btn-group btn-group-sm\"\n" +
+    "          ta-toolbar=\"[['bold','italics']]\"\n" +
+    "          ta-text-editor-class=\"ta-form-control ta-input-lg\"\n" +
+    "          ta-html-editor-class=\"ta-form-control ta-input-lg\"></text-angular>\n" +
     "      </div>\n" +
     "      <div class=\"form-group\">\n" +
-    "        <label>Body</label>\n" +
+    "        <label class=\"sr-only\">Body</label>\n" +
     "        <text-angular\n" +
+    "          placeholder=\"[The story.]\"\n" +
     "          name=\"body\"\n" +
     "          ng-model=\"post.body\"\n" +
     "          ta-toolbar-group-class=\"btn-group btn-group-sm\"\n" +
+    "          ta-toolbar=\"[['h1','h2','h3'],['p','ol','ul'],['bold','italics', 'underline']]\"\n" +
     "          ta-text-editor-class=\"ta-form-textarea\"\n" +
-    "          ta-html-editor-class=\"ta-form-textarea\"\n" +
-    "          ta-toolbar=\"[['h1','h2','h3'],['p','ol','ul'],['bold','italics', 'underline']]\"></text-angular>\n" +
+    "          ta-html-editor-class=\"ta-form-textarea\"></text-angular>\n" +
     "      </div>\n" +
     "    </div>\n" +
     "\n" +
@@ -1177,7 +1307,28 @@ angular.module("posts/posts-edit.tpl.html", []).run(["$templateCache", function(
     "        <div class=\"panel-heading\">\n" +
     "          <h4 class=\"panel-title\">Tags</h4>\n" +
     "        </div>\n" +
-    "        <div class=\"panel-body\"></div>\n" +
+    "        <div class=\"panel-body\">\n" +
+    "\n" +
+    "          <div ng-repeat=\"tag in post.tags\">\n" +
+    "            <h4>\n" +
+    "              <span class=\"label label-info\">{{tag.name}}</span>\n" +
+    "              <button type=\"button\" class=\"close\" aria-hidden=\"true\" ng-click=\"removeTag(tag)\">&times;</button>\n" +
+    "            </h4>\n" +
+    "          </div>\n" +
+    "\n" +
+    "          <div class=\"form-group\">\n" +
+    "            <label class=\"sr-only\">New Tag</label>\n" +
+    "            <input\n" +
+    "              type=\"text\"\n" +
+    "              placeholder=\"New tag...\"\n" +
+    "              typeahead=\"tag as tag.name for tag in tagsAutocomplete($viewValue) | filter:$viewValue\"\n" +
+    "              ng-model=\"selectedTag\"\n" +
+    "              typeahead-loading=\"loadingTags\"\n" +
+    "              typeahead-on-select=\"addTag(selectedTag)\" />\n" +
+    "            <i ng-show=\"loadingTags\" class=\"glyphicon glyphicon-refresh\"></i>\n" +
+    "          </div>\n" +
+    "\n" +
+    "        </div>\n" +
     "      </div>\n" +
     "\n" +
     "      <div class=\"panel panel-default\">\n" +
@@ -1198,7 +1349,7 @@ angular.module("posts/posts-edit.tpl.html", []).run(["$templateCache", function(
     "\n" +
     "          <div class=\"form-group\">\n" +
     "            <label>File</label>\n" +
-    "            <input type=\"file\" ng-model=\"file\" change=\"createAsset(file)\" />\n" +
+    "            <input type=\"file\" ng-model=\"upload.file\" change=\"createAsset(upload)\" />\n" +
     "          </div>\n" +
     "        </div>\n" +
     "      </div>\n" +

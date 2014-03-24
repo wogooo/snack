@@ -531,6 +531,13 @@ internals.Base.prototype.listParams = function (options) {
         get.where.id.inq = options.ids.split(',');
     }
 
+    if (options.autocomplete) {
+
+        // autocomplete
+        get.where = {};
+        get.where.key = new RegExp('^' + Utils.escapeRegex(options.autocomplete) + '.*?', 'i');
+    }
+
     if (options.order) {
         get.order = options.order;
     }

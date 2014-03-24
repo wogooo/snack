@@ -4,18 +4,26 @@
   <div class="row">
     <div class="col-sm-8">
       <div class="form-group">
-        <label>Headline</label>
-        <text-angular name="headline" ng-model="post.headline" ta-toolbar-group-class="btn-group btn-group-sm" ta-toolbar="[['bold','italics']]"></text-angular>
+        <label class="sr-only">Headline</label>
+        <text-angular
+          placeholder="[Snappy Headline]"
+          name="headline"
+          ng-model="post.headline"
+          ta-toolbar-group-class="btn-group btn-group-sm"
+          ta-toolbar="[['bold','italics']]"
+          ta-text-editor-class="ta-form-control ta-input-lg"
+          ta-html-editor-class="ta-form-control ta-input-lg"></text-angular>
       </div>
       <div class="form-group">
-        <label>Body</label>
+        <label class="sr-only">Body</label>
         <text-angular
+          placeholder="[The story.]"
           name="body"
           ng-model="post.body"
           ta-toolbar-group-class="btn-group btn-group-sm"
+          ta-toolbar="[['h1','h2','h3'],['p','ol','ul'],['bold','italics', 'underline']]"
           ta-text-editor-class="ta-form-textarea"
-          ta-html-editor-class="ta-form-textarea"
-          ta-toolbar="[['h1','h2','h3'],['p','ol','ul'],['bold','italics', 'underline']]"></text-angular>
+          ta-html-editor-class="ta-form-textarea"></text-angular>
       </div>
     </div>
 
@@ -25,7 +33,28 @@
         <div class="panel-heading">
           <h4 class="panel-title">Tags</h4>
         </div>
-        <div class="panel-body"></div>
+        <div class="panel-body">
+
+          <div ng-repeat="tag in post.tags">
+            <h4>
+              <span class="label label-info">{{tag.name}}</span>
+              <button type="button" class="close" aria-hidden="true" ng-click="removeTag(tag)">&times;</button>
+            </h4>
+          </div>
+
+          <div class="form-group">
+            <label class="sr-only">New Tag</label>
+            <input
+              type="text"
+              placeholder="New tag..."
+              typeahead="tag as tag.name for tag in tagsAutocomplete($viewValue) | filter:$viewValue"
+              ng-model="selectedTag"
+              typeahead-loading="loadingTags"
+              typeahead-on-select="addTag(selectedTag)" />
+            <i ng-show="loadingTags" class="glyphicon glyphicon-refresh"></i>
+          </div>
+
+        </div>
       </div>
 
       <div class="panel panel-default">
@@ -46,7 +75,7 @@
 
           <div class="form-group">
             <label>File</label>
-            <input type="file" ng-model="file" change="createAsset(file)" />
+            <input type="file" ng-model="upload.file" change="createAsset(upload)" />
           </div>
         </div>
       </div>

@@ -11,9 +11,9 @@ internals.relations = function (model, next) {
     var models = model.models;
     var Model = models[modelName];
 
-    // Model.hasMany('posts', {
-    //     model: models.Post
-    // });
+    Model.hasMany('posts', {
+        model: models.Post
+    });
 
     Model.hasMany('assets', {
         model: models.Asset
@@ -27,8 +27,6 @@ internals.relations = function (model, next) {
 };
 
 internals.register = function (model, next) {
-
-    model.after(internals.relations);
 
     var server = model.server;
     var schema = model.schema;
@@ -102,7 +100,8 @@ internals.register = function (model, next) {
         next();
     };
 
-    models[modelName] = Model;
+    model.expose(Model);
+    model.after(internals.relations);
 
     next();
 };

@@ -1,7 +1,6 @@
 var Async = require('async');
 var Hapi = require('hapi');
 var Utils = Hapi.utils;
-var Boom = Hapi.boom;
 
 function Posts(options) {
 
@@ -70,14 +69,14 @@ Posts.prototype.read = function (args, done) {
 
     if (!get) {
 
-        return done(Boom.badRequest());
+        return done(Hapi.error.badRequest());
     }
 
     Models.Post[get.method](get.params, function (err, post) {
 
         if (err) return done(err);
 
-        if (!post) return done(Boom.notFound());
+        if (!post) return done(Hapi.error.notFound());
 
         Api.Base.loadRelations(post, function (err) {
 
@@ -116,13 +115,13 @@ Posts.prototype.update = function (args, done) {
     Models.Post.find(params.id, function (err, post) {
         if (err) return done(err);
 
-        if (!post) return done(Boom.notFound());
+        if (!post) return done(Hapi.error.notFound());
 
         // Simple version control
         if (query.version && post._version_ !== query.version) {
 
             // Return conflict if version (timestamp) doesn't match
-            return done(Boom.conflict());
+            return done(Hapi.error.conflict());
         }
 
         // Clearing the queue property
@@ -167,7 +166,7 @@ Posts.prototype.destroy = function (args, done) {
 
         if (err) return done(err);
 
-        if (!post) return done(Boom.notFound());
+        if (!post) return done(Hapi.error.notFound());
 
         if (query.destroy === 'true') {
 

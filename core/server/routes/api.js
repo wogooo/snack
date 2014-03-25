@@ -111,17 +111,6 @@ module.exports = function (route) {
 
     server.route({
         method: 'GET',
-        path: '/api/v1/posts/{id}',
-        handler: function (request, reply) {
-
-            Api.Posts.read(request, function (err, results) {
-                reply(err ? err : results);
-            });
-        }
-    });
-
-    server.route({
-        method: 'GET',
         path: '/api/v1/posts/{id}.json',
         handler: function (request, reply) {
 
@@ -133,7 +122,7 @@ module.exports = function (route) {
 
     server.route({
         method: 'DELETE',
-        path: '/api/v1/posts/{id}',
+        path: '/api/v1/posts/{id}.json',
         handler: function (request, reply) {
 
             Api.Posts.destroy(request, function (err, results) {
@@ -370,17 +359,78 @@ module.exports = function (route) {
         }
     });
 
-    // server.route({
-    //     method: 'GET',
-    //     path: '/api/v1/posts',
-    //     handler: function (request, reply) {
+    // ----------------------
+    // Users
 
-    //         models.Post.getAll(['assets', 'authors'], {
-    //                 toJSON: true
-    //             },
-    //             function (err, results) {
-    //                 reply(results);
-    //             });
-    //     }
-    // });
+    server.route({
+        method: 'POST',
+        path: '/api/v1/users.json',
+        config: {
+            payload: {
+                allow: ['application/json', 'application/x-www-form-urlencoded']
+            },
+            handler: function (request, reply) {
+
+                Api.Users.create(request, function (err, results) {
+                    reply(err ? err : results);
+                });
+            }
+        }
+    });
+
+    server.route({
+        method: 'PUT',
+        path: '/api/v1/users/{id}.json',
+        config: {
+            payload: {
+                allow: ['application/json', 'application/x-www-form-urlencoded']
+            },
+            handler: function (request, reply) {
+
+                Api.Users.update(request, function (err, results) {
+                    reply(err ? err : results);
+                });
+            }
+        }
+    });
+
+    server.route({
+        method: 'GET',
+        path: '/api/v1/users.json',
+        config: {
+            handler: function (request, reply) {
+
+                Api.Users.list(request, function (err, results) {
+                    reply(err ? err : results);
+                });
+            }
+        }
+    });
+
+    server.route({
+        method: 'GET',
+        path: '/api/v1/users/{id}.json',
+        config: {
+            handler: function (request, reply) {
+
+                Api.Users.read(request, function (err, results) {
+                    reply(err ? err : results);
+                });
+            }
+        }
+    });
+
+    server.route({
+        method: 'DELETE',
+        path: '/api/v1/users/{id}.json',
+        config: {
+            handler: function (request, reply) {
+
+                Api.Users.destroy(request, function (err, results) {
+                    reply(err ? err : results);
+                });
+            }
+        }
+    });
+
 };

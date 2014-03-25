@@ -1,7 +1,6 @@
 var Async = require('async');
 var Inflection = require('inflection');
 var Hapi = require('hapi');
-var Boom = Hapi.boom;
 var Utils = Hapi.utils;
 
 var internals = {};
@@ -216,17 +215,13 @@ internals.Base.prototype._getRelationNames = function (modelName) {
 
 internals.Base.prototype.loadRelations = function (model, done) {
 
-    var relationInfo = this.getRelationInfo(model.constructor.modelName);
-    var relationNames = Object.keys(relationInfo);
+    var Models = this.models,
+        modelName = model.constructor.modelName,
+        relationNames = this._getRelationNames(modelName);
 
-    Async.eachSeries(relationNames, function (relationName, next) {
-
-            model[relationName](next);
-        },
-        function (err) {
-
-            done(err);
-        });
+    Models[modelName].include([ model ], relationNames, function (err) {
+        done(err);
+    });
 };
 
 internals.Base.prototype._findRelations = function (model, payload) {
@@ -321,12 +316,25 @@ internals.Base.prototype._findRelations = function (model, payload) {
     };
 
     var l = relationNames.length;
+    var cR, pR;
 
     for (var i = 0; i < l; i++) {
 
         relationName = relationNames[i];
-        relByName = cachedRelations[relationName] || [];
-        relByName = relByName.concat(payload[relationName] || []);
+
+        // Can have relations as either objects or arrays of objects,
+        // normalize to array of objects.
+        cR = cachedRelations[relationName] || [];
+        if (!(cR instanceof Array)) {
+            cR = [ cR ];
+        }
+
+        pR = payload[relationName] || [];
+        if (!(pR instanceof Array)) {
+            pR = [ pR ];
+        }
+
+        relByName = cR.concat(pR);
 
         // Filter to remove possible dupes
         relByName = uniqueRel(relationName, relByName);
@@ -479,7 +487,7 @@ internals.Base.prototype.keyExists = function (modelName, key, done) {
 
 internals.Base.prototype.findUniqueKey = function (modelName, keyBase, keyExt, keyIncrement, done) {
 
-    if (!keyBase) return done(Boom.badImplementation('No base defined for key generation'));
+    if (!keyBase) return done(Hapi.error.badImplementation('No base defined for key generation'));
 
     var self = this,
         retries = 10,
@@ -508,7 +516,7 @@ internals.Base.prototype.findUniqueKey = function (modelName, keyBase, keyExt, k
         } else if (exists && keyIncrement >= retries) {
 
             // Retries exhausted
-            return done(Boom.badRequest('Could not generate a unique asset key'));
+            return done(Hapi.error.badRequest('Could not generate a unique asset key'));
 
         } else {
 

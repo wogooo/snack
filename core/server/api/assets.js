@@ -2,7 +2,6 @@ var Path = require('path');
 var Async = require('async');
 var Hapi = require('hapi');
 var Utils = Hapi.utils;
-var Boom = Hapi.boom;
 
 function Assets(options) {
 
@@ -165,7 +164,7 @@ Assets.prototype.storeFile = function (args, done) {
 
     if (!fileStream) {
 
-        return done(Boom.badRequest('No file present'));
+        return done(Hapi.error.badRequest('No file present'));
     }
 
     var fileData = {
@@ -234,7 +233,7 @@ Assets.prototype.create = function (args, done) {
 
     } else {
 
-        return done(Boom.badRequest('No file uploaded'));
+        return done(Hapi.error.badRequest('No file uploaded'));
     }
 
     var options = {
@@ -273,7 +272,7 @@ Assets.prototype.read = function (args, done) {
 
     if (!get) {
 
-        return done(Boom.badRequest());
+        return done(Hapi.error.badRequest());
     }
 
     Models.Asset[get.method](get.params, function (err, asset) {
@@ -281,7 +280,7 @@ Assets.prototype.read = function (args, done) {
         if (err) return done(err);
 
         if (!asset) {
-            return done(Boom.notFound());
+            return done(Hapi.error.notFound());
         }
 
         Api.Base.loadRelations(asset, function (err) {
@@ -307,13 +306,13 @@ Assets.prototype.update = function (args, done) {
 
     this.read(args, function (err, asset) {
         if (err) return done(err);
-        if (!asset) return done(Boom.notFound());
+        if (!asset) return done(Hapi.error.notFound());
 
         // Simple version control
         if (query.version && asset._version_ !== query.version) {
 
             // Return conflict if version (timestamp) doesn't match
-            return done(Boom.conflict());
+            return done(Hapi.error.conflict());
         }
 
         if (clearQueue) {
@@ -354,7 +353,7 @@ Assets.prototype.destroy = function (args, done) {
         }
 
         if (!asset) {
-            return done(Boom.notFound());
+            return done(Hapi.error.notFound());
         }
 
         if (query.destroy === 'true') {

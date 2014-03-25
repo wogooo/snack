@@ -10,6 +10,7 @@ var Extensions = require('./extensions');
 var Storage = require('./storage');
 var Services = require('./services');
 var Plugins = require('./plugins');
+var Packs = require('./packs');
 var Routes = require('./routes');
 var Api = require('./api');
 var Models = require('./models');
@@ -134,16 +135,16 @@ function setup() {
         module: ErrorHandling,
         expose: false
     }, {
+        name: 'services',
+        module: Services,
+        expose: true
+    }, {
         name: 'extensions',
         module: Extensions,
         expose: false
     }, {
         name: 'storage',
         module: Storage,
-        expose: true
-    }, {
-        name: 'services',
-        module: Services,
         expose: true
     }, {
         name: 'models',
@@ -160,6 +161,10 @@ function setup() {
     }, {
         name: 'plugins',
         module: Plugins,
+        expose: false
+    }, {
+        name: 'packs',
+        module: Packs,
         expose: false
     }];
 

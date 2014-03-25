@@ -129,7 +129,16 @@ internals.register = function (model, next) {
     Model.beforeValidate = function (next, data) {
 
         // Private data
-        var _data = this.__data;
+        var _data = this.__data,
+            now = Date.now();
+
+        var stripOpts = {
+            'compact_whitespace': true
+        };
+
+        if (this.headline) {
+            this.title = HtmlStrip(this.headline, stripOpts).trim();
+        }
 
         if (!this.key) {
 
@@ -143,13 +152,7 @@ internals.register = function (model, next) {
             this.key = Uslug(this.kind) + '/' + Uslug(this.title);
         }
 
-        if (this.headline) {
-            this.title = HtmlStrip(this.headline, { 'compact_whitespace': true }).trim();
-        }
-
         // Want the updatedAt and version identical
-        var now = Date.now();
-
         this._version_ = now;
         this.updatedAt = new Date(now).toJSON();
 

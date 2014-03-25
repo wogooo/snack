@@ -1,38 +1,38 @@
 var Schema = require('jugglingdb').Schema;
-
-var modelName = 'User';
+var Uslug = require('uslug');
 
 var internals = {};
 
-internals.modelName = modelName;
+internals.name = 'User';
 
 internals.relations = function (model, next) {
 
+    var modelName = internals.name;
     var models = model.models;
     var Model = models[modelName];
 
     Model.hasMany('posts', {
-        model: models.Post
+        foreignKey: 'ownerId'
     });
 
     Model.hasMany('assets', {
+        as: 'owner',
         model: models.Asset
     });
 
     Model.hasMany('pages', {
+        as: 'owner',
         model: models.Page
     });
 
     next();
 };
 
-internals.register = function (model, next) {
+internals.definition = function () {
 
-    var server = model.server;
-    var schema = model.schema;
-    var models = model.models;
+    var modelName = internals.name;
 
-    var Model = schema.define(modelName, {
+    return {
         modelName: {
             type: String,
             length: 255,
@@ -72,7 +72,19 @@ internals.register = function (model, next) {
             length: 2000,
             default: null
         }
-    });
+    };
+};
+
+internals.register = function (model, next) {
+
+    var server = model.server;
+    var schema = model.schema;
+    var models = model.models;
+
+    var modelName = internals.name;
+    var definition = internals.definition();
+
+    var Model = schema.define(modelName, definition);
 
     Model.validatesPresenceOf('key', 'displayName', '_version_');
 
@@ -106,4 +118,6 @@ internals.register = function (model, next) {
     next();
 };
 
+exports.name = internals.name;
+exports.definition = internals.definition;
 exports.register = internals.register;

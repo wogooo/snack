@@ -1,7 +1,6 @@
 var Async = require('async');
 var Hapi = require('hapi');
 var Utils = Hapi.utils;
-var Boom = Hapi.boom;
 
 var internals = {};
 
@@ -104,7 +103,7 @@ internals.Tags.prototype.read = function (args, done) {
 
     if (!get) {
 
-        return done(Boom.badRequest());
+        return done(Hapi.error.badRequest());
     }
 
     Models.Tag[get.method](get.params, function (err, tag) {
@@ -112,7 +111,7 @@ internals.Tags.prototype.read = function (args, done) {
         if (err) return done(err);
 
         if (!tag) {
-            return done(Boom.notFound());
+            return done(Hapi.error.notFound());
         }
 
         done(err, tag);
@@ -139,14 +138,14 @@ internals.Tags.prototype.update = function (args, done) {
         if (err) return done(err);
 
         if (!tag) {
-            return done(Boom.notFound());
+            return done(Hapi.error.notFound());
         }
 
         // Simple version control
         if (query.version && tag._version_ !== query.version) {
 
             // Return conflict if version (timestamp) doesn't match
-            return done(Boom.conflict());
+            return done(Hapi.error.conflict());
         }
 
         if (clearQueue) {
@@ -186,7 +185,7 @@ internals.Tags.prototype.destroy = function (args, done) {
         if (err) return done(err);
 
         if (!tag) {
-            return done(Boom.notFound());
+            return done(Hapi.error.notFound());
         }
 
         if (query.destroy === 'true') {

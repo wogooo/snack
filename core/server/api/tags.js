@@ -118,7 +118,7 @@ internals.Tags.prototype.read = function (args, done) {
     });
 };
 
-internals.Tags.prototype.update = function (args, done) {
+internals.Tags.prototype.edit = function (args, done) {
 
     var Models = this.models,
         Api = this.api,
@@ -172,7 +172,7 @@ internals.Tags.prototype.update = function (args, done) {
     });
 };
 
-internals.Tags.prototype.destroy = function (args, done) {
+internals.Tags.prototype.remove = function (args, done) {
 
     var Models = this.models;
     var Api = this.api;

@@ -6,17 +6,13 @@ var Uslug = require('uslug');
 
 var internals = {};
 
-internals.name = 'Post';
+internals.modelName = 'Post';
 
-internals.definition = function () {
+internals.modelDefinition = function () {
 
-    var modelName = internals.name;
+    var modelName = internals.modelName;
 
     return {
-        id: {
-            type: String,
-            index: true
-        },
         title: {
             type: String,
             length: 255
@@ -42,6 +38,12 @@ internals.definition = function () {
         },
         body: {
             type: Schema.Text
+        },
+        language: String,
+        page: {
+            index: true,
+            type: Boolean,
+            default: false
         },
         createdAt: {
             index: true,
@@ -90,7 +92,7 @@ internals.definition = function () {
 
 internals.relations = function (model, next) {
 
-    var modelName = internals.name;
+    var modelName = internals.modelName;
     var models = model.models;
     var Model = models[modelName];
 
@@ -106,18 +108,26 @@ internals.relations = function (model, next) {
         model: models.Asset
     });
 
+    Model.belongsTo(models.User, {
+        as: '_createdBy'
+    });
+
+    Model.belongsTo(models.User, {
+        as: '_updatedBy'
+    });
+
     next();
 };
 
 internals.register = function (model, next) {
 
-    var Snack = model.snack,
+    var modelName = internals.modelName,
+        Snack = model.snack,
+        Config = Snack.config,
         schema = model.schema,
-        modelName = internals.name,
-        definition = internals.definition(),
-        Model;
+        definition = internals.modelDefinition();
 
-    Model = schema.define(modelName, definition);
+    var Model = schema.define(modelName, definition);
 
     Model.validatesPresenceOf('_version_');
 
@@ -180,6 +190,6 @@ internals.register = function (model, next) {
     next();
 };
 
-exports.name = internals.name;
-exports.definition = internals.definition;
+exports.name = internals.modelName;
+exports.definition = internals.modelDefinition;
 exports.register = internals.register;

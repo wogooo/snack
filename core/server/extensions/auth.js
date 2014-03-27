@@ -53,41 +53,60 @@ internals.Auth.prototype._setup = function () {
 
     Passport.serializeUser(function (user, done) {
 
-        done(null, user.id);
+        // Only store the id, but in obj form so upgrades
+        // to request.user don't break functionality.
+        done(null, { id: user.id });
     });
 
-    Passport.deserializeUser(function (id, done) {
+    Passport.deserializeUser(function (user, done) {
 
-        self._getUser(id, done);
+        // Just passing the id back into the user object
+        // to avoid unnecessary DB hits. When the user
+        // is needed it can be loaded from request.user.
+        done(null, user);
     });
 };
 
-internals.Auth.prototype._getUser = function (id, done) {
+internals.Auth.prototype.upgradeUser = function (request/*, reset, done*/) {
+
+    var reset = (arguments.length === 3 ? arguments[1] : null);
+    var done = (arguments.length === 3 ? arguments[2] : arguments[1]);
+
+    var user = request.session.user || request.user;
+
+    if (!user || !(user instanceof Object) || !user.id) {
+
+        // Without a user / id this user must not be logged in
+        return done(Hapi.error.unauthorized('Not logged in.'));
+    }
+
+    if (user.username && !reset) {
+
+        // Assume already upgraded if a username is set
+        return done(null, user);
+    }
 
     var Models = this.models;
-    Models.User.find(id, function (err, user) {
 
-        done(err, user ? user.toJSON() : null);
+    Models.User.find(user.id, function (err, user) {
+        if (err || !user) return done(Hapi.error.badImplementation('Find user error.'));
+
+        // Don't pass around this big vivified user
+        user = user.toJSON();
+
+        // Store in the session so this doesn't happen over and over
+        request.session.user = user;
+
+        // Return the user
+        done(null, user);
     });
 };
 
 internals.Auth.prototype._findUser = function (emailOrUsername, done) {
 
-    var Models = this.models,
-        params = {
-            where: {}
-        },
-        key;
+    var Models = this.models;
 
-    if (emailOrUsername.search(/@/) > -1) {
-        key = 'email';
-    } else {
-        key = 'username';
-    }
-
-    params.where[key] = emailOrUsername;
-
-    Models.User.findOne(params, done);
+    Models.User.check(emailOrUsername, done);
 };
 
 internals.Auth.prototype.verifyUser = function (usernameOrEmail, password, done) {

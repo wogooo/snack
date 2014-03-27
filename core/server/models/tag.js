@@ -20,8 +20,12 @@ internals.relations = function (model, next) {
         model: models.Asset
     });
 
-    Model.hasAndBelongsToMany('pages', {
-        model: models.Page
+    Model.belongsTo(models.User, {
+        as: '_createdBy'
+    });
+
+    Model.belongsTo(models.User, {
+        as: '_updatedBy'
     });
 
     next();
@@ -35,10 +39,6 @@ internals.register = function (model, next) {
     var Config = model.config;
 
     var Model = schema.define(modelName, {
-        id: {
-            type: String,
-            index: true
-        },
         type: {
             type: String,
             length: 255,

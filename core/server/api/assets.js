@@ -289,7 +289,7 @@ Assets.prototype.read = function (args, done) {
     });
 };
 
-Assets.prototype.update = function (args, done) {
+Assets.prototype.edit = function (args, done) {
 
     var Models = this.models,
         Api = this.api,
@@ -339,7 +339,7 @@ Assets.prototype.update = function (args, done) {
     });
 };
 
-Assets.prototype.destroy = function (args, done) {
+Assets.prototype.remove = function (args, done) {
 
     var Api = this.api;
     var Models = this.models;

@@ -11,6 +11,7 @@ module.exports = function (route) {
     var Config = route.config;
 
     var Api = Snack.api;
+    var Auth = Snack.extensions.auth;
 
     // ----------------------
     // Posts
@@ -84,7 +85,7 @@ module.exports = function (route) {
             },
             handler: function (request, reply) {
 
-                Api.Posts.update(request, function (err, results) {
+                Api.Posts.edit(request, function (err, results) {
                     reply(err ? err : results);
                 });
             }
@@ -102,7 +103,7 @@ module.exports = function (route) {
             },
             handler: function (request, reply) {
 
-                Api.Posts.update(request, function (err, results) {
+                Api.Posts.edit(request, function (err, results) {
                     reply(err ? err : results);
                 });
             }
@@ -125,7 +126,7 @@ module.exports = function (route) {
         path: '/api/v1/posts/{id}.json',
         handler: function (request, reply) {
 
-            Api.Posts.destroy(request, function (err, results) {
+            Api.Posts.remove(request, function (err, results) {
                 reply(err ? err : results);
             });
         }
@@ -181,7 +182,6 @@ module.exports = function (route) {
             payload: {
                 output: 'stream',
                 parse: true
-                // allow: ['image/jpeg', 'image/png']
             },
             handler: function (request, reply) {
 
@@ -199,7 +199,6 @@ module.exports = function (route) {
             payload: {
                 output: 'stream',
                 parse: true
-                // allow: ['image/jpeg', 'image/png']
             },
             handler: function (request, reply) {
 
@@ -221,7 +220,7 @@ module.exports = function (route) {
             },
             handler: function (request, reply) {
 
-                Api.Assets.update(request, function (err, results) {
+                Api.Assets.edit(request, function (err, results) {
                     reply(err ? err : results);
                 });
             }
@@ -239,7 +238,7 @@ module.exports = function (route) {
             },
             handler: function (request, reply) {
 
-                Api.Assets.update(request, function (err, results) {
+                Api.Assets.edit(request, function (err, results) {
                     reply(err ? err : results);
                 });
             }
@@ -251,7 +250,7 @@ module.exports = function (route) {
         path: '/api/v1/assets/{id}',
         handler: function (request, reply) {
 
-            Api.Assets.destroy(request, function (err) {
+            Api.Assets.remove(request, function (err) {
                 reply(err ? err : results);
             });
         }
@@ -320,7 +319,7 @@ module.exports = function (route) {
         path: '/api/v1/tags/{id}.json',
         handler: function (request, reply) {
 
-            Api.Tags.update(request, function (err, results) {
+            Api.Tags.edit(request, function (err, results) {
                 reply(err ? err : results);
             });
         }
@@ -353,7 +352,7 @@ module.exports = function (route) {
         path: '/api/v1/tags/{id}.json',
         handler: function (request, reply) {
 
-            Api.Tags.destroy(request, function (err, results) {
+            Api.Tags.remove(request, function (err, results) {
                 reply(err ? err : results);
             });
         }
@@ -387,7 +386,7 @@ module.exports = function (route) {
             },
             handler: function (request, reply) {
 
-                Api.Users.update(request, function (err, results) {
+                Api.Users.edit(request, function (err, results) {
                     reply(err ? err : results);
                 });
             }
@@ -427,7 +426,9 @@ module.exports = function (route) {
             auth: false,
             handler: function (request, reply) {
 
-                reply(request.user || Boom.unauthorized('Not logged in.'));
+                Auth.upgradeUser(request, function (err, user) {
+                    reply(err ? err : user);
+                });
             }
         }
     });
@@ -438,7 +439,7 @@ module.exports = function (route) {
         config: {
             handler: function (request, reply) {
 
-                Api.Users.destroy(request, function (err, results) {
+                Api.Users.remove(request, function (err, results) {
                     reply(err ? err : results);
                 });
             }

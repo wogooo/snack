@@ -152,9 +152,7 @@ internals.Base.prototype._enqueueArray = function (models, hook, done) {
 
     var self = this;
 
-    // .each() might be faster, but sticking to series to avoid
-    // overwhelming a DB.
-    Async.eachSeries(models, function (model, next) {
+    Async.each(models, function (model, next) {
 
             self._enqueueItem(model, hook, next);
         },
@@ -207,10 +205,20 @@ internals.Base.prototype.getRelationInfo = function (modelName) {
     return relationInfo;
 };
 
-internals.Base.prototype._getRelationNames = function (modelName) {
+internals.Base.prototype._getRelationNames = function (modelName, showPrivate) {
 
-    var relationInfo = this.getRelationInfo(modelName);
-    return Object.keys(relationInfo);
+    var relationInfo = this.getRelationInfo(modelName),
+        relationNames = Object.keys(relationInfo);
+
+    if (showPrivate) {
+        return relationNames;
+    }
+
+    var filterPrivate = function (relName) {
+        return !(relName[0] === '_' && relName[relName.length-1] !== '_');
+    };
+
+    return relationNames.filter(filterPrivate);
 };
 
 internals.Base.prototype.loadRelations = function (model, done) {

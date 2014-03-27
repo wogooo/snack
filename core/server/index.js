@@ -9,6 +9,7 @@ var ErrorHandling = require('./errorHandling');
 var Extensions = require('./extensions');
 var Storage = require('./storage');
 var Services = require('./services');
+var Data = require('./data');
 var Plugins = require('./plugins');
 var Packs = require('./packs');
 var Routes = require('./routes');
@@ -83,7 +84,7 @@ function logging(server) {
             messages(tags, event.data);
         }
     });
-};
+}
 
 function start(server) {
 
@@ -137,11 +138,14 @@ function setup() {
         name: 'storage',
         module: Storage
     }, {
+        name: 'services',
+        module: Services
+    }, {
         name: 'models',
         module: Models
     }, {
-        name: 'services',
-        module: Services
+        name: 'data',
+        module: Data
     }, {
         name: 'plugins',
         module: Plugins

@@ -88,7 +88,7 @@ Users.prototype.read = function (args, done) {
     });
 };
 
-Users.prototype.update = function (args, done) {
+Users.prototype.edit = function (args, done) {
 
     var Models = this.models,
         Api = this.api,
@@ -144,7 +144,7 @@ Users.prototype.update = function (args, done) {
     });
 };
 
-Users.prototype.destroy = function (args, done) {
+Users.prototype.remove = function (args, done) {
 
     var Models = this.models,
         Api = this.api,

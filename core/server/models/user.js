@@ -5,13 +5,13 @@ var Bcrypt = require('bcrypt');
 
 var internals = {};
 
-internals.name = 'User';
+internals.modelName = 'User';
 
 internals.relations = function (model, next) {
 
-    var modelName = internals.name;
-    var models = model.models;
-    var Model = models[modelName];
+    var modelName = internals.modelName,
+        models = model.models,
+        Model = models[modelName];
 
     Model.hasMany('posts', {
         foreignKey: 'ownerId'
@@ -22,23 +22,30 @@ internals.relations = function (model, next) {
         model: models.Asset
     });
 
-    Model.hasMany('pages', {
-        as: 'owner',
-        model: models.Page
+    Model.hasMany('permissions', {
+        model: models.Permission
+    });
+
+    Model.hasMany('roles', {
+        model: models.Role
+    });
+
+    Model.belongsTo(models.User, {
+        as: '_createdBy'
+    });
+
+    Model.belongsTo(models.User, {
+        as: '_updatedBy'
     });
 
     next();
 };
 
-internals.definition = function () {
+internals.modelDefinition = function () {
 
-    var modelName = internals.name;
+    var modelName = internals.modelName;
 
     return {
-        id: {
-            type: String,
-            index: true
-        },
         type: {
             type: String,
             length: 255,
@@ -71,6 +78,13 @@ internals.definition = function () {
             index: true,
             type: Date
         },
+        // 'active', 'disabled', locked', 'pending'
+        status: {
+            index: true,
+            type: String,
+            length: 255,
+            default: 'pending'
+        },
         permissions: [],
         _version_: {
             type: Number
@@ -83,14 +97,21 @@ internals.definition = function () {
     };
 };
 
+internals.generatePasswordHash = function (password, done) {
+    Bcrypt.genSalt(12, function (err, salt) {
+        Bcrypt.hash(password, salt, function (err, hash) {
+            done(err, hash);
+        });
+    });
+}
+
 internals.register = function (model, next) {
 
-    var server = model.server;
-    var schema = model.schema;
-    var models = model.models;
-
-    var modelName = internals.name;
-    var definition = internals.definition();
+    var modelName = internals.modelName,
+        Snack = model.snack,
+        Config = Snack.config,
+        schema = model.schema,
+        definition = internals.modelDefinition();
 
     var Model = schema.define(modelName, definition);
 
@@ -131,11 +152,9 @@ internals.register = function (model, next) {
 
         var self = this;
 
-        Bcrypt.genSalt(12, function (err, salt) {
-            Bcrypt.hash(data.password, salt, function (err, hash) {
-                data.password = hash;
-                next(err);
-            });
+        internals.generatePasswordHash(data.password, function (err, hash) {
+            data.password = hash;
+            next(err);
         });
 
     };
@@ -146,11 +165,9 @@ internals.register = function (model, next) {
 
         if (this.password !== this.password_was) {
 
-            Bcrypt.genSalt(12, function (err, salt) {
-                Bcrypt.hash(data.password, salt, function (err, hash) {
-                    data.password = hash;
-                    next(err);
-                });
+            internals.generatePasswordHash(data.password, function (err, hash) {
+                data.password = hash;
+                next(err);
             });
 
         } else {
@@ -159,12 +176,29 @@ internals.register = function (model, next) {
         }
     };
 
+    Model.check = function (emailOrUsername, done) {
+
+        var key,
+            params = {
+                where: {}
+            };
+
+        if (emailOrUsername.search(/@/) > -1) {
+            key = 'email';
+        } else {
+            key = 'username';
+        }
+
+        params.where[key] = emailOrUsername;
+        this.findOne(params, done);
+    };
+
     model.expose(Model);
     model.after(internals.relations);
 
     next();
 };
 
-exports.name = internals.name;
-exports.definition = internals.definition;
+exports.name = internals.modelName;
+exports.definition = internals.modelDefinition;
 exports.register = internals.register;

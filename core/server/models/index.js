@@ -14,10 +14,7 @@ internals.Models = function (options) {
 
     this.server = options.server;
     this.config = options.config;
-
-    Utils.assert(options.db, 'Database configuration not defined!');
-
-    this.schema = new Schema(options.db.engine, options.db);
+    this.schema = options.schema;
 };
 
 internals.Models.prototype.register = function (names, done) {
@@ -54,10 +51,14 @@ internals.Models.prototype.register = function (names, done) {
 
         }, function (err) {
 
-            self.schema.autoupdate(function () {
+            // TODO: There need to be dbInit / dbUpdate user events
+            // that cause this to happen. Shouldn't be modifying
+            // tables on every startup.
+
+            // self.schema.autoupdate(function () {
 
                 done(err, self._models);
-            });
+            // });
         });
     });
 };
@@ -69,17 +70,19 @@ internals.init = function (server, next) {
     var config = {
         server: server,
         config: Snack.config,
-        db: Snack.config().db
+        schema: Snack.services.schema
     };
 
     var models = new internals.Models(config);
 
     var modelNames = [
+        './setting',
+        './permission',
+        './role',
+        './user',
         './asset',
-        './page',
         './post',
-        './tag',
-        './user'
+        './tag'
     ];
 
     models.register(modelNames, function (err, _models) {

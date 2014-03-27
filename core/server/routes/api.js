@@ -421,6 +421,18 @@ module.exports = function (route) {
     });
 
     server.route({
+        method: 'GET',
+        path: '/api/v1/users/current.json',
+        config: {
+            auth: false,
+            handler: function (request, reply) {
+
+                reply(request.user || Boom.unauthorized('Not logged in.'));
+            }
+        }
+    });
+
+    server.route({
         method: 'DELETE',
         path: '/api/v1/users/{id}.json',
         config: {

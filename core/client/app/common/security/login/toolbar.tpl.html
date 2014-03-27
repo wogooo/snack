@@ -1,0 +1,19 @@
+<ul class="nav navbar-nav navbar-right">
+  <li class="dropdown" ng-show="isAuthenticated()">
+      <a href="#" class="dropdown-toggle">
+        {{currentUser.displayName}}
+        <b class="caret"></b>
+      </a>
+      <ul class="dropdown-menu">
+        <li class="divider"></li>
+        <li ng-show="isAuthenticated()" class="logout">
+          <button class="btn btn-link" ng-click="logout()">Log out</button>
+        </li>
+      </ul>
+  </li>
+  <li ng-hide="isAuthenticated()" class="login">
+    <form class="navbar-form">
+      <button class="btn login" ng-click="login()">Log in</button>
+    </form>
+  </li>
+</ul>

@@ -132,47 +132,34 @@ function setup() {
 
     var init = [{
         name: 'errorHandling',
-        module: ErrorHandling,
-        expose: false
-    }, {
-        name: 'services',
-        module: Services,
-        expose: true
-    }, {
-        name: 'extensions',
-        module: Extensions,
-        expose: false
+        module: ErrorHandling
     }, {
         name: 'storage',
-        module: Storage,
-        expose: true
+        module: Storage
     }, {
         name: 'models',
-        module: Models,
-        expose: true
+        module: Models
     }, {
-        name: 'api',
-        module: Api,
-        expose: true
-    }, {
-        name: 'routes',
-        module: Routes,
-        expose: false
+        name: 'services',
+        module: Services
     }, {
         name: 'plugins',
-        module: Plugins,
-        expose: false
+        module: Plugins
+    }, {
+        name: 'api',
+        module: Api
+    }, {
+        name: 'extensions',
+        module: Extensions
+    }, {
+        name: 'routes',
+        module: Routes
     }, {
         name: 'packs',
-        module: Packs,
-        expose: false
+        module: Packs
     }];
 
     Async.eachSeries(init, function (item, next) {
-
-            if (item.expose) {
-                server.app[item.name] = item.module;
-            }
 
             item.module.init(server, next);
         },

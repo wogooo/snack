@@ -2,6 +2,8 @@ var Async = require('async');
 var Hapi = require('hapi');
 var Utils = Hapi.utils;
 
+var PROVIDER = 'S3';
+
 var requires = [
     './local',
     './s3'
@@ -9,26 +11,21 @@ var requires = [
 
 exports.init = function (server, next) {
 
-    var provider = 'S3';
+    var Snack = server.app;
 
-    var storage = {};
-
-    storage.server = server;
-    storage.snack = server.app;
-    storage.hapi = Hapi;
-    storage.providers = {};
+    var root = {};
+    root.server = server;
+    root.snack = Snack;
+    root.hapi = Hapi;
+    root.providers = {};
 
     Async.eachSeries(requires, function (requireName, next) {
 
-            require(requireName)(storage, next);
+            require(requireName)(root, next);
         },
         function (err) {
 
-            exports.save = storage.providers[provider].save;
-            exports.exists = storage.providers[provider].exists;
-            exports.update = storage.providers[provider].update;
-            exports.destroy = storage.providers[provider].destroy;
-
+            Snack.storage = root.providers[PROVIDER];
             next();
         });
 };

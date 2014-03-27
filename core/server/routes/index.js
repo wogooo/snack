@@ -15,7 +15,7 @@ exports.init = function (server, next) {
     root.config = server.app.config;
 
     Object.keys(requires).forEach(function (requireName) {
-        exports[requireName] = requires[requireName](root);
+        requires[requireName](root);
     });
 
     next();

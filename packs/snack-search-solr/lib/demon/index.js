@@ -5,7 +5,7 @@ exports.register = function (demon, options, next) {
     var solrIndexing = new SolrIndexing(demon, options);
 
     if (!solrIndexing) {
-        return next(new Error('Could not load Solr Indexing!'));
+        return next(new Error('SolrSearch indexing demon error.'));
     }
 
     // Determine readyness before allowing this to register.

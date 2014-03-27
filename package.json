@@ -19,7 +19,7 @@
     "request": "^2.34.0",
     "moment": "^2.5.1",
     "minimist": "0.0.8",
-    "hapi": "git+ssh://git@github.com:snackco/hapi.git",
+    "hapi": "git+ssh://git@github.com:spumko/hapi.git",
     "jugglingdb": "git+ssh://git@github.com:mshick/jugglingdb.git",
     "jugglingdb-rethink": "git+ssh://git@github.com:mshick/jugglingdb-rethink.git",
     "snack-queue": "git+ssh://git@github.com:snackco/snack-queue.git",
@@ -38,7 +38,9 @@
     "yar": "git+ssh://git@github.com:snackco/yar.git",
     "travelogue": "git+ssh://git@github.com:snackco/travelogue.git",
     "passport": "^0.2.0",
-    "passport-twitter": "^1.0.2"
+    "passport-twitter": "^1.0.2",
+    "passport-local": "^1.0.0",
+    "bcrypt": "^0.7.7"
   },
   "devDependencies": {
     "grunt": "^0.4.2",

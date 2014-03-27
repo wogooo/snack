@@ -28,7 +28,7 @@ internals.SolrIndexing = function (demon, options) {
     }
 
     if (!this.maps) {
-        this.maps = require('../examples');
+        this.maps = require('../../examples');
     }
 
     this.queryBuilder = new Helios.queryBuilder();

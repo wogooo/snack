@@ -5,7 +5,8 @@ module.exports = function (route) {
 
     var server = route.server;
     var Snack = route.snack;
-    var Config = route.config;
+    var Config = Snack.config;
+    var Auth = Snack.extensions.auth;
 
     var packageInfo = Config().packageInfo;
     var corePath = Config().paths.corePath;
@@ -13,7 +14,10 @@ module.exports = function (route) {
 
     server.route({
         method: 'GET',
-        path: '/admin/{path*}',
+        path: '/snack/{path*}',
+        config: {
+            auth: 'passport'
+        },
         handler: function (request, reply) {
             reply.view('index', {
                 title: 'Snack',
@@ -28,7 +32,47 @@ module.exports = function (route) {
 
     server.route({
         method: 'GET',
-        path: '/admin/static/{path*}',
+        path: '/snack/login',
+        config: {
+            auth: false
+        },
+        handler: function (request, reply) {
+
+            var flash = request.session.flash(),
+                flashErr = false,
+                flashErrMsg = '';
+
+            if (flash.error && flash.error.length) {
+                flashErr = true;
+                flashErrMsg = flash.error[0];
+            }
+
+            if (request.session._isAuthenticated()) {
+
+                reply().redirect('/snack');
+
+            } else {
+
+                reply.view('login', {
+                    title: 'Sign In',
+                    packageInfo: packageInfo,
+                    error: flashErr,
+                    errorMessage: flashErrMsg
+                }, {
+                    path: Path.join(clientPath, 'views'),
+                    partialsPath: Path.join(clientPath, 'views/partials'),
+                    layout: false
+                });
+            }
+        }
+    });
+
+    server.route({
+        method: 'GET',
+        path: '/snack/static/{path*}',
+        config: {
+            auth: false
+        },
         handler: {
             directory: {
                 path: Path.join(clientPath, 'static'),
@@ -38,39 +82,82 @@ module.exports = function (route) {
     });
 
     server.route({
-        method: 'GET',
-        path: '/test-queue',
+        method: 'POST',
+        path: '/snack/login',
+        config: {
+            validate: {
+                payload: {
+                    username: Hapi.types.String(),
+                    password: Hapi.types.String()
+                }
+            },
+            auth: false
+        },
         handler: function (request, reply) {
-            server.methods.queue('getJobRange', null, function (err, jobList) {
-                reply.view('test-queue', {
-                    title: 'DEBUG',
-                    list: jobList
-                });
-            });
+
+            Auth.authenticate(request, reply);
+        }
+    });
+
+    server.route({
+        method: ['POST', 'GET'],
+        path: '/snack/logout',
+        config: {
+            auth: false,
+            handler: function (request, reply) {
+                request.session._logout();
+                reply().redirect('/snack/login');
+            }
         }
     });
 
     server.route({
         method: 'GET',
-        path: '/test',
-        handler: function (request, reply) {
-            reply.view('form', {
-                title: 'DEBUG'
-            });
+        path: '/logout',
+        config: {
+            auth: false,
+            handler: function (request, reply) {
+                reply().redirect('/snack/logout');
+            }
         }
     });
 
     server.route({
         method: 'GET',
-        path: '/throw',
-        handler: function (request, reply) {
+        path: '/login',
+        config: {
+            auth: false,
+            handler: function (request, reply) {
+                reply().redirect('/snack/login');
+            }
+        }
+    });
 
-            reply(Hapi.error.notFound());
-            // throw new Error('foo');
 
-            reply.view('test', {
-                title: 'DEBUG'
-            });
+
+
+    server.route({
+        method: 'GET',
+        path: '/clear',
+        config: {
+            auth: false,
+            handler: function (request, reply) {
+
+                request.session.reset();
+                reply().redirect('/session');
+            }
+        }
+    });
+
+    server.route({
+        method: 'GET',
+        path: '/session',
+        config: {
+            auth: false,
+            handler: function (request, reply) {
+
+                reply("<pre>" + JSON.stringify(request.session, null, 2) + "</pre><br/><br/><a href='/login'>Login</a>");
+            }
         }
     });
 };

@@ -1,5 +1,7 @@
+var Hapi = require('hapi');
 var Schema = require('jugglingdb').Schema;
 var Uslug = require('uslug');
+var Bcrypt = require('bcrypt');
 
 var internals = {};
 
@@ -33,11 +35,6 @@ internals.definition = function () {
     var modelName = internals.name;
 
     return {
-        modelName: {
-            type: String,
-            length: 255,
-            default: modelName
-        },
         id: {
             type: String,
             index: true
@@ -56,7 +53,17 @@ internals.definition = function () {
             type: String,
             length: 255
         },
+        username: {
+            index: true,
+            type: String,
+            length: 255
+        },
+        password: {
+            type: String,
+            length: 255
+        },
         email: {
+            index: true,
             type: String,
             length: 255
         },
@@ -64,6 +71,7 @@ internals.definition = function () {
             index: true,
             type: Date
         },
+        permissions: [],
         _version_: {
             type: Number
         },
@@ -86,21 +94,28 @@ internals.register = function (model, next) {
 
     var Model = schema.define(modelName, definition);
 
-    Model.validatesPresenceOf('key', 'displayName', '_version_');
+    Model.validatesPresenceOf('username', '_version_');
 
-    Model.validatesUniquenessOf('key', {
-        message: 'Key is not unique.'
+    Model.validatesUniquenessOf('username', {
+        message: 'Username is not unique.'
     });
 
     Model.beforeValidate = function (next, data) {
 
-        if (!this.key) {
+        if (this.email && this.email.search(/.+@.+\..+/i) < 0) {
+            next(Hapi.error.badRequest());
+        }
 
-            // Key is a little like S3 keys -- in some cases it
-            // would generate a path, but it also supports
-            // subgroupings of items that might otherwise have the
-            // same slug.
-            this.key = Uslug(this.displayName);
+        if (this.username && this.username.search(/@/) > -1) {
+            next(Hapi.error.badRequest());
+        }
+
+        if (!this.key) {
+            this.key = Uslug(this.username);
+        }
+
+        if (!this.displayName) {
+            this.displayName = this.username;
         }
 
         // Want the updatedAt and version identical
@@ -110,6 +125,38 @@ internals.register = function (model, next) {
         this.updatedAt = new Date(now).toJSON();
 
         next();
+    };
+
+    Model.beforeCreate = function (next, data) {
+
+        var self = this;
+
+        Bcrypt.genSalt(12, function (err, salt) {
+            Bcrypt.hash(data.password, salt, function (err, hash) {
+                data.password = hash;
+                next(err);
+            });
+        });
+
+    };
+
+    Model.beforeUpdate = function (next, data) {
+
+        var self = this;
+
+        if (this.password !== this.password_was) {
+
+            Bcrypt.genSalt(12, function (err, salt) {
+                Bcrypt.hash(data.password, salt, function (err, hash) {
+                    data.password = hash;
+                    next(err);
+                });
+            });
+
+        } else {
+
+            next();
+        }
     };
 
     model.expose(Model);

@@ -1,4 +1,4 @@
-angular.module('templates.app', ['assets/assets-edit.tpl.html', 'assets/assets-list.tpl.html', 'dashboard/dashboard.tpl.html', 'header.tpl.html', 'notifications.tpl.html', 'posts/posts-edit.tpl.html', 'posts/posts-list.tpl.html']);
+angular.module('templates.app', ['assets/assets-edit.tpl.html', 'assets/assets-list.tpl.html', 'common/security/login/form.tpl.html', 'common/security/login/toolbar.tpl.html', 'dashboard/dashboard.tpl.html', 'header.tpl.html', 'notifications.tpl.html', 'posts/posts-edit.tpl.html', 'posts/posts-list.tpl.html']);
 
 angular.module("assets/assets-edit.tpl.html", []).run(["$templateCache", function($templateCache) {
   $templateCache.put("assets/assets-edit.tpl.html",
@@ -106,6 +106,54 @@ angular.module("assets/assets-list.tpl.html", []).run(["$templateCache", functio
     "");
 }]);
 
+angular.module("common/security/login/form.tpl.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("common/security/login/form.tpl.html",
+    "<form name=\"form\" novalidate class=\"login-form\">\n" +
+    "    <div class=\"modal-header\">\n" +
+    "        <h4>Sign in</h4>\n" +
+    "    </div>\n" +
+    "    <div class=\"modal-body\">\n" +
+    "        <div class=\"alert alert-warning\" ng-show=\"authReason\">\n" +
+    "            {{authReason}}\n" +
+    "        </div>\n" +
+    "        <div class=\"alert alert-error\" ng-show=\"authError\">\n" +
+    "            {{authError}}\n" +
+    "        </div>\n" +
+    "        <input type=\"text\" name=\"username\" ng-model=\"user.username\" class=\"form-control\" placeholder=\"Email or Username\" required autofocus>\n" +
+    "        <input type=\"password\" name=\"password\" ng-model=\"user.password\" class=\"form-control\" placeholder=\"Password\" required>\n" +
+    "    </div>\n" +
+    "    <div class=\"modal-footer\">\n" +
+    "        <button class=\"btn btn-primary login\" ng-click=\"login()\" ng-disabled='form.$invalid'>Sign in</button>\n" +
+    "        <button class=\"btn btn-warning cancel\" ng-click=\"cancelLogin()\">Cancel</button>\n" +
+    "    </div>\n" +
+    "</form>\n" +
+    "");
+}]);
+
+angular.module("common/security/login/toolbar.tpl.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("common/security/login/toolbar.tpl.html",
+    "<ul class=\"nav navbar-nav navbar-right\">\n" +
+    "  <li class=\"dropdown\" ng-show=\"isAuthenticated()\">\n" +
+    "      <a href=\"#\" class=\"dropdown-toggle\">\n" +
+    "        {{currentUser.displayName}}\n" +
+    "        <b class=\"caret\"></b>\n" +
+    "      </a>\n" +
+    "      <ul class=\"dropdown-menu\">\n" +
+    "        <li class=\"divider\"></li>\n" +
+    "        <li ng-show=\"isAuthenticated()\" class=\"logout\">\n" +
+    "          <button class=\"btn btn-link\" ng-click=\"logout()\">Log out</button>\n" +
+    "        </li>\n" +
+    "      </ul>\n" +
+    "  </li>\n" +
+    "  <li ng-hide=\"isAuthenticated()\" class=\"login\">\n" +
+    "    <form class=\"navbar-form\">\n" +
+    "      <button class=\"btn login\" ng-click=\"login()\">Log in</button>\n" +
+    "    </form>\n" +
+    "  </li>\n" +
+    "</ul>\n" +
+    "");
+}]);
+
 angular.module("dashboard/dashboard.tpl.html", []).run(["$templateCache", function($templateCache) {
   $templateCache.put("dashboard/dashboard.tpl.html",
     "<h4>Posts</h4>\n" +
@@ -127,7 +175,6 @@ angular.module("header.tpl.html", []).run(["$templateCache", function($templateC
     "        <span class=\"icon-bar\"></span>\n" +
     "      </button>\n" +
     "      <a class=\"navbar-brand\" href=\"/admin/dashboard\">Dashboard</a>\n" +
-    "\n" +
     "    </div>\n" +
     "\n" +
     "    <!-- Collect the nav links, forms, and other content for toggling -->\n" +
@@ -136,6 +183,8 @@ angular.module("header.tpl.html", []).run(["$templateCache", function($templateC
     "        <li><a href=\"/admin/posts\">Posts</a></li>\n" +
     "        <li><a href=\"/admin/assets\">Assets</a></li>\n" +
     "      </ul>\n" +
+    "\n" +
+    "      <login-toolbar></login-toolbar>\n" +
     "    </div>\n" +
     "  </div>\n" +
     "</nav>\n" +
@@ -201,9 +250,10 @@ angular.module("posts/posts-edit.tpl.html", []).run(["$templateCache", function(
     "            <label class=\"sr-only\">New Tag</label>\n" +
     "            <input\n" +
     "              type=\"text\"\n" +
+    "              ng-model=\"selectedTag\"\n" +
     "              placeholder=\"New tag...\"\n" +
     "              typeahead=\"tag as tag.name for tag in tagsAutocomplete($viewValue) | filter:$viewValue\"\n" +
-    "              ng-model=\"selectedTag\"\n" +
+    "              typeahead-editable=\"false\"\n" +
     "              typeahead-loading=\"loadingTags\"\n" +
     "              typeahead-on-select=\"addTag(selectedTag)\" />\n" +
     "            <i ng-show=\"loadingTags\" class=\"glyphicon glyphicon-refresh\"></i>\n" +

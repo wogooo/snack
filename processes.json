@@ -1,8 +1,8 @@
 [{
   "name": "snack-app",
-  "script": "./core/index.js",
+  "script": "./index.js",
   "args": "['app']",
-  "instances": "1",
+  "instances": "2",
   "error_file": "./logs/snack-app-err.log",
   "out_file": "./logs/snack-app-out.log",
   "pid_file": "./pids/snack-app.pid",
@@ -13,7 +13,7 @@
   }
 }, {
   "name": "snack-demon",
-  "script": "./core/index.js",
+  "script": "./index.js",
   "args": "['demon']",
   "instances": "1",
   "error_file": "./logs/snack-demon-err.log",

@@ -5,7 +5,11 @@ var SocketIO = require('socket.io');
 
 exports.init = function (server, next) {
 
-    exports['socket.io'] = SocketIO.listen(server.listener, {
+    var Snack = server.app;
+
+    Snack.services = {};
+
+    Snack.services['socket.io'] = SocketIO.listen(server.listener, {
         log: false
     });
 

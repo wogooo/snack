@@ -1,4 +1,4 @@
-angular.module('posts', ['resources.posts', 'resources.assets', 'resources.tags', 'textAngular'])
+angular.module('posts', ['ui.bootstrap', 'resources.posts', 'resources.assets', 'resources.tags', 'textAngular'])
 
 .config(['$routeProvider',
     function ($routeProvider) {

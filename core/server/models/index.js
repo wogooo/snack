@@ -84,7 +84,7 @@ internals.init = function (server, next) {
 
     models.register(modelNames, function (err, _models) {
 
-        Utils.merge(exports, _models);
+        Snack.models = _models;
         next(err);
     });
 };

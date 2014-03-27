@@ -16,14 +16,14 @@ module.exports = function (plugin, options, next) {
     });
 
     if (!solr) {
-        plugin.log(['plugin', 'error'], 'SolrIndexing registration error.', 'Failure to load solr client.');
+        plugin.log(['plugin', 'error'], 'SearchSolr registration error.', 'Failure to load solr client.');
         return next();
     }
 
     solr.ready(function (err) {
 
         if (err) {
-            plugin.log(['plugin', 'error'], 'SolrIndexing registration error.', err.message);
+            plugin.log(['plugin', 'error'], 'SearchSolr registration error.', err.message);
             return next();
         }
 

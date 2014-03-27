@@ -7,6 +7,8 @@ Utils.loadDirModules(__dirname, ['index'], requires);
 
 exports.init = function (server, next) {
 
+    var Snack = server.app;
+
     var root = {};
 
     root.server = server;
@@ -21,9 +23,7 @@ exports.init = function (server, next) {
         root.api[requireName] = requires[requireName](root);
     });
 
-    Object.keys(root.api).forEach(function (apiName) {
-        exports[apiName] = root.api[apiName];
-    });
+    Snack.api = root.api;
 
     next();
 };

@@ -21,11 +21,7 @@ internals.init = function (server, next) {
     plugins.travelogue = {
         urls: {
             failureRedirect: '/login',
-            successRedirect: '/admin'
-        },
-        twitter: {
-            consumerKey: 'xxx',
-            consumerSecret: 'xxx'
+            successRedirect: '/snack'
         }
     };
 

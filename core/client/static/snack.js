@@ -1,4 +1,4 @@
-/*! snack - v0.0.1 - 2014-03-24
+/*! snack - v0.0.1 - 2014-03-26
  * Copyright (c) 2014 ;
  * Licensed MIT
  */
@@ -10,33 +10,31 @@ angular.module('app', [
     'dashboard',
     'posts',
     'assets',
+    'security',
     'services.i18nNotifications',
     'services.localizedMessages',
     'templates.app'
-]);
+])
 
-angular.module('app').config(['$routeProvider', '$locationProvider',
+.config(['$routeProvider', '$locationProvider',
     function ($routeProvider, $locationProvider) {
         $locationProvider.html5Mode(true);
         $routeProvider.otherwise({
             redirectTo: '/dashboard'
         });
     }
-]);
+])
 
-angular.module('app').run(['i18nNotifications',
-    function (i18nNotifications) {
+.run(['security', '$rootScope', '$location',
+    function (security, $rootScope, $location) {
+
         // Get the current user when the application starts
         // (in case they are still logged in from a previous session)
-        // security.requestCurrentUser();
-
-        // i18nNotifications.pushSticky('test', 'success', {
-        //     foo: 'bar'
-        // });
+        security.requestCurrentUser();
     }
-]);
+])
 
-angular.module('app').controller('AppCtrl', ['$scope', 'i18nNotifications', 'localizedMessages',
+.controller('AppCtrl', ['$scope', 'i18nNotifications', 'localizedMessages',
     function ($scope, i18nNotifications) {
 
         $scope.notifications = i18nNotifications;
@@ -51,18 +49,22 @@ angular.module('app').controller('AppCtrl', ['$scope', 'i18nNotifications', 'loc
             });
         });
     }
-]);
+])
 
-angular.module('app').controller('HeaderCtrl', ['$scope', '$location', '$route', 'notifications',
-    function ($scope, $location, $route, notifications) {
+.controller('HeaderCtrl', ['$scope', '$location', '$route', 'notifications', 'security',
+    function ($scope, $location, $route, notifications, security) {
+
         $scope.location = $location;
         // $scope.breadcrumbs = breadcrumbs;
 
-        // $scope.isAuthenticated = security.isAuthenticated;
-        // $scope.isAdmin = security.isAdmin;
+        $scope.isAuthenticated = security.isAuthenticated;
+        $scope.isAdmin = security.isAdmin;
 
         $scope.home = function () {
-            $location.path('/dashboard');
+            if (security.isAuthenticated()) {
+                $location.path('/dashboard');
+            }
+
             // if (security.isAuthenticated()) {
             //     $location.path('/dashboard');
             // } else {
@@ -809,6 +811,349 @@ angular.module('resources.tags', ['models.tag', 'models.tagList'])
     }
 ]);
 
+angular.module('security.authorization', ['security.service'])
+
+// This service provides guard methods to support AngularJS routes.
+// You can add them as resolves to routes to require authorization levels
+// before allowing a route change to complete
+.provider('securityAuthorization', {
+
+  requireAdminUser: ['securityAuthorization', function(securityAuthorization) {
+    return securityAuthorization.requireAdminUser();
+  }],
+
+  requireAuthenticatedUser: ['securityAuthorization', function(securityAuthorization) {
+    return securityAuthorization.requireAuthenticatedUser();
+  }],
+
+  $get: ['security', 'securityRetryQueue', function(security, queue) {
+    var service = {
+
+      // Require that there is an authenticated user
+      // (use this in a route resolve to prevent non-authenticated users from entering that route)
+      requireAuthenticatedUser: function() {
+        var promise = security.requestCurrentUser().then(function(userInfo) {
+          if ( !security.isAuthenticated() ) {
+            return queue.pushRetryFn('unauthenticated-client', service.requireAuthenticatedUser);
+          }
+        });
+        return promise;
+      },
+
+      // Require that there is an administrator logged in
+      // (use this in a route resolve to prevent non-administrators from entering that route)
+      requireAdminUser: function() {
+        var promise = security.requestCurrentUser().then(function(userInfo) {
+          if ( !security.isAdmin() ) {
+            return queue.pushRetryFn('unauthorized-client', service.requireAdminUser);
+          }
+        });
+        return promise;
+      }
+
+    };
+
+    return service;
+  }]
+});
+// Based loosely around work by Witold Szczerba - https://github.com/witoldsz/angular-http-auth
+angular.module('security', [
+  'security.service',
+  'security.interceptor',
+  'security.login',
+  'security.authorization']);
+
+angular.module('security.interceptor', ['security.retryQueue'])
+
+// This http interceptor listens for authentication failures
+.factory('securityInterceptor', ['$injector', 'securityRetryQueue', function($injector, queue) {
+  return function(promise) {
+    // Intercept failed requests
+    return promise.then(null, function(originalResponse) {
+      if(originalResponse.status === 401) {
+        // The request bounced because it was not authorized - add a new request to the retry queue
+        promise = queue.pushRetryFn('unauthorized-server', function retryRequest() {
+          // We must use $injector to get the $http service to prevent circular dependency
+          return $injector.get('$http')(originalResponse.config);
+        });
+      }
+      return promise;
+    });
+  };
+}])
+
+// We have to add the interceptor to the queue as a string because the interceptor depends upon service instances that are not available in the config block.
+.config(['$httpProvider', function($httpProvider) {
+  $httpProvider.responseInterceptors.push('securityInterceptor');
+}]);
+angular.module('security.login.form', ['services.localizedMessages'])
+
+// The LoginFormController provides the behaviour behind a reusable form to allow users to authenticate.
+// This controller and its template (login/form.tpl.html) are used in a modal dialog box by the security service.
+.controller('LoginFormController', ['$scope', 'security', 'localizedMessages', function($scope, security, localizedMessages) {
+  // The model for this form 
+  $scope.user = {};
+
+  // Any error message from failing to login
+  $scope.authError = null;
+
+  // The reason that we are being asked to login - for instance because we tried to access something to which we are not authorized
+  // We could do something diffent for each reason here but to keep it simple...
+  $scope.authReason = null;
+  if ( security.getLoginReason() ) {
+    $scope.authReason = ( security.isAuthenticated() ) ?
+      localizedMessages.get('login.reason.notAuthorized') :
+      localizedMessages.get('login.reason.notAuthenticated');
+  }
+
+  // Attempt to authenticate the user specified in the form's model
+  $scope.login = function() {
+    // Clear any previous security errors
+    $scope.authError = null;
+
+    // Try to login
+    security.login($scope.user.email, $scope.user.password).then(function(loggedIn) {
+      if ( !loggedIn ) {
+        // If we get here then the login failed due to bad credentials
+        $scope.authError = localizedMessages.get('login.error.invalidCredentials');
+      }
+    }, function(x) {
+      // If we get here then there was a problem with the login request to the server
+      $scope.authError = localizedMessages.get('login.error.serverError', { exception: x });
+    });
+  };
+
+  $scope.clearForm = function() {
+    $scope.user = {};
+  };
+
+  $scope.cancelLogin = function() {
+    security.cancelLogin();
+  };
+}]);
+
+angular.module('security.login', ['security.login.form', 'security.login.toolbar']);
+angular.module('security.login.toolbar', [])
+
+// The loginToolbar directive is a reusable widget that can show login or logout buttons
+// and information the current authenticated user
+.directive('loginToolbar', ['security', function(security) {
+  var directive = {
+    templateUrl: 'common/security/login/toolbar.tpl.html',
+    restrict: 'E',
+    replace: true,
+    scope: true,
+    link: function($scope, $element, $attrs, $controller) {
+      $scope.isAuthenticated = security.isAuthenticated;
+      $scope.login = security.showLogin;
+      $scope.logout = security.logout;
+      $scope.$watch(function() {
+        return security.currentUser;
+      }, function(currentUser) {
+        $scope.currentUser = currentUser;
+      });
+    }
+  };
+  return directive;
+}]);
+
+angular.module('security.retryQueue', [])
+
+// This is a generic retry queue for security failures.  Each item is expected to expose two functions: retry and cancel.
+.factory('securityRetryQueue', ['$q', '$log', function($q, $log) {
+  var retryQueue = [];
+  var service = {
+    // The security service puts its own handler in here!
+    onItemAddedCallbacks: [],
+    
+    hasMore: function() {
+      return retryQueue.length > 0;
+    },
+    push: function(retryItem) {
+      retryQueue.push(retryItem);
+      // Call all the onItemAdded callbacks
+      angular.forEach(service.onItemAddedCallbacks, function(cb) {
+        try {
+          cb(retryItem);
+        } catch(e) {
+          $log.error('securityRetryQueue.push(retryItem): callback threw an error' + e);
+        }
+      });
+    },
+    pushRetryFn: function(reason, retryFn) {
+      // The reason parameter is optional
+      if ( arguments.length === 1) {
+        retryFn = reason;
+        reason = undefined;
+      }
+
+      // The deferred object that will be resolved or rejected by calling retry or cancel
+      var deferred = $q.defer();
+      var retryItem = {
+        reason: reason,
+        retry: function() {
+          // Wrap the result of the retryFn into a promise if it is not already
+          $q.when(retryFn()).then(function(value) {
+            // If it was successful then resolve our deferred
+            deferred.resolve(value);
+          }, function(value) {
+            // Othewise reject it
+            deferred.reject(value);
+          });
+        },
+        cancel: function() {
+          // Give up on retrying and reject our deferred
+          deferred.reject();
+        }
+      };
+      service.push(retryItem);
+      return deferred.promise;
+    },
+    retryReason: function() {
+      return service.hasMore() && retryQueue[0].reason;
+    },
+    cancelAll: function() {
+      while(service.hasMore()) {
+        retryQueue.shift().cancel();
+      }
+    },
+    retryAll: function() {
+      while(service.hasMore()) {
+        retryQueue.shift().retry();
+      }
+    }
+  };
+  return service;
+}]);
+
+// Based loosely around work by Witold Szczerba - https://github.com/witoldsz/angular-http-auth
+angular.module('security.service', [
+  'security.retryQueue', // Keeps track of failed requests that need to be retried once the user logs in
+  'security.login', // Contains the login form template and controller
+  'ui.bootstrap' // Used to display the login form as a modal dialog.
+])
+
+.factory('security', ['$http', '$q', '$location', 'securityRetryQueue', '$modal', '$window',
+  function ($http, $q, $location, queue, $modal, $window) {
+
+    // Redirect to the given url (defaults to '/')
+    function redirect(url) {
+      url = url || '/snack/login';
+      $window.location.href = url;
+    }
+
+    // Login form dialog stuff
+    var loginDialog = null;
+
+    function openLoginDialog() {
+      if (loginDialog) {
+        throw new Error('Trying to open a dialog that is already open!');
+      }
+
+      loginDialog = $modal.open({
+        templateUrl: 'common/security/login/form.tpl.html',
+        controller: 'LoginFormController'
+      });
+
+      loginDialog.result.then(onLoginDialogClose);
+    }
+
+    function closeLoginDialog(success) {
+      if (loginDialog) {
+        loginDialog.close(success);
+      }
+    }
+
+    function onLoginDialogClose(success) {
+      loginDialog = null;
+      if (success) {
+        queue.retryAll();
+      } else {
+        queue.cancelAll();
+        redirect();
+      }
+    }
+
+    // Register a handler for when an item is added to the retry queue
+    queue.onItemAddedCallbacks.push(function (retryItem) {
+      if (queue.hasMore()) {
+        service.showLogin();
+      }
+    });
+
+    // The public API of the service
+    var service = {
+
+      // Get the first reason for needing a login
+      getLoginReason: function () {
+        return queue.retryReason();
+      },
+
+      // Show the modal login dialog
+      showLogin: function () {
+        openLoginDialog();
+      },
+
+      // Attempt to authenticate a user by the given username and password
+      login: function (username, password) {
+        var request = $http.post('/snack/login', {
+          username: username,
+          password: password
+        });
+        return request.then(function (response) {
+          service.currentUser = response.data;
+          if (service.isAuthenticated()) {
+            closeLoginDialog(true);
+          }
+          return service.isAuthenticated();
+        });
+      },
+
+      // Give up trying to login and clear the retry queue
+      cancelLogin: function () {
+        closeLoginDialog(false);
+        redirect();
+      },
+
+      // Logout the current user and redirect
+      logout: function (redirectTo) {
+        $http.post('/snack/logout').then(function () {
+          service.currentUser = null;
+          redirect();
+        });
+      },
+
+      // Ask the backend to see if a user is already authenticated - this may be from a previous session.
+      requestCurrentUser: function () {
+
+        if (service.isAuthenticated()) {
+          return $q.when(service.currentUser);
+        } else {
+          return $http.get('/api/v1/users/current.json').then(function (response) {
+            service.currentUser = response.data;
+            return service.currentUser;
+          });
+        }
+      },
+
+      // Information about the current user
+      currentUser: null,
+
+      // Is the current user authenticated?
+      isAuthenticated: function () {
+        return !!service.currentUser;
+      },
+
+      // Is the current user an adminstrator?
+      isAdmin: function () {
+        return !!(service.currentUser && service.currentUser.admin);
+      }
+    };
+
+    return service;
+  }
+]);
+
 angular.module('services.i18nNotifications', ['services.notifications', 'services.localizedMessages'])
     .factory('i18nNotifications', ['localizedMessages', 'notifications',
         function (localizedMessages, notifications) {
@@ -968,7 +1313,7 @@ angular.module('app').constant('I18N.MESSAGES', {
     'login.error.serverError': "There was a problem with authenticating: {{exception}}."
 });
 
-angular.module('posts', ['resources.posts', 'resources.assets', 'resources.tags', 'textAngular'])
+angular.module('posts', ['ui.bootstrap', 'resources.posts', 'resources.assets', 'resources.tags', 'textAngular'])
 
 .config(['$routeProvider',
     function ($routeProvider) {
@@ -1117,7 +1462,7 @@ angular.module('posts', ['resources.posts', 'resources.assets', 'resources.tags'
     }
 ]);
 
-angular.module('templates.app', ['assets/assets-edit.tpl.html', 'assets/assets-list.tpl.html', 'dashboard/dashboard.tpl.html', 'header.tpl.html', 'notifications.tpl.html', 'posts/posts-edit.tpl.html', 'posts/posts-list.tpl.html']);
+angular.module('templates.app', ['assets/assets-edit.tpl.html', 'assets/assets-list.tpl.html', 'common/security/login/form.tpl.html', 'common/security/login/toolbar.tpl.html', 'dashboard/dashboard.tpl.html', 'header.tpl.html', 'notifications.tpl.html', 'posts/posts-edit.tpl.html', 'posts/posts-list.tpl.html']);
 
 angular.module("assets/assets-edit.tpl.html", []).run(["$templateCache", function($templateCache) {
   $templateCache.put("assets/assets-edit.tpl.html",
@@ -1225,6 +1570,54 @@ angular.module("assets/assets-list.tpl.html", []).run(["$templateCache", functio
     "");
 }]);
 
+angular.module("common/security/login/form.tpl.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("common/security/login/form.tpl.html",
+    "<form name=\"form\" novalidate class=\"login-form\">\n" +
+    "    <div class=\"modal-header\">\n" +
+    "        <h4>Sign in</h4>\n" +
+    "    </div>\n" +
+    "    <div class=\"modal-body\">\n" +
+    "        <div class=\"alert alert-warning\" ng-show=\"authReason\">\n" +
+    "            {{authReason}}\n" +
+    "        </div>\n" +
+    "        <div class=\"alert alert-error\" ng-show=\"authError\">\n" +
+    "            {{authError}}\n" +
+    "        </div>\n" +
+    "        <input type=\"text\" name=\"username\" ng-model=\"user.username\" class=\"form-control\" placeholder=\"Email or Username\" required autofocus>\n" +
+    "        <input type=\"password\" name=\"password\" ng-model=\"user.password\" class=\"form-control\" placeholder=\"Password\" required>\n" +
+    "    </div>\n" +
+    "    <div class=\"modal-footer\">\n" +
+    "        <button class=\"btn btn-primary login\" ng-click=\"login()\" ng-disabled='form.$invalid'>Sign in</button>\n" +
+    "        <button class=\"btn btn-warning cancel\" ng-click=\"cancelLogin()\">Cancel</button>\n" +
+    "    </div>\n" +
+    "</form>\n" +
+    "");
+}]);
+
+angular.module("common/security/login/toolbar.tpl.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("common/security/login/toolbar.tpl.html",
+    "<ul class=\"nav navbar-nav navbar-right\">\n" +
+    "  <li class=\"dropdown\" ng-show=\"isAuthenticated()\">\n" +
+    "      <a href=\"#\" class=\"dropdown-toggle\">\n" +
+    "        {{currentUser.displayName}}\n" +
+    "        <b class=\"caret\"></b>\n" +
+    "      </a>\n" +
+    "      <ul class=\"dropdown-menu\">\n" +
+    "        <li class=\"divider\"></li>\n" +
+    "        <li ng-show=\"isAuthenticated()\" class=\"logout\">\n" +
+    "          <button class=\"btn btn-link\" ng-click=\"logout()\">Log out</button>\n" +
+    "        </li>\n" +
+    "      </ul>\n" +
+    "  </li>\n" +
+    "  <li ng-hide=\"isAuthenticated()\" class=\"login\">\n" +
+    "    <form class=\"navbar-form\">\n" +
+    "      <button class=\"btn login\" ng-click=\"login()\">Log in</button>\n" +
+    "    </form>\n" +
+    "  </li>\n" +
+    "</ul>\n" +
+    "");
+}]);
+
 angular.module("dashboard/dashboard.tpl.html", []).run(["$templateCache", function($templateCache) {
   $templateCache.put("dashboard/dashboard.tpl.html",
     "<h4>Posts</h4>\n" +
@@ -1246,7 +1639,6 @@ angular.module("header.tpl.html", []).run(["$templateCache", function($templateC
     "        <span class=\"icon-bar\"></span>\n" +
     "      </button>\n" +
     "      <a class=\"navbar-brand\" href=\"/admin/dashboard\">Dashboard</a>\n" +
-    "\n" +
     "    </div>\n" +
     "\n" +
     "    <!-- Collect the nav links, forms, and other content for toggling -->\n" +
@@ -1255,6 +1647,8 @@ angular.module("header.tpl.html", []).run(["$templateCache", function($templateC
     "        <li><a href=\"/admin/posts\">Posts</a></li>\n" +
     "        <li><a href=\"/admin/assets\">Assets</a></li>\n" +
     "      </ul>\n" +
+    "\n" +
+    "      <login-toolbar></login-toolbar>\n" +
     "    </div>\n" +
     "  </div>\n" +
     "</nav>\n" +
@@ -1320,9 +1714,10 @@ angular.module("posts/posts-edit.tpl.html", []).run(["$templateCache", function(
     "            <label class=\"sr-only\">New Tag</label>\n" +
     "            <input\n" +
     "              type=\"text\"\n" +
+    "              ng-model=\"selectedTag\"\n" +
     "              placeholder=\"New tag...\"\n" +
     "              typeahead=\"tag as tag.name for tag in tagsAutocomplete($viewValue) | filter:$viewValue\"\n" +
-    "              ng-model=\"selectedTag\"\n" +
+    "              typeahead-editable=\"false\"\n" +
     "              typeahead-loading=\"loadingTags\"\n" +
     "              typeahead-on-select=\"addTag(selectedTag)\" />\n" +
     "            <i ng-show=\"loadingTags\" class=\"glyphicon glyphicon-refresh\"></i>\n" +

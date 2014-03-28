@@ -1,5 +1,6 @@
 var Hapi = require('hapi');
 var Async = require('async');
+var Prompt = require('prompt');
 
 var Seed = require('./seed');
 var defaultSettings = require('./defaultSettings.json');
@@ -30,9 +31,9 @@ internals.settings = function (groupName) {
     return settings;
 };
 
-internals.freshDb = function (root, done) {
+internals.freshDb = function (snack, done) {
 
-    var Snack = root.snack,
+    var Snack = snack,
         Models = Snack.models,
         schema = Snack.services.schema,
         settings = internals.settings(),
@@ -40,31 +41,52 @@ internals.freshDb = function (root, done) {
         tasks = [];
 
     tasks.push(function createTables(next) {
-        schema.autoupdate(next);
+
+        console.log("Creating tables...".blue);
+
+        schema.autoupdate(function (err) {
+            console.log("\u2713 Tables created".green);
+            next(err);
+        });
     });
 
-    function addSetting(sett) {
-        return function (next) {
-            setting = new Models.Setting(sett);
-            setting.save(next);
-        }
-    }
+    var addSetting = function (sett) {
+
+        return function addSetting(next) {
+            Models.Setting.create(sett, next);
+        };
+    };
 
     for (var i in settings) {
         tasks.push(addSetting(settings[i]));
     }
 
-    if (root.seedTasks) {
-        seedTasks = root.seedTasks();
-        tasks = tasks.concat(seedTasks);
-    }
+    // Bring in the seed tasks
+    seedTasks = Seed.getTasks(Snack);
 
-    Async.series(tasks, done);
+    tasks = tasks.concat(seedTasks);
+
+    Async.series(tasks, function (err) {
+
+        if (err) {
+
+            console.log("Something went wrong initializing the database!".red);
+
+            Models.Setting.findBy('key', 'databaseVersion', function (err, setting) {
+                setting.value = 'error';
+                setting.save();
+                done(err);
+            });
+        } else {
+
+            done();
+        }
+    });
 };
 
-internals.updateDb = function (root, done) {
+internals.updateDb = function (snack, done) {
 
-    var Snack = root.snack,
+    var Snack = snack,
         Models = Snack.models,
         schema = Snack.services.schema,
         settings = internals.settings('core'),
@@ -74,9 +96,9 @@ internals.updateDb = function (root, done) {
         schema.autoupdate(next);
     });
 
-    function updateSetting(sett) {
+    var updateSetting = function (sett) {
 
-        return function (next) {
+        return function updateSetting(next) {
             Models.Setting.findOne({
                 where: {
                     key: sett.key
@@ -84,7 +106,7 @@ internals.updateDb = function (root, done) {
             }, function (err, setting) {
                 setting.updateAttributes(sett, next);
             });
-        }
+        };
     }
 
     for (var i in settings) {
@@ -100,34 +122,75 @@ exports.init = function (server, next) {
         Models = Snack.models,
         schema = Snack.services.schema,
         freshDb = internals.freshDb,
-        updateDb = internals.updateDb;
+        updateDb = internals.updateDb,
+        inputFor = false;
 
     var root = {};
     root.server = server;
     root.snack = Snack;
 
-    Seed.register(root, function () {
+    // Really awful test for uninitted db...
+    Models.Setting.findBy('key', 'databaseVersion', function (err, setting) {
 
-        // Really awful test for uninitted db...
-        var versionQuery = {
-            where: {
-                key: 'databaseVersion'
-            }
-        };
+        // If there's an error, or no setting, the assumption is
+        // this hasn't been initted...
+        if (err || !setting || setting.value === 'error') {
 
-        Models.Setting.findOne(versionQuery, function (err, setting) {
+            console.log("---".grey,
+                        "\nUninitialized database detected!".red,
+                        "\nShould I create a new one?\n");
 
-            // If there's an error, or no setting, the assumption is
-            // this hasn't been initted...
-            if (err || !setting) {
-                return freshDb(root, next);
-            }
+            inputFor = 'fresh';
+        }
 
-            if (setting.value !== defaultSettings.core.databaseVersion.value) {
-                return updateDb(root, next);
-            }
+        if (setting && setting.value === 'error') {
+
+            console.log("---".grey,
+                        "\nThe database appears to have failed to initialize!".red,
+                        "\nShould I create a new one?\n");
+
+            inputFor = 'fresh';
+        }
+
+        if (!inputFor && setting && setting.value !== defaultSettings.core.databaseVersion.value) {
+
+            console.log("---".grey,
+                        "\nDatabase upgrade needed.".blue,
+                        "\nShould I proceed?\n");
+
+            inputFor = 'update';
+        }
+
+        if (inputFor) {
+
+            Prompt.message = '';
+            Prompt.delimiter = '';
+            Prompt.start();
+
+            Prompt.get([{
+                name: inputFor,
+                description: 'Yes or No:',
+                default: 'No',
+                hidden: true
+            }], function (err, result) {
+
+                if (result[inputFor].search(/yes/i) > -1) {
+                    console.log("Great! Just a minute.".grey, "\n");
+
+                    if (inputFor === 'fresh') {
+                        return freshDb(Snack, next);
+                    } else {
+                        return updateDb(Snack, next);
+                    }
+                }
+
+                next();
+            });
+
+
+        } else {
 
             next();
-        });
+        }
     });
 };

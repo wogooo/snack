@@ -15,6 +15,7 @@ internals.modelDefinition = function () {
             default: modelName.toLowerCase()
         },
         'name': {
+            index: true,
             type: String,
             length: 255
         },
@@ -76,6 +77,17 @@ internals.register = function (model, next) {
     Model.validatesUniquenessOf('name', {
         message: 'Role name is not unique.'
     });
+
+    Model.findBy = function (key, val, done) {
+
+        var find = {
+            where: {}
+        };
+
+        find[key] = val;
+
+        Model.findOne(find, done);
+    };
 
     model.expose(Model);
     model.after(internals.relations);

@@ -75,6 +75,17 @@ internals.register = function (model, next) {
         message: 'Setting key is not unique.'
     });
 
+    Model.findBy = function (key, val, done) {
+
+        var find = {
+            where: {}
+        };
+
+        find[key] = val;
+
+        Model.findOne(find, done);
+    };
+
     model.expose(Model);
     model.after(internals.relations);
 

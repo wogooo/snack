@@ -1,10 +1,19 @@
 var Async = require('async');
+var Prompt = require('prompt');
 
 var internals = {};
 
 internals.seed = {
+    users: [{
+        "displayName": "Admin",
+        "username": "admin",
+        "body": "Simple starter post.",
+        "page": false,
+        "language": "en_US"
+    }],
+
     posts: [{
-        "title": "Sample",
+        "headline": "Sample Post",
         "key": "sample",
         "body": "Simple starter post.",
         "page": false,
@@ -43,52 +52,150 @@ internals.seed = {
     }]
 };
 
-exports.register = function (root, done) {
+exports.getTasks = function (snack) {
 
-    var Server = root.server,
-        Snack = root.snack,
+    var Snack = snack,
         Models = Snack.models,
-        seed = internals.seed;
+        seed = internals.seed,
+        user = {};
 
-    root.seedTasks = function () {
+    var tasks = [];
 
-        var tasks = [];
+    tasks.push(function getUserInfo(next) {
 
-        tasks.push(function seedPosts(next) {
-            var createPost = function (post, cb) {
-                post = new Models.Post(post);
-                post.save(cb);
-            };
-            Async.eachSeries(seed.posts, createPost, next);
+        console.log("---".grey,
+                    "\nCreate the first user:\n");
+
+        Prompt.delimiter = '';
+        Prompt.start();
+
+        var userSchema = {
+            properties: {
+                username: {
+                    description: 'Username:',
+                    pattern: /^[a-zA-Z\s\-]+$/,
+                    message: 'Name must be only letters, spaces, or dashes',
+                    required: true
+                },
+                email: {
+                    description: 'Email:',
+                    pattern: /.+@.+\..+/,
+                    message: 'Come on, that\'s not a real email!',
+                    required: true
+                },
+                password: {
+                    description: 'Password:',
+                    hidden: true,
+                    required: true
+                }
+            }
+        }
+
+        Prompt.get(userSchema, function (err, result) {
+            user = result;
+            next(err);
         });
+    });
 
-        tasks.push(function seedTags(next) {
-            var createTag = function (tag, cb) {
-                tag = new Models.Tag(tag);
-                tag.save(cb);
-            };
-            Async.eachSeries(seed.tags, createTag, next);
+    tasks.push(function seedRoles(next) {
+
+        console.log("Creating roles...".blue);
+
+        var createRole = function (role, cb) {
+            Models.Role.create(role, function (err) {
+                cb(err);
+            });
+        };
+        Async.eachSeries(seed.roles, createRole, function (err) {
+            console.log("\u2713 Roles created".green);
+            next(err);
         });
+    });
 
+    tasks.push(function seedPermissions(next) {
 
-        tasks.push(function seedRoles(next) {
-            var createRole = function (role, cb) {
-                role = new Models.Role(role);
-                role.save(cb);
-            };
-            Async.eachSeries(seed.roles, createRole, next);
+        console.log("Creating permissions...".blue);
+
+        var createPermission = function (perm, cb) {
+            Models.Permission.create(perm, function (err, permission) {
+                if (err) return cb(err);
+                Models.Role.findBy('name', 'administrator', function (err, role) {
+                    if (err) return cb(err);
+                    permission.roles.add(role, cb);
+                });
+            });
+        };
+        Async.eachSeries(seed.permissions, createPermission, function (err) {
+            console.log("\u2713 Permissions created".green);
+            next(err);
         });
+    });
 
-        tasks.push(function seedPermissions(next) {
-            var createPermission = function (perm, cb) {
-                perm = new Models.Permission(perm);
-                perm.save(cb);
-            };
-            Async.eachSeries(seed.permissions, createPermission, next);
+    tasks.push(function seedUser(next) {
+
+        console.log("Creating user...".blue);
+
+        var createUser = function (user, cb) {
+            Models.User.create(user, function (err, user) {
+
+                if (err) return next(err);
+
+                Models.Role.findBy('name', 'administrator', function (err, role) {
+
+                    if (err) return next(err);
+
+                    user.roles.add(role, function (err) {
+                        if (err) return next(err);
+
+                        console.log("\u2713 User created".green);
+                        next();
+                    });
+                });
+            });
+        };
+
+        createUser(user, function (err) {
+            console.log("\u2713 User created".green);
+            next(err);
         });
+    });
 
-        return tasks;
-    };
+    tasks.push(function seedTags(next) {
 
-    done();
+        console.log("Creating tags...".blue);
+
+        var createTag = function (tag, cb) {
+            Models.Tag.create(tag, function (err) {
+                cb(err);
+            });
+        };
+
+        Async.eachSeries(seed.tags, createTag, function (err) {
+            console.log("\u2713 Tags created".green);
+            next(err);
+        });
+    });
+
+    tasks.push(function seedPosts(next) {
+
+        console.log("Creating posts...".blue);
+
+        var createPost = function (post, cb) {
+
+            Models.Post.create(post, function (err, post) {
+                if (err) return cb(err);
+                Models.Tag.findBy('key', 'tag/getting-started', function (err, tag) {
+                    if (err) return cb(err);
+                    post.tags.add(tag, cb);
+                });
+            });
+        };
+
+        Async.eachSeries(seed.posts, createPost, function (err) {
+            console.log("\u2713 Posts created".green);
+            next(err);
+        });
+    });
+
+    return tasks;
 };

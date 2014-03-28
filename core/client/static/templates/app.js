@@ -174,14 +174,14 @@ angular.module("header.tpl.html", []).run(["$templateCache", function($templateC
     "        <span class=\"icon-bar\"></span>\n" +
     "        <span class=\"icon-bar\"></span>\n" +
     "      </button>\n" +
-    "      <a class=\"navbar-brand\" href=\"/admin/dashboard\">Dashboard</a>\n" +
+    "      <a class=\"navbar-brand\" href=\"/snack/dashboard\">Dashboard</a>\n" +
     "    </div>\n" +
     "\n" +
     "    <!-- Collect the nav links, forms, and other content for toggling -->\n" +
     "    <div class=\"collapse navbar-collapse\" id=\"navbar-collapse\" collapse=\"navCollapsed\">\n" +
     "      <ul class=\"nav navbar-nav\">\n" +
-    "        <li><a href=\"/admin/posts\">Posts</a></li>\n" +
-    "        <li><a href=\"/admin/assets\">Assets</a></li>\n" +
+    "        <li><a href=\"/snack/posts\">Posts</a></li>\n" +
+    "        <li><a href=\"/snack/assets\">Assets</a></li>\n" +
     "      </ul>\n" +
     "\n" +
     "      <login-toolbar></login-toolbar>\n" +

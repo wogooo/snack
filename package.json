@@ -40,7 +40,8 @@
     "passport": "^0.2.0",
     "passport-twitter": "^1.0.2",
     "passport-local": "^1.0.0",
-    "bcrypt": "^0.7.7"
+    "bcrypt": "^0.7.7",
+    "prompt": "^0.2.12"
   },
   "devDependencies": {
     "grunt": "^0.4.2",

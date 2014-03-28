@@ -168,13 +168,14 @@ exports.init = function (server, next) {
             Prompt.start();
 
             Prompt.get([{
-                name: inputFor,
+                name: 'yesno',
                 description: 'Yes or No:',
-                default: 'No',
-                hidden: true
-            }], function (err, result) {
+                'default': 'No'
+            }], function (err, decide) {
 
-                if (result[inputFor].search(/yes/i) > -1) {
+                if (err) return next();
+
+                if (decide && decide.yesno.search(/yes/i) > -1) {
                     console.log("Great! Just a minute.".grey, "\n");
 
                     if (inputFor === 'fresh') {

@@ -109,11 +109,13 @@ internals.relations = function (model, next) {
     });
 
     Model.belongsTo(models.User, {
-        as: '_createdBy'
+        as: '_createdBy',
+        foreignKey: 'createdById'
     });
 
     Model.belongsTo(models.User, {
-        as: '_updatedBy'
+        as: '_updatedBy',
+        foreignKey: 'updatedById'
     });
 
     next();
@@ -165,6 +167,19 @@ internals.register = function (model, next) {
         // Want the updatedAt and version identical
         this._version_ = now;
         this.updatedAt = new Date(now).toJSON();
+
+        next();
+    };
+
+    Model.beforeCreate = function (next, data) {
+
+        if (!data.updatedById) {
+            this.updatedById = data.createdById;
+        }
+
+        if (!data.ownerId) {
+            this.ownerId = data.createdById;
+        }
 
         next();
     };

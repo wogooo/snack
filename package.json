@@ -78,5 +78,8 @@
   ],
   "bugs": {
     "url": "https://github.com/snackco/snack/issues"
+  },
+  "optionalDependencies": {
+    "node-protobuf": "^1.0.10"
   }
 }

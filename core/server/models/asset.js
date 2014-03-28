@@ -24,11 +24,13 @@ internals.relations = function (model, next) {
     });
 
     Model.belongsTo(models.User, {
-        as: '_createdBy'
+        as: '_createdBy',
+        foreignKey: 'createdById'
     });
 
     Model.belongsTo(models.User, {
-        as: '_updatedBy'
+        as: '_updatedBy',
+        foreignKey: 'updatedById'
     });
 
     next();
@@ -141,6 +143,14 @@ internals.register = function (model, next) {
         // Get a more useful, human type from the mimetype.
         if (mimeType && mimeRegex.test(mimeType)) {
             data.kind = mimeType.match(mimeRegex)[1];
+        }
+
+        if (!data.updatedById) {
+            this.updatedById = data.createdById;
+        }
+
+        if (!data.ownerId) {
+            this.ownerId = data.createdById;
         }
 
         next();

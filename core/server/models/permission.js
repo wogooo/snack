@@ -56,11 +56,13 @@ internals.relations = function (model, next) {
     });
 
     Model.belongsTo(models.User, {
-        as: '_createdBy'
+        as: '_createdBy',
+        foreignKey: 'createdById'
     });
 
     Model.belongsTo(models.User, {
-        as: '_updatedBy'
+        as: '_updatedBy',
+        foreignKey: 'updatedById'
     });
 
     next();
@@ -77,6 +79,15 @@ internals.register = function (model, next) {
     var Model = schema.define(modelName, definition);
 
     Model.validatesPresenceOf('action', 'for');
+
+    Model.beforeCreate = function (next, data) {
+
+        if (!data.updatedById) {
+            data.updatedById = data.createdById;
+        }
+
+        next();
+    };
 
     model.expose(Model);
     model.after(internals.relations);

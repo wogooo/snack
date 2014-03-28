@@ -89,10 +89,24 @@ exports.getTasks = function (snack) {
                     required: true
                 }
             }
-        }
+        };
 
         Prompt.get(userSchema, function (err, result) {
             user = result;
+            next(err);
+        });
+    });
+
+    tasks.push(function createUser(next) {
+
+        console.log("Creating user...".blue);
+
+        Models.User.create(user, function (err, u) {
+            if (err) return next(err);
+
+            console.log("\u2713 User created".green);
+            user = u;
+
             next(err);
         });
     });
@@ -102,10 +116,14 @@ exports.getTasks = function (snack) {
         console.log("Creating roles...".blue);
 
         var createRole = function (role, cb) {
+
+            role.createdById = user.id;
+
             Models.Role.create(role, function (err) {
                 cb(err);
             });
         };
+
         Async.eachSeries(seed.roles, createRole, function (err) {
             console.log("\u2713 Roles created".green);
             next(err);
@@ -117,6 +135,9 @@ exports.getTasks = function (snack) {
         console.log("Creating permissions...".blue);
 
         var createPermission = function (perm, cb) {
+
+            perm.createdById = user.id;
+
             Models.Permission.create(perm, function (err, permission) {
                 if (err) return cb(err);
                 Models.Role.findBy('name', 'administrator', function (err, role) {
@@ -131,31 +152,24 @@ exports.getTasks = function (snack) {
         });
     });
 
-    tasks.push(function seedUser(next) {
+    tasks.push(function blessUser(next) {
 
-        console.log("Creating user...".blue);
+        console.log("Blessing user...".blue);
 
-        var createUser = function (user, cb) {
-            Models.User.create(user, function (err, user) {
+        var blessUser = function (user, cb) {
 
-                if (err) return next(err);
+            Models.Role.findBy('name', 'administrator', function (err, role) {
 
-                Models.Role.findBy('name', 'administrator', function (err, role) {
+                if (err) return cb(err);
 
-                    if (err) return next(err);
-
-                    user.roles.add(role, function (err) {
-                        if (err) return next(err);
-
-                        console.log("\u2713 User created".green);
-                        next();
-                    });
+                user.roles.add(role, function (err) {
+                    cb(err);
                 });
             });
         };
 
-        createUser(user, function (err) {
-            console.log("\u2713 User created".green);
+        blessUser(user, function (err) {
+            console.log("\u2713 User blessed".green);
             next(err);
         });
     });
@@ -165,6 +179,9 @@ exports.getTasks = function (snack) {
         console.log("Creating tags...".blue);
 
         var createTag = function (tag, cb) {
+
+            tag.createdById = user.id;
+
             Models.Tag.create(tag, function (err) {
                 cb(err);
             });
@@ -181,6 +198,8 @@ exports.getTasks = function (snack) {
         console.log("Creating posts...".blue);
 
         var createPost = function (post, cb) {
+
+            post.createdById = user.id;
 
             Models.Post.create(post, function (err, post) {
                 if (err) return cb(err);

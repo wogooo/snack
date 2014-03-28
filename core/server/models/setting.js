@@ -49,11 +49,13 @@ internals.relations = function (model, next) {
         Model = models[modelName];
 
     Model.belongsTo(models.User, {
-        as: '_createdBy'
+        as: '_createdBy',
+        foreignKey: 'createdById'
     });
 
     Model.belongsTo(models.User, {
-        as: '_updatedBy'
+        as: '_updatedBy',
+        foreignKey: 'updatedById'
     });
 
     next();
@@ -74,6 +76,15 @@ internals.register = function (model, next) {
     Model.validatesUniquenessOf('key', {
         message: 'Setting key is not unique.'
     });
+
+    Model.beforeCreate = function (next, data) {
+
+        if (!data.updatedById) {
+            data.updatedById = data.createdById;
+        }
+
+        next();
+    };
 
     Model.findBy = function (key, val, done) {
 

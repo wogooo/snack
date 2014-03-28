@@ -47,11 +47,11 @@ internals.relations = function (model, next) {
         models = model.models,
         Model = models[modelName];
 
-    Model.hasMany('users', {
+    Model.hasAndBelongsToMany('users', {
         model: models.User
     });
 
-    Model.hasMany('roles', {
+    Model.hasAndBelongsToMany('roles', {
         model: models.Role
     });
 

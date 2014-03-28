@@ -14,19 +14,20 @@ internals.relations = function (model, next) {
         Model = models[modelName];
 
     Model.hasMany('posts', {
+        as: 'owner',
         foreignKey: 'ownerId'
     });
 
     Model.hasMany('assets', {
         as: 'owner',
-        model: models.Asset
+        foreignKey: 'ownerId'
     });
 
-    Model.hasMany('permissions', {
+    Model.hasAndBelongsToMany('permissions', {
         model: models.Permission
     });
 
-    Model.hasMany('roles', {
+    Model.hasAndBelongsToMany('roles', {
         model: models.Role
     });
 
@@ -85,7 +86,6 @@ internals.modelDefinition = function () {
             length: 255,
             default: 'pending'
         },
-        permissions: [],
         _version_: {
             type: Number
         },

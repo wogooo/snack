@@ -6,22 +6,24 @@ var defaultSettings = require('./defaultSettings.json');
 
 var internals = {};
 
-internals.settings = function () {
+internals.settings = function (groupName) {
 
     var settings = [],
         setting;
 
     for (var group in defaultSettings) {
 
-        for (var key in defaultSettings[group]) {
+        if (!groupName || groupName === group) {
+            for (var key in defaultSettings[group]) {
 
-            setting = {
-                key: key,
-                value: defaultSettings[group][key].value,
-                group: group
-            };
+                setting = {
+                    key: key,
+                    value: defaultSettings[group][key].value,
+                    group: group
+                };
 
-            settings.push(setting);
+                settings.push(setting);
+            }
         }
     }
 
@@ -35,21 +37,21 @@ internals.freshDb = function (root, done) {
         schema = Snack.services.schema,
         settings = internals.settings(),
         setting,
-        sett
         tasks = [];
 
     tasks.push(function createTables(next) {
         schema.autoupdate(next);
     });
 
+    function addSetting(sett) {
+        return function (next) {
+            setting = new Models.Setting(sett);
+            setting.save(next);
+        }
+    }
+
     for (var i in settings) {
-        sett = settings[i];
-        tasks.push(function addSetting(next) {
-            setting = new Models.Setting(settings[i]);
-            setting.save(function (err) {
-                next(err);
-            });
-        });
+        tasks.push(addSetting(settings[i]));
     }
 
     if (root.seedTasks) {
@@ -62,11 +64,34 @@ internals.freshDb = function (root, done) {
 
 internals.updateDb = function (root, done) {
 
-    var schema = Snack.services.schema;
+    var Snack = root.snack,
+        Models = Snack.models,
+        schema = Snack.services.schema,
+        settings = internals.settings('core'),
+        tasks = [];
 
-    schema.autoupdate(function () {
-        done();
+    tasks.push(function updateTables(next) {
+        schema.autoupdate(next);
     });
+
+    function updateSetting(sett) {
+
+        return function (next) {
+            Models.Setting.findOne({
+                where: {
+                    key: sett.key
+                }
+            }, function (err, setting) {
+                setting.updateAttributes(sett, next);
+            });
+        }
+    }
+
+    for (var i in settings) {
+        tasks.push(updateSetting(settings[i]));
+    }
+
+    Async.series(tasks, done);
 };
 
 exports.init = function (server, next) {
@@ -92,6 +117,8 @@ exports.init = function (server, next) {
 
         Models.Setting.findOne(versionQuery, function (err, setting) {
 
+            // If there's an error, or no setting, the assumption is
+            // this hasn't been initted...
             if (err || !setting) {
                 return freshDb(root, next);
             }

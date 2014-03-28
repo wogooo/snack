@@ -46,6 +46,7 @@ internals.register = function (model, next) {
     var models = model.models;
 
     var Model = schema.define(modelName, {
+        id: String,
         type: {
             type: String,
             length: 255,

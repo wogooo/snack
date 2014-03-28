@@ -13,6 +13,7 @@ internals.modelDefinition = function () {
     var modelName = internals.modelName;
 
     return {
+        id: String,
         title: {
             type: String,
             length: 255

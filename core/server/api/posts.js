@@ -111,7 +111,6 @@ Posts.prototype.edit = function (args, done) {
         }
     }
 
-
     Models.Post.find(params.id, function (err, post) {
         if (err) return done(err);
 

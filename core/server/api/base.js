@@ -215,7 +215,7 @@ internals.Base.prototype._getRelationNames = function (modelName, showPrivate) {
     }
 
     var filterPrivate = function (relName) {
-        return !(relName[0] === '_' && relName[relName.length-1] !== '_');
+        return !(relName[0] === '_' && relName[relName.length - 1] !== '_');
     };
 
     return relationNames.filter(filterPrivate);
@@ -227,7 +227,7 @@ internals.Base.prototype.loadRelations = function (model, done) {
         modelName = model.constructor.modelName,
         relationNames = this._getRelationNames(modelName);
 
-    Models[modelName].include([ model ], relationNames, function (err) {
+    Models[modelName].include([model], relationNames, function (err) {
         done(err);
     });
 };
@@ -334,12 +334,12 @@ internals.Base.prototype._findRelations = function (model, payload) {
         // normalize to array of objects.
         cR = cachedRelations[relationName] || [];
         if (!(cR instanceof Array)) {
-            cR = [ cR ];
+            cR = [cR];
         }
 
         pR = payload[relationName] || [];
         if (!(pR instanceof Array)) {
-            pR = [ pR ];
+            pR = [pR];
         }
 
         relByName = cR.concat(pR);
@@ -443,13 +443,24 @@ internals.Base.prototype._updateCachedRelations = function (model, rel, done) {
         return done();
     }
 
-    relation[method](relData, function (err) {
+    // TODO: this isn't quite right. belongsTo relations won't have
+    // an add method, so the whole system for those needs to be
+    // debugged...
+    if (relation[method]) {
 
-        if (!rel.remove) {
-            pushRelation();
-        }
-        done(err);
-    });
+        relation[method](relData, function (err) {
+
+            if (!rel.remove) {
+                pushRelation();
+            }
+            done(err);
+        });
+
+    } else {
+
+        pushRelation();
+        done();
+    }
 };
 
 internals.Base.prototype.processRelations = function (model, payload, done) {

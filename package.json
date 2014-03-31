@@ -68,7 +68,8 @@
   },
   "optionalDependencies": {
     "node-protobuf": "^1.0.10",
-    "snack-search-solr": "git+ssh://git@github.com:snackco/snack-search-solr.git"
+    "snack-search-solr": "git+ssh://git@github.com:snackco/snack-search-solr.git",
+    "snack-s3": "git+ssh://git@github.com:snackco/snack-s3.git"
   },
   "repository": {
     "type": "git",

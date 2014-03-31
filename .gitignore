@@ -20,3 +20,5 @@ deprecated
 /content/themes/**/*
 /content/assets/**/*
 /content/packs/**/*
+/packs/**/*
+!/packs/README.md

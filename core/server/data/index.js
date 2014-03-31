@@ -42,10 +42,10 @@ internals.freshDb = function (snack, done) {
 
     tasks.push(function createTables(next) {
 
-        console.log("Creating tables...".blue);
+        console.info("#blue{Creating tables...}");
 
         schema.autoupdate(function (err) {
-            console.log("\u2713 Tables created".green);
+            console.info("#green{\u2713 Tables created}");
             next(err);
         });
     });
@@ -70,7 +70,7 @@ internals.freshDb = function (snack, done) {
 
         if (err) {
 
-            console.log("Something went wrong initializing the database!".red);
+            console.error("#red{Something went wrong initializing the database!}");
 
             Models.Setting.findBy('key', 'databaseVersion', function (err, setting) {
                 setting.value = 'error';
@@ -107,7 +107,7 @@ internals.updateDb = function (snack, done) {
                 setting.updateAttributes(sett, next);
             });
         };
-    }
+    };
 
     for (var i in settings) {
         tasks.push(updateSetting(settings[i]));
@@ -136,27 +136,30 @@ exports.init = function (server, next) {
         // this hasn't been initted...
         if (err || !setting || setting.value === 'error') {
 
-            console.log("---".grey,
-                        "\nUninitialized database detected!".red,
-                        "\nShould I create a new one?\n");
+            console.info("#grey{---}\
+                        \n#red{Uninitialized database detected!}\
+                        \nShould I create a new one?\
+                        \n");
 
             inputFor = 'fresh';
         }
 
         if (setting && setting.value === 'error') {
 
-            console.log("---".grey,
-                        "\nThe database appears to have failed to initialize!".red,
-                        "\nShould I create a new one?\n");
+            console.info("#grey{---}\
+                        \n#red{The database appears to have failed to initialize!}\
+                        \nShould I create a new one?\
+                        \n");
 
             inputFor = 'fresh';
         }
 
         if (!inputFor && setting && setting.value !== defaultSettings.core.databaseVersion.value) {
 
-            console.log("---".grey,
-                        "\nDatabase upgrade needed.".blue,
-                        "\nShould I proceed?\n");
+            console.info("#grey{---}\
+                        \n#blue{Database upgrade needed}\
+                        \nShould I proceed?\
+                        \n");
 
             inputFor = 'update';
         }
@@ -176,7 +179,8 @@ exports.init = function (server, next) {
                 if (err) return next();
 
                 if (decide && decide.yesno.search(/yes/i) > -1) {
-                    console.log("Great! Just a minute.".grey, "\n");
+
+                    console.info("#grey{Great! Just a minute.}\n");
 
                     if (inputFor === 'fresh') {
                         return freshDb(Snack, next);

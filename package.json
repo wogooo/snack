@@ -11,7 +11,7 @@
     "cms"
   ],
   "dependencies": {
-    "consoleplusplus": "^1.2.0",
+    "consoleplusplus": "git+ssh://git@github.com:snackco/consoleplusplus.git",
     "lodash": "^2.4.1",
     "handlebars": "^1.3.0",
     "async": "^0.2.10",
@@ -66,6 +66,10 @@
     "karma": "^0.10.9",
     "grunt-contrib-less": "^0.10.0"
   },
+  "optionalDependencies": {
+    "node-protobuf": "^1.0.10",
+    "snack-search-solr": "git+ssh://git@github.com:snackco/snack-search-solr.git"
+  },
   "repository": {
     "type": "git",
     "url": "git://github.com/snackco/snack.git"
@@ -78,8 +82,5 @@
   ],
   "bugs": {
     "url": "https://github.com/snackco/snack/issues"
-  },
-  "optionalDependencies": {
-    "node-protobuf": "^1.0.10"
   }
 }

@@ -20,55 +20,54 @@ var envVal = process.env.NODE_ENV;
 
 function messages(tags, log) {
 
+    var config = Config();
+
     if (tags.error) {
 
         if (tags.serverStop) {
-            console.log('Snack server encountered an error and was stopped.'.red);
+            console.warn("#red{Snack server encountered an error and was stopped.}");
             return;
         }
 
         if (tags.serverRestart) {
-            console.log('Snack server restarted...'.red);
+            console.warn("#red{Snack server restarted...}");
             return;
         }
 
-        console.log(('Error: ' + log).red);
+        console.error("#red{%s}", log);
         return;
     }
 
     // Startup & Shutdown messages
     if (envVal === 'production') {
-        console.log(
-            "Snack is running...".green,
-            "\nYour site is now available on",
-            Config().url,
-            "\nCtrl+C to shut down".grey
+        console.info(
+            "#green{Snack is running...}\
+            \nYour site is now available on %s\
+            \n#grey{Ctrl+C to shut down}",
+            config.url
         );
 
         // ensure that Snack exits correctly on Ctrl+C
         process.on('SIGINT', function () {
-            console.log(
-                "\nSnack has shut down".red,
-                "\nYour site is now offline"
+            console.warn(
+                "\n#red{Snack has shut down}\
+                \nYour site is now offline"
             );
             process.exit(0);
         });
     } else {
-        console.log(
-            ("Snack is running in " + envVal + "...").green,
-            "\nListening on",
-            Config().server.host + ':' + Config().server.port,
-            "\nUrl configured as:",
-            Config().url,
-            "\nCtrl+C to shut down".grey
-        );
+        console.info("#green{Snack is running in %s...}\
+                      \n#grey{Listening on} %s:%s\
+                      \n#grey{Url configured as} %s\
+                      \n#grey{Ctrl+C to shut down}",
+                      envVal, config.server.host, config.server.port, config.url);
+
         // ensure that Snack exits correctly on Ctrl+C
         process.on('SIGINT', function () {
-            console.log(
-                "\nSnack has shutdown".red,
-                "\nSnack was running for",
-                Math.round(process.uptime()),
-                "seconds"
+            console.warn(
+                "#red{Snack has shutdown}\
+                \nSnack was running for %d seconds",
+                Math.round(process.uptime())
             );
             process.exit(0);
         });

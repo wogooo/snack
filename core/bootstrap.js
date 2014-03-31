@@ -1,5 +1,6 @@
 // This file manages the root level config.js.
 require('colors');
+require('consoleplusplus');
 
 var Fs = require('fs'),
     Config = require('./server/config');
@@ -8,7 +9,9 @@ function setLogLevel() {
 
     // Set log level
     var logLevel = Config().logging.level;
-    // console.setLevel(console.LEVELS[logLevel]);
+    console.disableTimestamp();
+    console.disableLevelMsg();
+    console.setLevel(console.LEVELS[logLevel]);
 }
 
 function readConfigFile(envVal) {

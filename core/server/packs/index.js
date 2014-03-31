@@ -10,41 +10,10 @@ var Config = require('../config');
 
 var internals = {};
 
-internals.testPaths = function (paths, done) {
-
-    var testPath,
-        manyPaths;
-
-    if (paths instanceof Array && paths.length) {
-
-        manyPaths = true;
-        testPath = paths.shift();
-
-    } else {
-
-        testPath = paths;
-    }
-
-    Fs.stat(testPath, function (err, stats) {
-
-        if (stats && stats.isDirectory()) {
-
-            return done(null, testPath);
-
-        } else if (manyPaths && paths.length) {
-
-            internals.testPaths(paths, done);
-
-        } else {
-
-            done(err);
-        }
-    });
-};
-
 internals.findPacks = function (name, done) {
 
     var config = Config();
+    var SharedLib = require(config.paths.sharedLib);
     var appRoot = config.paths.appRoot;
     var packsPath = config.paths.packsPath;
 
@@ -54,14 +23,30 @@ internals.findPacks = function (name, done) {
     testPaths.push(Path.join(packsPath, name));
     testPaths.push(Path.join(__dirname, name));
 
-    internals.testPaths(testPaths, done);
+    SharedLib.testPaths(testPaths, done);
+};
+
+internals.findContentPath = function (pack, done) {
+
+    var config = Config(),
+        contentPath = config.paths.contentPath,
+        SharedLib = require(config.paths.sharedLib),
+        pluginContentPath;;
+
+    // Check for userspace
+    if (pack.options.contentPath) {
+        pluginContentPath = pack.options.contentPath;
+    } else {
+        pluginContentPath = Path.join(contentPath, 'packs', pack.name);
+    }
+
+    SharedLib.testPaths(pluginContentPath, done);
 };
 
 internals.init = function (server, next) {
 
     var config = Config(),
         plugins = config.packs.plugins,
-        contentPath = config.paths.contentPath,
         pack,
         packOptions,
         loadPacks = [],
@@ -91,18 +76,10 @@ internals.init = function (server, next) {
 
                 if (path) {
 
-                    // Check for userspace
-                    var pluginContentPath;
-                    if (pack.options.contentPath) {
-                        pluginContentPath = pack.options.contentPath;
-                    } else {
-                        pluginContentPath = Path.join(contentPath, 'packs', pack.name);
-                    }
+                    internals.findContentPath(pack, function (err, contentPath) {
 
-                    internals.testPaths(pluginContentPath, function (err, pathExists) {
-
-                        if (pathExists) {
-                            pack.options.contentPath = pluginContentPath
+                        if (contentPath) {
+                            pack.options.contentPath = contentPath;
                         }
 
                         requirePacks[path] = pack.options;

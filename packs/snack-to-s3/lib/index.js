@@ -1,1 +1,0 @@
-exports.demon = require('./demon');

@@ -43,6 +43,8 @@ internals.DemonMaster = function (options) {
     this.hapi = Hapi;
     this.config = options.config;
 
+    this._env = {};
+
     this._hooks = {};
 
     if (options.hooks) {
@@ -171,25 +173,13 @@ internals.DemonMaster.prototype._processHandlers = function () {
     attachHandlers();
 };
 
-internals.DemonMaster.prototype._process = function ( /* hook, fn, options | {} | [{}, {}] */ ) {
+internals.DemonMaster.prototype._process = function (processEnv, processItem) {
 
-    var procItem = {};
-
-    if (typeof arguments[0] === 'string') {
-        procItem = {
-            hook: arguments[0],
-            fn: arguments[1],
-            options: arguments[2]
-        };
-    } else {
-        procItem = arguments[0];
-    }
-
-    var items = [].concat(procItem);
+    var items = [].concat(processItem);
 
     for (var i = 0, il = items.length; i < il; ++i) {
         var item = items[i];
-        this._addProcessHandler(item.hook, item.fn, item.options);
+        this._addProcessHandler(processEnv, item.hook, item.fn, item.options);
     }
 };
 
@@ -202,7 +192,7 @@ internals.DemonMaster.prototype._process = function ( /* hook, fn, options | {} 
         ]
     }
 */
-internals.DemonMaster.prototype._addProcessHandler = function (hook, fn, options) {
+internals.DemonMaster.prototype._addProcessHandler = function (env, hook, fn, options) {
 
     this._hooks[hook] = this._hooks[hook] || [];
 
@@ -238,19 +228,29 @@ internals.DemonMaster.prototype._register = function (demon, options, done) {
     var self = this;
     var registered = this._registered;
 
+    var env = {
+        name: demon.name,
+        path: demon.path
+    };
+
+    this._env[env.name] = env;
+
+    var step = function () {
+        return {
+            process: function (processItem) {
+                return self._process(env, processItem);
+            }
+        };
+    };
+
     // Setup root demon object
-    var root = {};
+    var root = step();
 
     root.hapi = this.hapi;
     root.config = this.config;
     root.queue = this.queue;
     root.hooks = this._hooks;
     root.registered = registered;
-
-    root.process = function ( /* hooks, fn, options */ ) {
-
-        return self._process.apply(self, arguments);
-    };
 
     demon.register.call(null, root, options || {}, function (err) {
 
@@ -434,6 +434,6 @@ internals.packagePath = function (name, packageFile) {
     return pkgPath;
 };
 
-function noop() {};
+function noop() {}
 
 module.exports = internals.DemonMaster;

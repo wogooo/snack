@@ -7,7 +7,7 @@ var Async = require('async');
 var Mime = require('mime');
 var Size = require('image-size');
 
-var Config = require('../config');
+var Config = require('../../config');
 
 var internals = {};
 
@@ -139,11 +139,9 @@ internals.exists = function (key, done) {
     Fs.exists(assetPath, done);
 };
 
-module.exports = function (storage, next) {
+exports.register = function (storage, options, next) {
 
-    var Providers = storage.providers;
-
-    Providers.Local = {
+    storage.provider({
         save: function (fileStream, fileData, cb) {
             internals.save(fileStream, fileData, cb);
         },
@@ -157,7 +155,7 @@ module.exports = function (storage, next) {
         destroy: function (fileKey, cb) {
             cb();
         }
-    };
+    });
 
     next();
 };

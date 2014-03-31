@@ -12,6 +12,7 @@ var Path = require('path'),
     ConfigUrl = require('./url'),
     appRoot = Path.resolve(__dirname, '../../../'),
     corePath = Path.resolve(appRoot, 'core/'),
+    sharedLib = Path.resolve(corePath, 'shared/lib'),
     packageInfo = require(Path.resolve(appRoot, 'package.json')),
     snackConfig = {};
 
@@ -125,6 +126,7 @@ function updateConfig(config) {
             'config': snackConfig.paths.config || Path.join(appRoot, 'config.js'),
             'configExample': Path.join(appRoot, 'config.example.js'),
             'corePath': corePath,
+            'sharedLib': sharedLib,
 
             'contentPath': contentPath,
             'packsPath': packsPath,

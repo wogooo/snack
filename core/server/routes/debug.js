@@ -4,6 +4,8 @@ var Hapi = require('hapi');
 module.exports = function (route) {
 
     var server = route.server;
+    var Snack = server.app;
+    var checkPermission = Snack.permissions.check;
 
     server.route({
         method: 'GET',
@@ -14,6 +16,18 @@ module.exports = function (route) {
                     title: 'DEBUG',
                     list: jobList
                 });
+            });
+        }
+    });
+
+    server.route({
+        method: 'GET',
+        path: '/test-permissions',
+        handler: function (request, reply) {
+
+            var canUser = checkPermission(request.user);
+            canUser.edit.post('fooId', function (err, permitted) {
+                reply('ok' + permitted);
             });
         }
     });

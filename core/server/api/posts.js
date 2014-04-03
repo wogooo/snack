@@ -5,6 +5,7 @@ var Utils = Hapi.utils;
 function Posts(options) {
 
     this.models = options.snack.models;
+    this.permission = options.snack.permissions.check;
     this.api = options.api;
 }
 
@@ -39,23 +40,48 @@ Posts.prototype.list = function (args, done) {
 
 Posts.prototype.create = function (args, done) {
 
-    var Models = this.models;
-    var Api = this.api;
+    if (!args.user) {
+        return done(Hapi.error.unauthorized('You must be logged in to edit'));
+    }
 
-    var payload = args.payload;
+    var Models = this.models,
+        Api = this.api,
+        Permission = this.permission,
+        user = args.user,
+        query = args.query,
+        payload = args.payload,
+        post;
 
-    var post = new Models.Post(payload);
+    var canUser = Permission(user);
 
-    post.save(function (err) {
+    canUser.create.post(null, function (err, permitted) {
 
-        if (err) return done(err);
+        if (!permitted) return done(Hapi.error.unauthorized('Insufficient privileges'));
 
-        Api.Base.processRelations(post, null, function (err) {
+        post = new Models.Post(payload);
 
-            Api.Base.enqueue(post, 'post.created', function (err) {
+        if (query.pending === 'true') {
+            post._pending_ = true;
+        }
 
-                done(err, post);
-            });
+        post.__data.user = user;
+
+        post.save(function (err) {
+
+            if (err) return done(err);
+
+            if (post._pending_) {
+
+                done(err, err ? null : post);
+
+            } else {
+
+                Api.Base.processRelations(post, null, function (err) {
+                    Api.Base.enqueue(post, 'post.created', function (err) {
+                        done(err, err ? null : post);
+                    });
+                });
+            }
         });
     });
 };
@@ -74,27 +100,31 @@ Posts.prototype.read = function (args, done) {
 
     Models.Post[get.method](get.params, function (err, post) {
 
-        if (err) return done(err);
-
+        if (err) return done(Hapi.error.badImplementation(err.message));
         if (!post) return done(Hapi.error.notFound());
 
-        Api.Base.loadRelations(post, function (err) {
-
-            if (err) return done(err);
-
-            done(null, post);
+        Api.Base.loadRelations(post, get.relations, function (err) {
+            done(err, err ? null : post);
         });
     });
 };
 
 Posts.prototype.edit = function (args, done) {
 
+    if (!args.user) {
+        return done(Hapi.error.unauthorized('You must be logged in to edit'));
+    }
+
     var Models = this.models,
         Api = this.api,
+        Permission = this.permission,
         query = args.query,
         params = args.params,
+        user = args.user,
         payload = args.payload,
         clearQueue = false,
+        created = false,
+        hook,
         jobId;
 
     if (query.clearQueue) {
@@ -111,44 +141,61 @@ Posts.prototype.edit = function (args, done) {
         }
     }
 
-    Models.Post.find(params.id, function (err, post) {
-        if (err) return done(err);
+    var canUser = Permission(user);
 
-        if (!post) return done(Hapi.error.notFound());
+    canUser.edit.post(params.id, function (err, permitted) {
 
-        // Simple version control
-        if (query.version && post._version_ !== query.version) {
+        if (!permitted) return done(Hapi.error.unauthorized('Insufficient privileges'));
 
-            // Return conflict if version (timestamp) doesn't match
-            return done(Hapi.error.conflict());
-        }
+        Models.Post.find(params.id, function (err, post) {
 
-        // Clearing the queue property
-        if (clearQueue) {
+            if (err) return done(Hapi.error.badImplementation(err.message));
+            if (!post) return done(Hapi.error.notFound());
 
-            // Pass in the private queue job id
-            post.__data.clearQueue = jobId;
-        }
+            // Simple version control
+            if (query.version && post._version_ !== query.version) {
 
-        post.updateAttributes(payload, function (err) {
+                // Return conflict if version (timestamp) doesn't match
+                return done(Hapi.error.conflict());
+            }
 
-            if (!clearQueue) {
+            // Clearing the queue property
+            if (clearQueue) {
 
-                Api.Base.processRelations(post, payload, function (err) {
+                // Pass in the private queue job id
+                post.__data.clearQueue = jobId;
+            }
 
-                    Api.Base.enqueue(post, 'post.updated', function (err) {
+            if (query.finalize === 'true' && post._pending_ === true) {
+                payload._pending_ = false;
+                created = true;
+            }
 
-                        Api.Base.loadRelations(post, function (err) {
+            // Add the user object, for applying to update
+            post.__data.user = user;
 
-                            done(err, !err ? post : null);
+            post.updateAttributes(payload, function (err) {
+
+                if (!clearQueue) {
+
+                    hook = created ? 'post.created' : 'post.updated';
+
+                    Api.Base.processRelations(post, payload, function (err) {
+
+                        Api.Base.enqueue(post, hook, function (err) {
+
+                            Api.Base.loadRelations(post, null, function (err) {
+
+                                done(err, err ? null : post);
+                            });
                         });
                     });
-                });
 
-            } else {
+                } else {
 
-                done(err, !err ? post : null);
-            }
+                    done(err, err ? null : post);
+                }
+            });
         });
     });
 };

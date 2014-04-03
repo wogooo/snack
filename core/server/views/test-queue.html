@@ -1,32 +1,29 @@
-<script src="/socket.io/socket.io.js"></script>
+<script src="/snack/static/engine.io.js"></script>
+
 <script>
 
-    socket = io.connect('/jobs');
+    var socket = new eio.Socket('ws://localhost:8181');
 
-    socket.on('job', function (data) {
-        // console.log('job:', data);
+    socket.on('message', function (msg) {
 
-        var job = data.job;
+        var job = JSON.parse(msg);
 
         var rowClass = '';
 
-        if (data.event === 'progress') {
+        if (job.state === 'active') {
             rowClass = 'active';
         }
-        if (data.event === 'complete') {
+        if (job.state === 'complete') {
             rowClass = 'success';
         }
-        if (data.event === 'failed') {
+        if (job.state === 'failed') {
             rowClass = 'danger';
-        }
-        if (data.event === 'retry') {
-            rowClass = 'warning';
         }
 
         var duration = job.duration ? job.duration + 'ms' : '';
 
         var $job = $('#job-' + job.id);
-        var rowHtml = '<td>'+ job.id +'</td><td>' + data.event + '</td><td>' + job.type + '</td><td>' + (job.progress || '') + '</td><td>' + duration + '</td>';
+        var rowHtml = '<td>'+ job.id +'</td><td>' + job.state + '</td><td>' + job.type + '</td><td>' + (job.progress || '') + '</td><td>' + duration + '</td>';
 
         if ($job.length) {
 
@@ -45,7 +42,7 @@
     <table class="table table-striped">
         <thead>
             <th>Job Id</th>
-            <th>Event</th>
+            <th>State</th>
             <th>Hook</th>
             <th>Progress</th>
             <th>Duration</th>
@@ -53,7 +50,7 @@
 
         <tbody>
         {{#each list.items}}
-            <tr>
+            <tr class="{{state}}">
                 <td>{{id}}</td>
                 <td>{{state}}</td>
                 <td>{{type}}</td>

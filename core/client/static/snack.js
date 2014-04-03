@@ -1,4 +1,4 @@
-/*! snack - v0.0.1 - 2014-03-28
+/*! snack - v0.0.1 - 2014-04-02
  * Copyright (c) 2014 ;
  * Licensed MIT
  */
@@ -276,10 +276,21 @@ angular.module('models.post', ['ngResource', 'models.asset', 'models.tag'])
                         console.log('interceptor err');
                     }
                 }
+            },
+            create: {
+                method: 'POST'
             }
         };
 
         var Post = $resource(apiUrl, defaultParams, actions);
+
+        Post.prototype.$save = function (params, successcb) {
+            if (this.id) {
+                this.$update(params, successcb);
+            } else {
+                this.$create(params, successcb);
+            }
+        };
 
         Post.prototype.$createAsset = function (data) {
 
@@ -1323,9 +1334,11 @@ angular.module('posts', ['ui.bootstrap', 'resources.posts', 'resources.assets', 
             resolve: {
                 post: ['PostsResource',
                     function (PostsResource) {
-                        return new PostsResource({
+                        var post = new PostsResource({
                             type: 'post'
                         });
+
+                        return post.$save({ pending: true });
                     }
                 ]
             }
@@ -1395,11 +1408,7 @@ angular.module('posts', ['ui.bootstrap', 'resources.posts', 'resources.assets', 
                 post.headline = pRegex.exec(post.headline)[1];
             }
 
-            if (post.id) {
-                post.$update(onSave);
-            } else {
-                post.$save(onSave);
-            }
+            post.$save({ finalize: true }, onSave);
         };
 
         $scope.remove = function () {

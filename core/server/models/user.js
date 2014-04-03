@@ -2,6 +2,7 @@ var Hapi = require('hapi');
 var Schema = require('jugglingdb').Schema;
 var Uslug = require('uslug');
 var Bcrypt = require('bcrypt');
+var Async = require('async');
 
 var internals = {};
 
@@ -106,7 +107,7 @@ internals.generatePasswordHash = function (password, done) {
             done(err, hash);
         });
     });
-}
+};
 
 internals.register = function (model, next) {
 
@@ -204,6 +205,61 @@ internals.register = function (model, next) {
 
         params.where[key] = emailOrUsername;
         this.findOne(params, done);
+    };
+
+    Model.effectivePermissions = function (userId, done) {
+
+        // TODO: this is crazy. Minimum of 4 gets, followed by N gets for
+        // additional roles.
+        // Need to find a way to store permissions-to-user in one hop, with
+        // role permission updates triggering UserPermission updates.
+
+        var fetchedPermissions = [],
+            effectivePermissions = [],
+            seenPermissions = [],
+            perm,
+            permKey;
+
+        this.find(userId, function (err, user) {
+            if (err) return done(err);
+
+            user.roles(function (err, roles) {
+                if (err) return done(err);
+
+                user.permissions(function (err, perms) {
+                    if (err) return done(err);
+
+                    fetchedPermissions = fetchedPermissions.concat(perms);
+
+                    Async.each(roles, function (role, next) {
+
+                        role.permissions(function (err, rolePerms) {
+
+                            fetchedPermissions = fetchedPermissions.concat(rolePerms);
+
+                            next(err);
+                        });
+
+                    }, function (err) {
+
+                        if (err) return done(err);
+
+                        for (var i in fetchedPermissions) {
+
+                            perm = fetchedPermissions[i];
+                            permKey = perm.action + '.' + perm.actionFor + '.' + perm.actionForId;
+
+                            if (seenPermissions.indexOf(permKey) < 0) {
+                                effectivePermissions.push(perm);
+                                seenPermissions.push(permKey);
+                            }
+                        }
+
+                        done(null, effectivePermissions);
+                    });
+                });
+            });
+        });
     };
 
     model.expose(Model);

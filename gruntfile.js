@@ -107,6 +107,10 @@ module.exports = function (grunt) {
             'angular-ui': {
                 src: ['core/client/vendor/angular-ui/**/*.js'],
                 dest: '<%= distdir %>/angular-ui.js'
+            },
+            'engine.io': {
+                src: ['core/client/vendor/engine.io/**/*.js'],
+                dest: '<%= distdir %>/engine.io.js'
             }
         },
         uglify: {
@@ -124,6 +128,10 @@ module.exports = function (grunt) {
             'angular-ui': {
                 src: ['core/client/vendor/angular-ui/**/*.js'],
                 dest: '<%= distdir %>/angular-ui.js'
+            },
+            'engine.io': {
+                src: ['core/client/vendor/engine.io/**/*.js'],
+                dest: '<%= distdir %>/engine.io.js'
             }
         },
         less: {

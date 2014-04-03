@@ -3,6 +3,7 @@ var Utils = Hapi.utils;
 var HtmlStrip = require('htmlstrip-native').html_strip;
 var Schema = require('jugglingdb').Schema;
 var Uslug = require('uslug');
+var Capitalize = require('inflection').capitalize;
 
 var internals = {};
 
@@ -83,10 +84,10 @@ internals.modelDefinition = function () {
 
         // Model has not been finalized yet, so `created` hook hasn't
         // been fired, shouldn't appear in indexes, etc.
-        _draft_: {
+        _pending_: {
             index: true,
             type: Boolean,
-            default: true
+            default: false
         }
     };
 };
@@ -130,6 +131,10 @@ internals.register = function (model, next) {
         schema = model.schema,
         definition = internals.modelDefinition();
 
+    var stripOpts = {
+        'compact_whitespace': true
+    };
+
     var Model = schema.define(modelName, definition);
 
     Model.validatesPresenceOf('_version_');
@@ -139,29 +144,19 @@ internals.register = function (model, next) {
     //     message: 'Key is not unique.'
     // });
 
+    // NOTE: For some reason setting values on `this` in beforeValidate only
+    // affects new models. If the model already exists you need to set it on
+    // `data`. This makes little sense...
+
     Model.beforeValidate = function (next, data) {
 
         // Private data
         var _data = this.__data,
             now = Date.now();
 
-        var stripOpts = {
-            'compact_whitespace': true
-        };
-
-        if (this.headline) {
-            this.title = HtmlStrip(this.headline, stripOpts).trim();
-        }
-
         if (!this.key) {
 
             // TODO: pass keys through config and allow patterns?
-
-            // Key is a little like S3 keys -- in some cases it
-            // would generate a path, but it also supports
-            // subgroupings of items that might otherwise have the
-            // same slug.
-
             this.key = Uslug(this.kind) + '/' + Uslug(this.title);
         }
 
@@ -174,12 +169,17 @@ internals.register = function (model, next) {
 
     Model.beforeCreate = function (next, data) {
 
-        if (!data.updatedById) {
-            this.updatedById = data.createdById;
+        // Private data
+        var _data = this.__data;
+
+        if (_data.user) {
+            data.ownerId = _data.user.id;
+            data.createdById = _data.user.id;
+            data.updatedById = _data.user.id;
         }
 
-        if (!data.ownerId) {
-            this.ownerId = data.createdById;
+        if (data.headline) {
+            data.title = HtmlStrip(data.headline, stripOpts).trim();
         }
 
         next();
@@ -197,7 +197,38 @@ internals.register = function (model, next) {
             this._queue_.remove(jobId);
         }
 
+        if (this._pending_ === true && this._pending__was === false) {
+
+            // Pending boolean only goes from true to false, not
+            // the other way.
+            this._pending_ = false;
+        }
+
+        if (data.headline) {
+            data.title = HtmlStrip(data.headline, stripOpts).trim();
+        }
+
+        if (_data.user) {
+            data.updatedById = _data.user.id;
+        }
+
         next();
+    };
+
+    Model.permissable = function (options, done) {
+
+        var userPermissions = options.userPermissions,
+            action = options.action,
+            perm;
+
+        for (var i in userPermissions) {
+            perm = userPermissions[i];
+            if (perm.action === action && Capitalize(perm.actionFor) === modelName) {
+                return done(null, true);
+            }
+        }
+
+        done(null, false);
     };
 
     model.expose(Model);

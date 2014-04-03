@@ -40,15 +40,15 @@ internals.seed = {
     permissions: [{
         "name": "Edit posts",
         "action": "edit",
-        "for": "post"
+        "actionFor": "Post"
     }, {
         "name": "Remove posts",
         "action": "remove",
-        "for": "post"
+        "actionFor": "Post"
     }, {
         "name": "Create posts",
         "action": "create",
-        "for": "post"
+        "actionFor": "Post"
     }]
 };
 

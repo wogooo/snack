@@ -78,13 +78,12 @@ Users.prototype.read = function (args, done) {
 
     Models.User[get.method](get.params, function (err, user) {
 
-        if (err) return done(err);
+        if (err) return done(Hapi.error.badImplementation(err.message));
+        if (!user) return done(Hapi.error.notFound());
 
-        if (!user) {
-            return done(Hapi.error.notFound());
-        }
-
-        done(err, user);
+        Api.Base.loadRelations(user, get.relations, function (err) {
+            done(err, err ? null : user);
+        });
     });
 };
 

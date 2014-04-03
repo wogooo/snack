@@ -10,26 +10,26 @@ internals.modelDefinition = function () {
 
     return {
         id: String,
-        'type': {
+        type: {
             type: String,
             length: 255,
             default: modelName.toLowerCase()
         },
-        'name': {
+        name: {
             index: true,
             type: String,
             length: 255
         },
-        'description': {
+        description: {
             type: Schema.Text
         },
-        'createdAt': {
+        createdAt: {
             type: Date,
             default: function () {
                 return new Date();
             }
         },
-        'updatedAt': {
+        updatedAt: {
             type: Date,
             default: function () {
                 return new Date();

@@ -169,12 +169,6 @@ internals.register = function (model, next) {
             this._queue_.remove(jobId);
         }
 
-        if (this.storage !== 'local' && this.storage_was === 'local') {
-
-            // Mark asset so cleanup can happen later
-            data._removeLocal_ = true;
-        }
-
         next();
     };
 

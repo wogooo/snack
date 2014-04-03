@@ -9,6 +9,7 @@ var ErrorHandling = require('./errorHandling');
 var Extensions = require('./extensions');
 var Storage = require('./storage');
 var Services = require('./services');
+var Permissions = require('./permissions');
 var Data = require('./data');
 var Plugins = require('./plugins');
 var Packs = require('./packs');
@@ -145,6 +146,9 @@ function setup() {
     }, {
         name: 'data',
         module: Data
+    }, {
+        name: 'permissions',
+        module: Permissions
     }, {
         name: 'plugins',
         module: Plugins

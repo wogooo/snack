@@ -51,10 +51,21 @@ angular.module('models.post', ['ngResource', 'models.asset', 'models.tag'])
                         console.log('interceptor err');
                     }
                 }
+            },
+            create: {
+                method: 'POST'
             }
         };
 
         var Post = $resource(apiUrl, defaultParams, actions);
+
+        Post.prototype.$save = function (params, successcb) {
+            if (this.id) {
+                this.$update(params, successcb);
+            } else {
+                this.$create(params, successcb);
+            }
+        };
 
         Post.prototype.$createAsset = function (data) {
 

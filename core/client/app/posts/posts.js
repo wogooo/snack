@@ -8,9 +8,11 @@ angular.module('posts', ['ui.bootstrap', 'resources.posts', 'resources.assets', 
             resolve: {
                 post: ['PostsResource',
                     function (PostsResource) {
-                        return new PostsResource({
+                        var post = new PostsResource({
                             type: 'post'
                         });
+
+                        return post.$save({ pending: true });
                     }
                 ]
             }
@@ -80,11 +82,7 @@ angular.module('posts', ['ui.bootstrap', 'resources.posts', 'resources.assets', 
                 post.headline = pRegex.exec(post.headline)[1];
             }
 
-            if (post.id) {
-                post.$update(onSave);
-            } else {
-                post.$save(onSave);
-            }
+            post.$save({ finalize: true }, onSave);
         };
 
         $scope.remove = function () {

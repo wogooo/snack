@@ -10,30 +10,31 @@ internals.modelDefinition = function () {
 
     return {
         id: String,
-        'type': {
+        type: {
             type: String,
             length: 255,
             default: modelName.toLowerCase()
         },
-        'name': {
+        name: {
             type: String,
             length: 255
         },
-        'action': {
+        action: {
             type: String,
             length: 255
         },
-        'for': {
+        actionFor: {
             type: String,
             length: 255
         },
-        'createdAt': {
+        actionForId: String,
+        createdAt: {
             type: Date,
             default: function () {
                 return new Date();
             }
         },
-        'updatedAt': {
+        updatedAt: {
             type: Date,
             default: function () {
                 return new Date();
@@ -79,7 +80,7 @@ internals.register = function (model, next) {
 
     var Model = schema.define(modelName, definition);
 
-    Model.validatesPresenceOf('action', 'for');
+    Model.validatesPresenceOf('action', 'actionFor');
 
     Model.beforeCreate = function (next, data) {
 

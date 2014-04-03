@@ -108,6 +108,8 @@ function updateConfig(config) {
         queue: {
             'basePath': '/api/v1',
             'attempts': 3,
+            'host': serverHost,
+            'port': 8181,
             'kue': {
                 'disableSearch': true,
                 'redis': {

@@ -221,11 +221,16 @@ internals.Base.prototype._getRelationNames = function (modelName, showPrivate) {
     return relationNames.filter(filterPrivate);
 };
 
-internals.Base.prototype.loadRelations = function (model, done) {
+internals.Base.prototype.loadRelations = function (model, relationNames, done) {
 
     var Models = this.models,
-        modelName = model.constructor.modelName,
+        modelName = model.constructor.modelName;
+
+    if (!relationNames) {
         relationNames = this._getRelationNames(modelName);
+    } else if (relationNames && !(relationNames instanceof Array)) {
+        relationNames = relationNames.split(',');
+    }
 
     Models[modelName].include([model], relationNames, function (err) {
         done(err);
@@ -617,6 +622,10 @@ internals.readParams = function (options) {
     } else {
 
         get = null;
+    }
+
+    if (query.relations) {
+        get.relations = query.relations.split(',');
     }
 
     return get;

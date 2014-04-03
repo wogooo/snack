@@ -30,8 +30,8 @@ Posts.prototype.list = function (args, done) {
             order: get.order.split(' ')[0],
             offset: get.skip,
             limit: get.limit,
-            count: posts.length,
-            items: posts
+            count: posts ? posts.length : 0,
+            items: posts || []
         };
 
         done(null, list);
@@ -54,7 +54,7 @@ Posts.prototype.create = function (args, done) {
 
     var canUser = Permission(user);
 
-    canUser.create.post(null, function (err, permitted) {
+    canUser.create.Post(null, function (err, permitted) {
 
         if (!permitted) return done(Hapi.error.unauthorized('Insufficient privileges'));
 
@@ -143,13 +143,14 @@ Posts.prototype.edit = function (args, done) {
 
     var canUser = Permission(user);
 
-    canUser.edit.post(params.id, function (err, permitted) {
+    canUser.edit.Post(params.id, function (err, permitted) {
 
         if (!permitted) return done(Hapi.error.unauthorized('Insufficient privileges'));
 
         Models.Post.find(params.id, function (err, post) {
 
             if (err) return done(Hapi.error.badImplementation(err.message));
+
             if (!post) return done(Hapi.error.notFound());
 
             // Simple version control
@@ -172,7 +173,9 @@ Posts.prototype.edit = function (args, done) {
             }
 
             // Add the user object, for applying to update
-            post.__data.user = user;
+            if (user) {
+                post.__data.user = user;
+            }
 
             post.updateAttributes(payload, function (err) {
 

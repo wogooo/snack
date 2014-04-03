@@ -1,0 +1,21 @@
+<table class="table table-striped-rows table-hover">
+  <thead>
+    <th>Job Id</th>
+    <th>State</th>
+    <th>Hook</th>
+    <th>Progress</th>
+    <th>Duration</th>
+  </thead>
+
+  <tbody>
+    <tr ng-class="{active: 'active', complete: 'success', failed: 'danger'}[job.state]"
+        ng-repeat="job in jobList.items">
+      <td>{{job.id}}</td>
+      <td>{{job.state}}</td>
+      <td>{{job.type}}</td>
+      <td>{{job.progress}}</td>
+      <td>{{job.duration}}ms</td>
+    </tr>
+  </tbody>
+
+</table>

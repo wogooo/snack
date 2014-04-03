@@ -6,6 +6,7 @@ angular.module('app', [
     'dashboard',
     'posts',
     'assets',
+    'jobs',
     'security',
     'services.i18nNotifications',
     'services.localizedMessages',

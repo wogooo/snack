@@ -36,6 +36,7 @@ angular.module('models.post', ['ngResource', 'models.asset', 'models.tag'])
                     responseError: function (response) {
 
                         console.log('interceptor err');
+                        return response;
                     }
                 }
             },
@@ -49,6 +50,7 @@ angular.module('models.post', ['ngResource', 'models.asset', 'models.tag'])
                     responseError: function (response) {
 
                         console.log('interceptor err');
+                        return response;
                     }
                 }
             },

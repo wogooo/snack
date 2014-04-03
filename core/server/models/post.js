@@ -171,11 +171,18 @@ internals.register = function (model, next) {
 
         // Private data
         var _data = this.__data;
+        var userId;
 
         if (_data.user) {
-            data.ownerId = _data.user.id;
-            data.createdById = _data.user.id;
-            data.updatedById = _data.user.id;
+            userId = _data.user.id;
+        } else if (data.createdById) {
+            userId = data.createdById;
+        }
+
+        if (userId) {
+            data.ownerId = userId;
+            data.createdById = userId;
+            data.updatedById = userId;
         }
 
         if (data.headline) {

@@ -1,4 +1,4 @@
-angular.module('templates.app', ['assets/assets-edit.tpl.html', 'assets/assets-list.tpl.html', 'common/security/login/form.tpl.html', 'common/security/login/toolbar.tpl.html', 'dashboard/dashboard.tpl.html', 'header.tpl.html', 'notifications.tpl.html', 'posts/posts-edit.tpl.html', 'posts/posts-list.tpl.html']);
+angular.module('templates.app', ['assets/assets-edit.tpl.html', 'assets/assets-list.tpl.html', 'common/security/login/form.tpl.html', 'common/security/login/toolbar.tpl.html', 'dashboard/dashboard.tpl.html', 'header.tpl.html', 'jobs/job-list.tpl.html', 'notifications.tpl.html', 'posts/posts-edit.tpl.html', 'posts/posts-list.tpl.html']);
 
 angular.module("assets/assets-edit.tpl.html", []).run(["$templateCache", function($templateCache) {
   $templateCache.put("assets/assets-edit.tpl.html",
@@ -182,12 +182,39 @@ angular.module("header.tpl.html", []).run(["$templateCache", function($templateC
     "      <ul class=\"nav navbar-nav\">\n" +
     "        <li><a href=\"/snack/posts\">Posts</a></li>\n" +
     "        <li><a href=\"/snack/assets\">Assets</a></li>\n" +
+    "        <li><a href=\"/snack/jobs\">Jobs</a></li>\n" +
     "      </ul>\n" +
     "\n" +
     "      <login-toolbar></login-toolbar>\n" +
     "    </div>\n" +
     "  </div>\n" +
     "</nav>\n" +
+    "");
+}]);
+
+angular.module("jobs/job-list.tpl.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("jobs/job-list.tpl.html",
+    "<table class=\"table table-striped-rows table-hover\">\n" +
+    "  <thead>\n" +
+    "    <th>Job Id</th>\n" +
+    "    <th>State</th>\n" +
+    "    <th>Hook</th>\n" +
+    "    <th>Progress</th>\n" +
+    "    <th>Duration</th>\n" +
+    "  </thead>\n" +
+    "\n" +
+    "  <tbody>\n" +
+    "    <tr ng-class=\"{active: 'active', complete: 'success', failed: 'danger'}[job.state]\"\n" +
+    "        ng-repeat=\"job in jobList.items\">\n" +
+    "      <td>{{job.id}}</td>\n" +
+    "      <td>{{job.state}}</td>\n" +
+    "      <td>{{job.type}}</td>\n" +
+    "      <td>{{job.progress}}</td>\n" +
+    "      <td>{{job.duration}}ms</td>\n" +
+    "    </tr>\n" +
+    "  </tbody>\n" +
+    "\n" +
+    "</table>\n" +
     "");
 }]);
 
@@ -303,21 +330,21 @@ angular.module("posts/posts-list.tpl.html", []).run(["$templateCache", function(
     "<table class=\"table table-striped-rows table-hover\">\n" +
     "  <thead>\n" +
     "    <tr>\n" +
-    "        <th>Title</th>\n" +
-    "        <th>Kind</th>\n" +
-    "        <th>Created</th>\n" +
-    "        <th>Actions</th>\n" +
+    "      <th>Title</th>\n" +
+    "      <th>Kind</th>\n" +
+    "      <th>Created</th>\n" +
+    "      <th>Actions</th>\n" +
     "    </tr>\n" +
     "  </thead>\n" +
     "  <tbody>\n" +
-    "  <tr ng-repeat=\"post in postList.items\">\n" +
-    "    <td>{{post.title}}</td>\n" +
-    "    <td>{{post.kind}}</td>\n" +
-    "    <td>{{post.createdAt | date:'yyyy-MM-dd h:mma'}}</td>\n" +
-    "    <td>\n" +
-    "      <a ng-click=\"editPost(post)\">Edit</a>\n" +
-    "    </td>\n" +
-    "  </tr>\n" +
+    "    <tr ng-repeat=\"post in postList.items\">\n" +
+    "      <td>{{post.title}}</td>\n" +
+    "      <td>{{post.kind}}</td>\n" +
+    "      <td>{{post.createdAt | date:'yyyy-MM-dd h:mma'}}</td>\n" +
+    "      <td>\n" +
+    "        <a ng-click=\"editPost(post)\">Edit</a>\n" +
+    "      </td>\n" +
+    "    </tr>\n" +
     "  </tbody>\n" +
     "</table>\n" +
     "\n" +

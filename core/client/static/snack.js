@@ -10,6 +10,7 @@ angular.module('app', [
     'dashboard',
     'posts',
     'assets',
+    'jobs',
     'security',
     'services.i18nNotifications',
     'services.localizedMessages',
@@ -223,6 +224,42 @@ angular.module('models.assetList', ['ngResource', 'models.asset'])
     }
 ]);
 
+angular.module('models.job', ['ngResource'])
+
+.factory('Job', ['$resource', '$q',
+
+    function ($resource, $q) {
+
+        var apiUrl = '/api/v1/jobs/:id';
+
+        var defaultParams = {
+            id: '@id'
+        };
+
+        var actions = {
+            update: {
+                method: 'PUT'
+            }
+        };
+
+        return $resource(apiUrl, defaultParams, actions);
+    }
+]);
+
+angular.module('models.jobList', ['ngResource'])
+
+.factory('JobList', ['$resource',
+
+    function ($resource, Job) {
+
+        var apiUrl = '/api/v1/jobs';
+
+        var defaultParams = {};
+
+        return $resource(apiUrl, defaultParams);
+    }
+]);
+
 angular.module('models.post', ['ngResource', 'models.asset', 'models.tag'])
 
 .factory('Post', ['$resource', '$q', 'Asset', 'Tag',
@@ -261,6 +298,7 @@ angular.module('models.post', ['ngResource', 'models.asset', 'models.tag'])
                     responseError: function (response) {
 
                         console.log('interceptor err');
+                        return response;
                     }
                 }
             },
@@ -274,6 +312,7 @@ angular.module('models.post', ['ngResource', 'models.asset', 'models.tag'])
                     responseError: function (response) {
 
                         console.log('interceptor err');
+                        return response;
                     }
                 }
             },
@@ -407,6 +446,7 @@ angular.module('models.postList', ['ngResource', 'models.post'])
                     },
                     responseError: function (response) {
                         console.log('interceptor err');
+                        return response;
                     }
                 }
             }
@@ -707,6 +747,36 @@ angular.module('resources.base', ['ngResource'])
 //         return MongolabResourceFactory;
 //     }
 // ]);
+
+angular.module('resources.jobs', ['models.job', 'models.jobList'])
+
+.factory('JobsResource', ['Job', 'JobList',
+
+    function (Job, JobList) {
+
+        var Resource = function (data) {
+
+            if (data.type === 'job') {
+
+                return new Job(data);
+
+            } else if (data.type === 'jobList') {
+
+                return new JobList(data);
+            }
+        };
+
+        Resource.list = function (query) {
+            return JobList.get(query);
+        };
+
+        Resource.find = function (query) {
+            return Job.get(query);
+        };
+
+        return Resource;
+    }
+]);
 
 angular.module('resources.posts', ['models.post', 'models.postList'])
 
@@ -1280,6 +1350,42 @@ angular.module('services.notifications', [])
         }
     ]);
 
+angular.module('services.socket', [])
+
+.factory('Socket', ['$rootScope',
+    function ($rootScope) {
+
+        function SocketFactory(host, port, path) {
+
+            var ws = new eio.Socket('ws://' + host + ':' + port + path);
+
+            var Socket = function () {};
+
+            Socket.on = function (eventName, callback) {
+                ws.on(eventName, function () {
+                    var args = arguments;
+                    $rootScope.$apply(function () {
+                        callback.apply(ws, args);
+                    });
+                });
+            };
+
+            Socket.send = function (data, callback) {
+                ws.send(data, function () {
+                    var args = arguments;
+                    $rootScope.$apply(function () {
+                        callback.apply(ws, args);
+                    });
+                });
+            };
+
+            return Socket;
+        }
+
+        return SocketFactory;
+    }
+]);
+
 angular.module('dashboard', ['resources.posts'])
 
 .config(['$routeProvider',
@@ -1307,6 +1413,38 @@ angular.module('dashboard', ['resources.posts'])
             $location.path('/posts/' + post.id + '/edit');
         };
 
+    }
+]);
+
+angular.module('jobs', ['resources.jobs', 'services.socket'])
+
+.config(['$routeProvider',
+    function ($routeProvider) {
+        $routeProvider.when('/jobs', {
+            templateUrl: 'jobs/job-list.tpl.html',
+            controller: 'JobListCtrl',
+            resolve: {
+                jobList: ['JobsResource',
+                    function (JobsResource) {
+                        return JobsResource.list();
+                    }
+                ]
+            }
+        });
+    }
+])
+
+.controller('JobListCtrl', ['$scope', '$location', 'jobList', 'Socket',
+    function ($scope, $location, jobList, Socket) {
+
+        $scope.jobList = jobList;
+
+        var socket = Socket('localhost', 8181);
+
+        socket.on('message', function (data) {
+            var job = JSON.parse(data);
+            jobList.items.unshift(job);
+        });
     }
 ]);
 
@@ -1471,7 +1609,7 @@ angular.module('posts', ['ui.bootstrap', 'resources.posts', 'resources.assets', 
     }
 ]);
 
-angular.module('templates.app', ['assets/assets-edit.tpl.html', 'assets/assets-list.tpl.html', 'common/security/login/form.tpl.html', 'common/security/login/toolbar.tpl.html', 'dashboard/dashboard.tpl.html', 'header.tpl.html', 'notifications.tpl.html', 'posts/posts-edit.tpl.html', 'posts/posts-list.tpl.html']);
+angular.module('templates.app', ['assets/assets-edit.tpl.html', 'assets/assets-list.tpl.html', 'common/security/login/form.tpl.html', 'common/security/login/toolbar.tpl.html', 'dashboard/dashboard.tpl.html', 'header.tpl.html', 'jobs/job-list.tpl.html', 'notifications.tpl.html', 'posts/posts-edit.tpl.html', 'posts/posts-list.tpl.html']);
 
 angular.module("assets/assets-edit.tpl.html", []).run(["$templateCache", function($templateCache) {
   $templateCache.put("assets/assets-edit.tpl.html",
@@ -1655,12 +1793,39 @@ angular.module("header.tpl.html", []).run(["$templateCache", function($templateC
     "      <ul class=\"nav navbar-nav\">\n" +
     "        <li><a href=\"/snack/posts\">Posts</a></li>\n" +
     "        <li><a href=\"/snack/assets\">Assets</a></li>\n" +
+    "        <li><a href=\"/snack/jobs\">Jobs</a></li>\n" +
     "      </ul>\n" +
     "\n" +
     "      <login-toolbar></login-toolbar>\n" +
     "    </div>\n" +
     "  </div>\n" +
     "</nav>\n" +
+    "");
+}]);
+
+angular.module("jobs/job-list.tpl.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("jobs/job-list.tpl.html",
+    "<table class=\"table table-striped-rows table-hover\">\n" +
+    "  <thead>\n" +
+    "    <th>Job Id</th>\n" +
+    "    <th>State</th>\n" +
+    "    <th>Hook</th>\n" +
+    "    <th>Progress</th>\n" +
+    "    <th>Duration</th>\n" +
+    "  </thead>\n" +
+    "\n" +
+    "  <tbody>\n" +
+    "    <tr ng-class=\"{active: 'active', complete: 'success', failed: 'danger'}[job.state]\"\n" +
+    "        ng-repeat=\"job in jobList.items\">\n" +
+    "      <td>{{job.id}}</td>\n" +
+    "      <td>{{job.state}}</td>\n" +
+    "      <td>{{job.type}}</td>\n" +
+    "      <td>{{job.progress}}</td>\n" +
+    "      <td>{{job.duration}}ms</td>\n" +
+    "    </tr>\n" +
+    "  </tbody>\n" +
+    "\n" +
+    "</table>\n" +
     "");
 }]);
 
@@ -1776,21 +1941,21 @@ angular.module("posts/posts-list.tpl.html", []).run(["$templateCache", function(
     "<table class=\"table table-striped-rows table-hover\">\n" +
     "  <thead>\n" +
     "    <tr>\n" +
-    "        <th>Title</th>\n" +
-    "        <th>Kind</th>\n" +
-    "        <th>Created</th>\n" +
-    "        <th>Actions</th>\n" +
+    "      <th>Title</th>\n" +
+    "      <th>Kind</th>\n" +
+    "      <th>Created</th>\n" +
+    "      <th>Actions</th>\n" +
     "    </tr>\n" +
     "  </thead>\n" +
     "  <tbody>\n" +
-    "  <tr ng-repeat=\"post in postList.items\">\n" +
-    "    <td>{{post.title}}</td>\n" +
-    "    <td>{{post.kind}}</td>\n" +
-    "    <td>{{post.createdAt | date:'yyyy-MM-dd h:mma'}}</td>\n" +
-    "    <td>\n" +
-    "      <a ng-click=\"editPost(post)\">Edit</a>\n" +
-    "    </td>\n" +
-    "  </tr>\n" +
+    "    <tr ng-repeat=\"post in postList.items\">\n" +
+    "      <td>{{post.title}}</td>\n" +
+    "      <td>{{post.kind}}</td>\n" +
+    "      <td>{{post.createdAt | date:'yyyy-MM-dd h:mma'}}</td>\n" +
+    "      <td>\n" +
+    "        <a ng-click=\"editPost(post)\">Edit</a>\n" +
+    "      </td>\n" +
+    "    </tr>\n" +
     "  </tbody>\n" +
     "</table>\n" +
     "\n" +

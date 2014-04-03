@@ -27,6 +27,7 @@ angular.module('models.postList', ['ngResource', 'models.post'])
                     },
                     responseError: function (response) {
                         console.log('interceptor err');
+                        return response;
                     }
                 }
             }

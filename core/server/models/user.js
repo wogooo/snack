@@ -234,6 +234,7 @@ internals.register = function (model, next) {
                     Async.each(roles, function (role, next) {
 
                         role.permissions(function (err, rolePerms) {
+                            if (err) return next(err);
 
                             fetchedPermissions = fetchedPermissions.concat(rolePerms);
 

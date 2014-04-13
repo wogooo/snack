@@ -105,7 +105,7 @@ function urlPathForApi(api) {
 
     } else {
 
-        collection = Inflection.pluralize(api.type);
+        collection = Inflection.pluralize(api.type).toLowerCase();
     }
 
     urlPath = snackConfig.api.basePath + '/v' + snackConfig.api.version + '/' + collection;

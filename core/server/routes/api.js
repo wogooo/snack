@@ -21,7 +21,7 @@ module.exports = function (route) {
         path: '/api/v1/posts',
         handler: function (request, reply) {
 
-            Api.Posts.list(request, function (err, results) {
+            Api.posts.list(request, function (err, results) {
                 reply(err ? err : results);
             });
         }
@@ -32,7 +32,7 @@ module.exports = function (route) {
         path: '/api/v1/posts.json',
         handler: function (request, reply) {
 
-            Api.Posts.list(request, function (err, results) {
+            Api.posts.list(request, function (err, results) {
                 reply(err ? err : results);
             });
         }
@@ -49,7 +49,7 @@ module.exports = function (route) {
             },
             handler: function (request, reply) {
 
-                Api.Posts.create(request, function (err, results) {
+                Api.posts.create(request, function (err, results) {
                     reply(err ? err : results);
                 });
             }
@@ -67,7 +67,7 @@ module.exports = function (route) {
             },
             handler: function (request, reply) {
 
-                Api.Posts.create(request, function (err, results) {
+                Api.posts.create(request, function (err, results) {
                     reply(err ? err : results);
                 });
             }
@@ -85,7 +85,7 @@ module.exports = function (route) {
             },
             handler: function (request, reply) {
 
-                Api.Posts.edit(request, function (err, results) {
+                Api.posts.edit(request, function (err, results) {
                     reply(err ? err : results);
                 });
             }
@@ -103,7 +103,7 @@ module.exports = function (route) {
             },
             handler: function (request, reply) {
 
-                Api.Posts.edit(request, function (err, results) {
+                Api.posts.edit(request, function (err, results) {
                     reply(err ? err : results);
                 });
             }
@@ -115,7 +115,7 @@ module.exports = function (route) {
         path: '/api/v1/posts/{id}.json',
         handler: function (request, reply) {
 
-            Api.Posts.read(request, function (err, results) {
+            Api.posts.read(request, function (err, results) {
                 reply(err ? err : results);
             });
         }
@@ -126,7 +126,7 @@ module.exports = function (route) {
         path: '/api/v1/posts/{id}.json',
         handler: function (request, reply) {
 
-            Api.Posts.remove(request, function (err, results) {
+            Api.posts.remove(request, function (err, results) {
                 reply(err ? err : results);
             });
         }
@@ -147,7 +147,7 @@ module.exports = function (route) {
             },
             handler: function (request, reply) {
 
-                Api.Assets.create(request, function (err, results) {
+                Api.assets.create(request, function (err, results) {
                     reply(err ? err : results);
                 });
             }
@@ -166,7 +166,7 @@ module.exports = function (route) {
             },
             handler: function (request, reply) {
 
-                Api.Assets.create(request, function (err, results) {
+                Api.assets.create(request, function (err, results) {
                     reply(err ? err : results);
                 });
             }
@@ -185,7 +185,7 @@ module.exports = function (route) {
             },
             handler: function (request, reply) {
 
-                Api.Assets.storeFile(request, function (err, results) {
+                Api.assets.storeFile(request, function (err, results) {
                     reply(err ? err : results);
                 });
             }
@@ -202,7 +202,7 @@ module.exports = function (route) {
             },
             handler: function (request, reply) {
 
-                Api.Assets.storeFile(request, function (err, results) {
+                Api.assets.storeFile(request, function (err, results) {
                     reply(err ? err : results);
                 });
             }
@@ -220,7 +220,7 @@ module.exports = function (route) {
             },
             handler: function (request, reply) {
 
-                Api.Assets.edit(request, function (err, results) {
+                Api.assets.edit(request, function (err, results) {
                     reply(err ? err : results);
                 });
             }
@@ -238,7 +238,7 @@ module.exports = function (route) {
             },
             handler: function (request, reply) {
 
-                Api.Assets.edit(request, function (err, results) {
+                Api.assets.edit(request, function (err, results) {
                     reply(err ? err : results);
                 });
             }
@@ -250,7 +250,7 @@ module.exports = function (route) {
         path: '/api/v1/assets/{id}',
         handler: function (request, reply) {
 
-            Api.Assets.remove(request, function (err) {
+            Api.assets.remove(request, function (err) {
                 reply(err ? err : results);
             });
         }
@@ -261,7 +261,7 @@ module.exports = function (route) {
         path: '/api/v1/assets/{id}',
         handler: function (request, reply) {
 
-            Api.Assets.read(request, function (err, results) {
+            Api.assets.read(request, function (err, results) {
                 reply(err ? err : results);
             });
         }
@@ -272,7 +272,7 @@ module.exports = function (route) {
         path: '/api/v1/assets/{id}.json',
         handler: function (request, reply) {
 
-            Api.Assets.read(request, function (err, results) {
+            Api.assets.read(request, function (err, results) {
                 reply(err ? err : results);
             });
         }
@@ -283,7 +283,7 @@ module.exports = function (route) {
         path: '/api/v1/assets',
         handler: function (request, reply) {
 
-            Api.Assets.list(request, function (err, results) {
+            Api.assets.list(request, function (err, results) {
                 reply(err ? err : results);
             });
         }
@@ -294,7 +294,7 @@ module.exports = function (route) {
         path: '/api/v1/assets.json',
         handler: function (request, reply) {
 
-            Api.Assets.list(request, function (err, results) {
+            Api.assets.list(request, function (err, results) {
                 reply(err ? err : results);
             });
         }
@@ -308,7 +308,7 @@ module.exports = function (route) {
         path: '/api/v1/tags.json',
         handler: function (request, reply) {
 
-            Api.Tags.create(request, function (err, results) {
+            Api.tags.create(request, function (err, results) {
                 reply(err ? err : results);
             });
         }
@@ -319,7 +319,7 @@ module.exports = function (route) {
         path: '/api/v1/tags/{id}.json',
         handler: function (request, reply) {
 
-            Api.Tags.edit(request, function (err, results) {
+            Api.tags.edit(request, function (err, results) {
                 reply(err ? err : results);
             });
         }
@@ -330,7 +330,7 @@ module.exports = function (route) {
         path: '/api/v1/tags.json',
         handler: function (request, reply) {
 
-            Api.Tags.list(request, function (err, results) {
+            Api.tags.list(request, function (err, results) {
                 reply(err ? err : results);
             });
         }
@@ -341,7 +341,7 @@ module.exports = function (route) {
         path: '/api/v1/tags/{id}.json',
         handler: function (request, reply) {
 
-            Api.Tags.read(request, function (err, results) {
+            Api.tags.read(request, function (err, results) {
                 reply(err ? err : results);
             });
         }
@@ -352,7 +352,7 @@ module.exports = function (route) {
         path: '/api/v1/tags/{id}.json',
         handler: function (request, reply) {
 
-            Api.Tags.remove(request, function (err, results) {
+            Api.tags.remove(request, function (err, results) {
                 reply(err ? err : results);
             });
         }
@@ -370,7 +370,7 @@ module.exports = function (route) {
             },
             handler: function (request, reply) {
 
-                Api.Users.create(request, function (err, results) {
+                Api.users.create(request, function (err, results) {
                     reply(err ? err : results);
                 });
             }
@@ -386,7 +386,7 @@ module.exports = function (route) {
             },
             handler: function (request, reply) {
 
-                Api.Users.edit(request, function (err, results) {
+                Api.users.edit(request, function (err, results) {
                     reply(err ? err : results);
                 });
             }
@@ -399,7 +399,7 @@ module.exports = function (route) {
         config: {
             handler: function (request, reply) {
 
-                Api.Users.list(request, function (err, results) {
+                Api.users.list(request, function (err, results) {
                     reply(err ? err : results);
                 });
             }
@@ -412,7 +412,7 @@ module.exports = function (route) {
         config: {
             handler: function (request, reply) {
 
-                Api.Users.read(request, function (err, results) {
+                Api.users.read(request, function (err, results) {
                     reply(err ? err : results);
                 });
             }
@@ -439,7 +439,7 @@ module.exports = function (route) {
         config: {
             handler: function (request, reply) {
 
-                Api.Users.remove(request, function (err, results) {
+                Api.users.remove(request, function (err, results) {
                     reply(err ? err : results);
                 });
             }

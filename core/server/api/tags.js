@@ -21,7 +21,7 @@ internals.Tags.prototype.list = function (args, done) {
         options = query,
         list;
 
-    var get = Api.Base.listParams(options);
+    var get = Api.base.listParams(options);
 
     Models.Tag.all(get, function (err, tags) {
 
@@ -86,7 +86,7 @@ internals.Tags.prototype.create = function (args, done) {
         function (err) {
             if (err) return done(err);
 
-            Api.Base.enqueue(tags, 'tag.created', function (err) {
+            Api.base.enqueue(tags, 'tag.created', function (err) {
                 if (err) return done(err);
 
                 done(err, multi ? tags : tags[0]);
@@ -99,7 +99,7 @@ internals.Tags.prototype.read = function (args, done) {
     var Models = this.models,
         Api = this.api;
 
-    var get = Api.Base.readParams(args);
+    var get = Api.base.readParams(args);
 
     if (!get) {
 
@@ -158,8 +158,8 @@ internals.Tags.prototype.edit = function (args, done) {
 
             if (!clearQueue) {
 
-                Api.Base.processRelations(tag, payload, function (err) {
-                    Api.Base.enqueue(tag, 'tag.updated', function (err) {
+                Api.base.processRelations(tag, payload, function (err) {
+                    Api.base.enqueue(tag, 'tag.updated', function (err) {
                         done(err, !err ? tag : null);
                     });
                 });
@@ -192,7 +192,7 @@ internals.Tags.prototype.remove = function (args, done) {
 
             // A true destructive delete
             tag.destroy(function (err) {
-                Api.Base.enqueue(tag, 'tag.destroyed', function (err) {
+                Api.base.enqueue(tag, 'tag.destroyed', function (err) {
                     var results = {
                         message: 'Destroyed'
                     };
@@ -206,7 +206,7 @@ internals.Tags.prototype.remove = function (args, done) {
             tag.updateAttributes({
                 deleted: true
             }, function (err) {
-                Api.Base.enqueue(tag, 'tag.deleted', function (err) {
+                Api.base.enqueue(tag, 'tag.deleted', function (err) {
                     var results = {
                         message: 'Deleted'
                     };

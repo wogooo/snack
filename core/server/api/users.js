@@ -22,7 +22,7 @@ Users.prototype.list = function (args, done) {
         list;
 
     options.modelName = 'User';
-    var get = Api.Base.listParams(options);
+    var get = Api.base.listParams(options);
 
     Models.User.all(get, function (err, users) {
 
@@ -54,9 +54,9 @@ Users.prototype.create = function (args, done) {
 
         if (err) return done(err);
 
-        Api.Base.processRelations(user, null, function (err) {
+        Api.base.processRelations(user, null, function (err) {
 
-            Api.Base.enqueue(user, 'user.created', function (err) {
+            Api.base.enqueue(user, 'user.created', function (err) {
 
                 done(err, user);
             });
@@ -69,7 +69,7 @@ Users.prototype.read = function (args, done) {
     var Models = this.models,
         Api = this.api;
 
-    var get = Api.Base.readParams(args);
+    var get = Api.base.readParams(args);
 
     if (!get) {
 
@@ -81,7 +81,7 @@ Users.prototype.read = function (args, done) {
         if (err) return done(Hapi.error.badImplementation(err.message));
         if (!user) return done(Hapi.error.notFound());
 
-        Api.Base.loadRelations(user, get.relations, function (err) {
+        Api.base.loadRelations(user, get.relations, function (err) {
             done(err, err ? null : user);
         });
     });
@@ -128,9 +128,9 @@ Users.prototype.edit = function (args, done) {
 
             if (!clearQueue) {
 
-                Api.Base.processRelations(user, payload, function (err) {
+                Api.base.processRelations(user, payload, function (err) {
 
-                    Api.Base.enqueue(user, 'user.updated', function (err) {
+                    Api.base.enqueue(user, 'user.updated', function (err) {
                         done(err, !err ? user : null);
                     });
                 });
@@ -162,7 +162,7 @@ Users.prototype.remove = function (args, done) {
 
             // A true destructive delete
             user.destroy(function (err) {
-                Api.Base.enqueue(user, 'user.destroyed', function (err) {
+                Api.base.enqueue(user, 'user.destroyed', function (err) {
                     var results = {
                         message: 'Destroyed'
                     };
@@ -176,7 +176,7 @@ Users.prototype.remove = function (args, done) {
             user.updateAttributes({
                 deleted: true
             }, function (err) {
-                Api.Base.enqueue(user, 'user.deleted', function (err) {
+                Api.base.enqueue(user, 'user.deleted', function (err) {
                     var results = {
                         message: 'Deleted'
                     };

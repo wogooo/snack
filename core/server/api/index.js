@@ -1,9 +1,13 @@
 var Hapi = require('hapi');
 var Utils = Hapi.utils;
 
-var requires = {};
-
-Utils.loadDirModules(__dirname, ['index'], requires);
+var requires = [
+    'assets',
+    'base',
+    'posts',
+    'tags',
+    'users'
+];
 
 exports.init = function (server, next) {
 
@@ -19,8 +23,8 @@ exports.init = function (server, next) {
 
     root.api = {};
 
-    Object.keys(requires).forEach(function (requireName) {
-        root.api[requireName] = requires[requireName](root);
+    requires.forEach(function (requireName) {
+        root.api[requireName] = require('./' + requireName)(root);
     });
 
     Snack.api = root.api;

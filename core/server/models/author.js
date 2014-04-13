@@ -10,50 +10,50 @@ internals.modelDefinition = function () {
 
     return {
         id: String,
-        'type': {
+        type: {
             type: String,
             length: 255,
             default: modelName.toLowerCase()
         },
-        'key': {
+        key: {
             index: true,
             type: String,
             length: 255
         },
-        'name': {
+        name: {
             type: String,
             length: 255
         },
-        'email': {
+        email: {
             type: String,
             length: 2000
         },
-        'website': {
+        website: {
             type: String,
             length: 255
         },
-        'bio': {
+        bio: {
             type: Schema.Text
         },
-        'bioShort': {
+        bioShort: {
             type: String,
             length: 200
         },
-        'location': {
+        location: {
             type: String
         },
-        'deleted': {
+        deleted: {
             index: true,
             type: Boolean,
             default: false
         },
-        'createdAt': {
+        createdAt: {
             type: Date,
             default: function () {
                 return new Date();
             }
         },
-        'updatedAt': {
+        updatedAt: {
             type: Date,
             default: function () {
                 return new Date();

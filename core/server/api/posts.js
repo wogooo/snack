@@ -18,23 +18,29 @@ Posts.prototype.list = function (args, done) {
         list;
 
     options.modelName = 'Post';
-    var get = Api.Base.listParams(options);
+    var get = Api.base.listParams(options);
 
     Models.Post.all(get, function (err, posts) {
 
         if (err) return done(err);
 
-        list = {
-            type: 'postList',
-            sort: get.order.split(' ')[1].toLowerCase(),
-            order: get.order.split(' ')[0],
-            offset: get.skip,
-            limit: get.limit,
-            count: posts ? posts.length : 0,
-            items: posts || []
-        };
+        Models.Post.count(get, function (err, count) {
 
-        done(null, list);
+            if (err) return done(err);
+
+            list = {
+                type: 'postList',
+                sort: get.order.split(' ')[1].toLowerCase(),
+                order: get.order.split(' ')[0],
+                offset: get.skip,
+                limit: get.limit,
+                total: count,
+                count: posts ? posts.length : 0,
+                items: posts || []
+            };
+
+            done(null, list);
+        });
     });
 };
 
@@ -76,8 +82,8 @@ Posts.prototype.create = function (args, done) {
 
             } else {
 
-                Api.Base.processRelations(post, null, function (err) {
-                    Api.Base.enqueue(post, 'post.created', function (err) {
+                Api.base.processRelations(post, null, function (err) {
+                    Api.base.enqueue(post, 'post.created', function (err) {
                         done(err, err ? null : post);
                     });
                 });
@@ -91,7 +97,7 @@ Posts.prototype.read = function (args, done) {
     var Models = this.models,
         Api = this.api;
 
-    var get = Api.Base.readParams(args);
+    var get = Api.base.readParams(args);
 
     if (!get) {
 
@@ -103,7 +109,7 @@ Posts.prototype.read = function (args, done) {
         if (err) return done(Hapi.error.badImplementation(err.message));
         if (!post) return done(Hapi.error.notFound());
 
-        Api.Base.loadRelations(post, get.relations, function (err) {
+        Api.base.loadRelations(post, get.relations, function (err) {
             done(err, err ? null : post);
         });
     });
@@ -183,11 +189,11 @@ Posts.prototype.edit = function (args, done) {
 
                     hook = created ? 'post.created' : 'post.updated';
 
-                    Api.Base.processRelations(post, payload, function (err) {
+                    Api.base.processRelations(post, payload, function (err) {
 
-                        Api.Base.enqueue(post, hook, function (err) {
+                        Api.base.enqueue(post, hook, function (err) {
 
-                            Api.Base.loadRelations(post, null, function (err) {
+                            Api.base.loadRelations(post, null, function (err) {
 
                                 done(err, err ? null : post);
                             });
@@ -221,7 +227,7 @@ Posts.prototype.remove = function (args, done) {
 
             // A true destructive delete
             post.destroy(function (err) {
-                Api.Base.enqueue(post, 'post.destroyed', function (err) {
+                Api.base.enqueue(post, 'post.destroyed', function (err) {
                     done(err);
                 });
             });
@@ -232,7 +238,7 @@ Posts.prototype.remove = function (args, done) {
             post.updateAttributes({
                 deleted: true
             }, function (err) {
-                Api.Base.enqueue(post, 'post.deleted', function (err) {
+                Api.base.enqueue(post, 'post.deleted', function (err) {
                     done(err);
                 });
             });

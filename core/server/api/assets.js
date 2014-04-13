@@ -31,7 +31,7 @@ Assets.prototype._generateUniqueKey = function (file, done) {
     keyExt = Path.extname(assetKey);
     keyBase = Path.join(Path.dirname(assetKey), Path.basename(assetKey, keyExt));
 
-    Api.Base.findUniqueKey('Asset', keyBase, keyExt, null, function (err, key) {
+    Api.base.findUniqueKey('Asset', keyBase, keyExt, null, function (err, key) {
 
         if (err) return done(err);
 
@@ -90,7 +90,7 @@ Assets.prototype.list = function (args, done) {
         query = args.query || {},
         list = {};
 
-    var get = Api.Base.listParams(query);
+    var get = Api.base.listParams(query);
 
     Models.Asset.all(get, function (err, assets) {
 
@@ -135,7 +135,7 @@ Assets.prototype._finalizeFile = function (file, options, done) {
         if (asset.storage) {
 
             // Queue everything up.
-            Api.Base.enqueue(asset, 'asset.created', function (err) {
+            Api.base.enqueue(asset, 'asset.created', function (err) {
 
                 done(err, err ? null : asset);
             });
@@ -171,7 +171,7 @@ Assets.prototype.storeFile = function (args, done) {
         filename: headers['x-file-name'],
         bytes: headers['x-file-size'],
         mimetype: headers['content-type'],
-        createdAt: new Date(),
+        createdAt: new Date()
     };
 
     if (params.id) {
@@ -268,7 +268,7 @@ Assets.prototype.read = function (args, done) {
     var Models = this.models,
         Api = this.api;
 
-    var get = Api.Base.readParams(args);
+    var get = Api.base.readParams(args);
 
     if (!get) {
 
@@ -283,7 +283,7 @@ Assets.prototype.read = function (args, done) {
             return done(Hapi.error.notFound());
         }
 
-        Api.Base.loadRelations(asset, function (err) {
+        Api.base.loadRelations(asset, function (err) {
             done(err, asset);
         });
     });
@@ -325,8 +325,8 @@ Assets.prototype.edit = function (args, done) {
 
             if (!clearQueue) {
 
-                Api.Base.processRelations(asset, payload, function (err) {
-                    Api.Base.enqueue(asset, 'asset.updated', function (err) {
+                Api.base.processRelations(asset, payload, function (err) {
+                    Api.base.enqueue(asset, 'asset.updated', function (err) {
                         done(err, !err ? asset : null);
                     });
                 });
@@ -360,7 +360,7 @@ Assets.prototype.remove = function (args, done) {
 
             // A true destructive delete
             asset.destroy(function (err) {
-                Api.Base.enqueue(asset, 'asset.destroyed', function (err) {
+                Api.base.enqueue(asset, 'asset.destroyed', function (err) {
                     var results = {
                         message: 'Destroyed'
                     };
@@ -374,7 +374,7 @@ Assets.prototype.remove = function (args, done) {
             asset.updateAttributes({
                 deleted: true
             }, function (err) {
-                Api.Base.enqueue(asset, 'asset.deleted', function (err) {
+                Api.base.enqueue(asset, 'asset.deleted', function (err) {
                     var results = {
                         message: 'Deleted'
                     };

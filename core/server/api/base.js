@@ -372,7 +372,7 @@ internals.Base.prototype._createRelation = function (relations, relation, done) 
     var Api = this.api,
         relName = relation.relationName,
         modelName = relation.modelName,
-        apiMethod = Inflection.pluralize(modelName);
+        apiMethod = Inflection.pluralize(modelName).toLowerCase();
 
     var apiData = {
         payload: relation.data,

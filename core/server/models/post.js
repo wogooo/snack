@@ -1,5 +1,5 @@
 var Hapi = require('hapi');
-var Utils = Hapi.utils;
+var Utils = require('hoek');
 var HtmlStrip = require('htmlstrip-native').html_strip;
 var Schema = require('jugglingdb').Schema;
 var Uslug = require('uslug');

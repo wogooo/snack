@@ -1,7 +1,7 @@
 var LocalStrategy = require('passport-local').Strategy;
 var Bcrypt = require('bcrypt');
 var Hapi = require('hapi');
-var Utils = Hapi.utils;
+var Utils = require('hoek');
 
 var internals = {};
 

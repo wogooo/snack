@@ -1,7 +1,7 @@
 var Path = require('path');
 var Async = require('async');
 var Hapi = require('hapi');
-var Utils = Hapi.utils;
+var Utils = require('hoek');
 var Config = require('../config');
 
 var PROVIDER = Config().storage;

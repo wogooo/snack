@@ -1,5 +1,5 @@
 var Hapi = require('hapi');
-var Utils = Hapi.utils;
+var Utils = require('hoek');
 var Async = require('async');
 var Schema = require('jugglingdb').Schema;
 

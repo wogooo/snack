@@ -7,7 +7,7 @@
 
 var Path = require('path'),
     Hapi = require('hapi'),
-    Utils = Hapi.utils,
+    Utils = require('hoek'),
     Url = require('url'),
     ConfigUrl = require('./url'),
     appRoot = Path.resolve(__dirname, '../../../'),

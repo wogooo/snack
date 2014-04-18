@@ -6,7 +6,7 @@ var Fs = require('fs');
 var Util = require('util');
 var Path = require('path');
 var Hapi = require('hapi');
-var Utils = Hapi.utils;
+var Utils = require('hoek');
 
 var Nipple = require('nipple');
 var Async = require('async');

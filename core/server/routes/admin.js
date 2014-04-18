@@ -85,12 +85,6 @@ module.exports = function (route) {
         method: 'POST',
         path: '/snack/login',
         config: {
-            validate: {
-                payload: {
-                    username: Hapi.types.String(),
-                    password: Hapi.types.String()
-                }
-            },
             auth: false
         },
         handler: function (request, reply) {

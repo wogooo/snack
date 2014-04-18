@@ -2,7 +2,7 @@ var Path = require('path');
 var Cluster = require('cluster');
 var Async = require('async');
 var Hapi = require('hapi');
-var Utils = Hapi.utils;
+var Utils = require('hoek');
 
 var Config = require('./config');
 var ErrorHandling = require('./errorHandling');

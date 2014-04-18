@@ -1,7 +1,7 @@
 var Async = require('async');
 var Inflection = require('inflection');
 var Hapi = require('hapi');
-var Utils = Hapi.utils;
+var Utils = require('hoek');
 
 var internals = {};
 

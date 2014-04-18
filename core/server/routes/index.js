@@ -1,11 +1,13 @@
 /*jshint sub:true*/
 
 var Hapi = require('hapi');
-var Utils = Hapi.utils;
 
-var requires = {};
-
-Utils.loadDirModules(__dirname, ['index'], requires);
+var requires = [
+    'admin',
+    'api',
+    'debug',
+    'static'
+];
 
 exports.init = function (server, next) {
 
@@ -14,8 +16,8 @@ exports.init = function (server, next) {
     root.snack = server.app;
     root.config = server.app.config;
 
-    Object.keys(requires).forEach(function (requireName) {
-        requires[requireName](root);
+    requires.forEach(function (requireName) {
+        require('./' + requireName)(root);
     });
 
     next();

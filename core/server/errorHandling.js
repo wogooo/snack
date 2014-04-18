@@ -1,7 +1,7 @@
 var Http = require('http');
 var Cluster = require('cluster');
 var Hapi = require('hapi');
-var Utils = Hapi.utils;
+var Utils = require('hoek');
 var Boom = Hapi.boom;
 
 var internals = {};

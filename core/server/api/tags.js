@@ -188,32 +188,15 @@ internals.Tags.prototype.remove = function (args, done) {
             return done(Hapi.error.notFound());
         }
 
-        if (query.destroy === 'true') {
-
-            // A true destructive delete
-            tag.destroy(function (err) {
-                Api.base.enqueue(tag, 'tag.destroyed', function (err) {
-                    var results = {
-                        message: 'Destroyed'
-                    };
-                    done(err, results);
-                });
+        // A true destructive delete
+        tag.destroy(function (err) {
+            Api.base.enqueue(tag, 'tag.destroyed', function (err) {
+                var results = {
+                    message: 'Destroyed'
+                };
+                done(err, results);
             });
-
-        } else {
-
-            // Soft delete by default
-            tag.updateAttributes({
-                deleted: true
-            }, function (err) {
-                Api.base.enqueue(tag, 'tag.deleted', function (err) {
-                    var results = {
-                        message: 'Deleted'
-                    };
-                    done(err, results);
-                });
-            });
-        }
+        });
     });
 };
 

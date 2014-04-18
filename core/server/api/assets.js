@@ -372,7 +372,7 @@ Assets.prototype.remove = function (args, done) {
 
             // A more commons setting to make it unavailable
             asset.updateAttributes({
-                deleted: true
+                _deleted_: true
             }, function (err) {
                 Api.base.enqueue(asset, 'asset.deleted', function (err) {
                     var results = {

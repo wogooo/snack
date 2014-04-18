@@ -118,8 +118,18 @@ function urlPathForApi(api) {
         urlPath += '.' + api.format;
     }
 
+    var queryParams = [];
+
     if (api.ids) {
-        urlPath += '?ids=' + api.ids.join(',');
+        queryParams.push('ids=' + api.ids.join(','));
+    }
+
+    if (api.limit) {
+        queryParams.push('limit=' + api.limit);
+    }
+
+    if (queryParams.length) {
+        urlPath += '?' + queryParams.join('&');
     }
 
     return urlPath;

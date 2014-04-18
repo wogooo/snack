@@ -45,15 +45,16 @@ internals.DemonMaster = function (options) {
 
     this._env = {};
 
-    this._hooks = {};
+    this._apps = {};
+    this._apps['snack-app'] = {};
 
-    if (options.hooks) {
+    // if (options.hooks) {
 
-        // Pre-populate the hooks that will need processing
-        for (var hook in options.hooks) {
-            this._hooks[hook] = [];
-        }
-    }
+    //     // Pre-populate the hooks that will need processing
+    //     for (var hook in options.hooks) {
+    //         this._hooks[hook] = [];
+    //     }
+    // }
 
     this._registered = {};
 };
@@ -113,7 +114,7 @@ internals.DemonMaster.prototype._processHandlers = function () {
     var self = this;
 
     var queue = this.queue;
-    var hooks = this._hooks;
+    var apps = this._apps;
 
     queue.on('job complete', function (id) {
         self._jobDone(id);
@@ -123,51 +124,59 @@ internals.DemonMaster.prototype._processHandlers = function () {
         self._jobDone(id);
     });
 
-    // Iterate hooks, to set up queue processes to handle
-    var attachHandlers = function () {
+    var processHandlers = function (appName) {
 
-        for (var hook in hooks) {
+        var appProcesses = apps[appName];
 
-            // Listen to the job queue
-            queue.process(hook, processHandler);
+        return function processHandler(job, done) {
+
+            if (!job.data || !job.data.event) {
+
+                return done();
+            }
+
+            // Get the processes array,
+            // for the async series
+            var event = job.data.event,
+                processes = appProcesses[event],
+                pending = processes.length,
+                total = pending;
+
+            if (total === 0) {
+
+                // No processes for this hook
+                return done();
+            }
+
+            // Setup the series of processes that will be run
+            Async.eachSeries(processes, function (proc, next) {
+
+                    // Decrement pending for each process,
+                    // progress becomes a percent of processes complete.
+                    --pending;
+
+                    // Pass in the job
+                    proc.fn(job, function (err) {
+                        job.progress(total - pending, total);
+                        next(err);
+                    });
+                },
+                function (err) {
+
+                    if (err) {
+                        job.error(err);
+                    }
+
+                    done(err);
+                });
         }
     };
 
-    var processHandler = function (job, done) {
-
-        // Get the processes array,
-        // for the async series
-        var processes = hooks[job.type],
-            pending = processes.length,
-            total = pending;
-
-        if (total === 0) {
-
-            // No processes for this hook
-            return done();
+    // Iterate hooks, to set up queue processes to handle
+    var attachHandlers = function () {
+        for (var appName in apps) {
+            queue.process(appName, processHandlers(appName));
         }
-
-        // Setup the series of processes that will be run
-        Async.eachSeries(processes, function (proc, next) {
-
-                // Decrement pending for each process,
-                // progress becomes a percent of processes complete.
-                --pending;
-
-                // Pass in the job
-                proc.fn(job, function (err) {
-                    job.progress(total - pending, total);
-                    next(err);
-                });
-            },
-            function (err) {
-
-                if (err) {
-                    job.error(err);
-                }
-
-                done(err);
-            });
     };
 
     attachHandlers();
@@ -179,25 +188,33 @@ internals.DemonMaster.prototype._process = function (processEnv, processItem) {
 
     for (var i = 0, il = items.length; i < il; ++i) {
         var item = items[i];
-        this._addProcessHandler(processEnv, item.hook, item.fn, item.options);
+        var app = item.app || 'snack-app';
+
+        this._addProcessHandler(processEnv, app, item.event, item.fn, item.options);
     }
 };
 
 /*
-    Building a _hooks object that looks like this:
-    this._hooks = {
-        'post.created': [
-            { fn: handler(), priority: 0 },
-            { fn: handler(), priority: 0 }
-        ]
+    Building a _apps object that looks like this:
+    this._apps = {
+        'appName': {
+            'post.created': [
+                { fn: handler(), priority: 0 },
+                { fn: handler(), priority: 0 }
+            ]
+        }
     }
 */
-internals.DemonMaster.prototype._addProcessHandler = function (env, hook, fn, options) {
+internals.DemonMaster.prototype._addProcessHandler = function (env, app, event, fn, options) {
 
-    this._hooks[hook] = this._hooks[hook] || [];
+    if (!this._apps[app]) {
+        return;
+    }
+
+    this._apps[app][event] = this._apps[app][event] || [];
 
     // processes with no priority are put at the end
-    this._hooks[hook].push({
+    this._apps[app][event].push({
         fn: fn,
         priority: options.hasOwnProperty('priority') ? options.priority : 99
     });
@@ -205,7 +222,8 @@ internals.DemonMaster.prototype._addProcessHandler = function (env, hook, fn, op
 
 internals.DemonMaster.prototype._sortProcessHandlers = function (hook, fn, options) {
 
-    var hooks = this._hooks;
+    var apps = this._apps,
+        appEvents;
 
     var prioritySort = function (a, b) {
         if (a.priority > b.priority) {
@@ -218,9 +236,14 @@ internals.DemonMaster.prototype._sortProcessHandlers = function (hook, fn, optio
         return 0;
     };
 
-    Object.keys(hooks).forEach(function (hookName) {
-        hooks[hookName].sort(prioritySort);
-    });
+    for (var a in apps) {
+
+        appEvents = apps[a];
+
+        for (var e in appEvents) {
+            appEvents[e].sort(prioritySort);
+        }
+    }
 };
 
 internals.DemonMaster.prototype._register = function (demon, options, done) {
@@ -249,7 +272,7 @@ internals.DemonMaster.prototype._register = function (demon, options, done) {
     root.hapi = this.hapi;
     root.config = this.config;
     root.queue = this.queue;
-    root.hooks = this._hooks;
+    root.apps = this._apps;
     root.registered = registered;
 
     demon.register.call(null, root, options || {}, function (err) {
@@ -275,6 +298,8 @@ internals.DemonMaster.prototype.require = function (names, options, callback) {
 internals.DemonMaster.prototype._require = function (names, options, callback, requireFunc) {
 
     var self = this;
+
+    var apps = this._apps;
     var settings = this._settings;
     var registered = this._registered;
 
@@ -291,6 +316,9 @@ internals.DemonMaster.prototype._require = function (names, options, callback, r
                 options: names[item] || {},
                 disabled: !Boolean(names[item])
             });
+
+            apps[item] = {};
+
         });
 
         Async.eachSeries(registrations, function (item, next) {

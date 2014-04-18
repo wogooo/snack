@@ -90,7 +90,7 @@ internals.register = function (model, next) {
                 return new Date();
             }
         },
-        deleted: {
+        _deleted_: {
             type: Boolean,
             default: false,
             index: true

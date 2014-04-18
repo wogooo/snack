@@ -59,8 +59,9 @@ internals.Base.prototype._enqueue = function (hook, item, done) {
     var endpoint = this._apiEndpoint(item.type, item.id);
 
     var task = {
-        type: hook,
+        type: 'snack-app',
         data: {
+            event: hook,
             type: item.type,
             id: item.id,
             cleanup: Boolean(item.cleanup),
@@ -568,6 +569,10 @@ internals.Base.prototype.listParams = function (options) {
         // autocomplete
         get.where = {};
         get.where.key = new RegExp('^' + Utils.escapeRegex(options.autocomplete) + '.*?', 'i');
+    }
+
+    if (options.filters && !get.where) {
+        get.where = options.filters;
     }
 
     if (options.order) {

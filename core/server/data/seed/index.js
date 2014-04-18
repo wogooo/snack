@@ -6,10 +6,7 @@ var internals = {};
 internals.seed = {
     users: [{
         "displayName": "Admin",
-        "username": "admin",
-        "body": "Simple starter post.",
-        "page": false,
-        "language": "en_US"
+        "username": "admin"
     }],
 
     posts: [{
@@ -18,6 +15,30 @@ internals.seed = {
         "body": "Simple starter post.",
         "page": false,
         "language": "en_US"
+    },
+    {
+        "headline": "Cum Sociis",
+        "key": "cum-sociis",
+        "body": "Pellentesque habitant morbi tristique senectus et netus. Ab illo tempore, ab est sed immemorabili. Cum ceteris in veneratione tui montes, nascetur mus. Gallia est omnis divisa in partes tres, quarum. Phasellus laoreet lorem vel dolor tempus vehicula. Fictum,  deserunt mollit anim laborum astutumque!",
+        "page": false,
+        "language": "en_US",
+        "availableAt": new Date(2014, 3, 17, 8)
+    },
+    {
+        "headline": "Natoque Penatibus",
+        "key": "natoque-penatibus",
+        "body": "Morbi odio eros, volutpat ut pharetra vitae, lobortis sed nibh. Salutantibus vitae elit libero, a pharetra augue. Curabitur est gravida et libero vitae dictum. Quisque ut dolor gravida, placerat libero vel, euismod. A communi observantia non est recedendum. Quisque ut dolor gravida, placerat libero vel, euismod.",
+        "page": false,
+        "language": "en_US",
+        "availableAt": new Date(2014, 3, 16, 8)
+    },
+    {
+        "headline": "Et Magnis Dis",
+        "key": "et-magnis-dis",
+        "body": "Prima luce, cum quibus mons aliud  consensu ab eo. Magna pars studiorum, prodita quaerimus. Idque Caesaris facere voluntate liceret: sese habere. Ullamco laboris nisi ut aliquid ex ea commodi consequat. Quo usque tandem abutere, Catilina, patientia nostra? Quis aute iure reprehenderit in voluptate velit esse.",
+        "page": false,
+        "language": "en_US",
+        "availableAt": new Date(2014, 3, 19, 8)
     }],
 
     tags: [{

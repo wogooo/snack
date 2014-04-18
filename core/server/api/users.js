@@ -11,7 +11,7 @@ function Users(options) {
     this.config = options.config;
     this.api = options.api;
     this.hooks = options.config().hooks;
-};
+}
 
 Users.prototype.list = function (args, done) {
 
@@ -23,22 +23,29 @@ Users.prototype.list = function (args, done) {
 
     options.modelName = 'User';
     var get = Api.base.listParams(options);
+    var where = Utils.clone(get.where);
 
     Models.User.all(get, function (err, users) {
 
         if (err) return done(err);
 
-        list = {
-            type: 'userList',
-            sort: get.order.split(' ')[1].toLowerCase(),
-            order: get.order.split(' ')[0],
-            offset: get.skip,
-            limit: get.limit,
-            count: users.length,
-            items: users
-        };
+        Models.User.count(where, function (err, count) {
 
-        done(null, list);
+            if (err) return done(err);
+
+            list = {
+                type: 'userList',
+                sort: get.order.split(' ')[1].toLowerCase(),
+                order: get.order.split(' ')[0],
+                offset: get.skip,
+                limit: get.limit,
+                total: count,
+                count: users.length,
+                items: users
+            };
+
+            done(null, list);
+        });
     });
 };
 
@@ -158,32 +165,15 @@ Users.prototype.remove = function (args, done) {
             return done(Hapi.error.notFound());
         }
 
-        if (query.destroy === 'true') {
-
-            // A true destructive delete
-            user.destroy(function (err) {
-                Api.base.enqueue(user, 'user.destroyed', function (err) {
-                    var results = {
-                        message: 'Destroyed'
-                    };
-                    done(err, results);
-                });
+        // A true destructive delete
+        user.destroy(function (err) {
+            Api.base.enqueue(user, 'user.destroyed', function (err) {
+                var results = {
+                    message: 'Destroyed'
+                };
+                done(err, results);
             });
-
-        } else {
-
-            // Soft delete by default
-            user.updateAttributes({
-                deleted: true
-            }, function (err) {
-                Api.base.enqueue(user, 'user.deleted', function (err) {
-                    var results = {
-                        message: 'Deleted'
-                    };
-                    done(err, results);
-                });
-            });
-        }
+        });
     });
 };
 

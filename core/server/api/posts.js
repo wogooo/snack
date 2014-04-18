@@ -18,13 +18,27 @@ Posts.prototype.list = function (args, done) {
         list;
 
     options.modelName = 'Post';
+
+    // Filter out anything pending
+    options.filters = {
+        '_pending_': false,
+        '_deleted_': false
+    };
+
+    if (!args.user) {
+        options.filters.availableAt = {
+            lte: new Date()
+        };
+    }
+
     var get = Api.base.listParams(options);
+    var where = Utils.clone(get.where);
 
     Models.Post.all(get, function (err, posts) {
 
         if (err) return done(err);
 
-        Models.Post.count(get, function (err, count) {
+        Models.Post.count(where, function (err, count) {
 
             if (err) return done(err);
 
@@ -236,7 +250,7 @@ Posts.prototype.remove = function (args, done) {
 
             // Soft delete by default
             post.updateAttributes({
-                deleted: true
+                _deleted_: true
             }, function (err) {
                 Api.base.enqueue(post, 'post.deleted', function (err) {
                     done(err);

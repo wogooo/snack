@@ -66,12 +66,13 @@ internals.modelDefinition = function () {
             }
         },
         availableAt: {
+            index: true,
             type: Date,
             default: function () {
                 return new Date();
             }
         },
-        deleted: {
+        _deleted_: {
             index: true,
             type: Boolean,
             default: false

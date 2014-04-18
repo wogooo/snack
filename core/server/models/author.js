@@ -42,7 +42,7 @@ internals.modelDefinition = function () {
         location: {
             type: String
         },
-        deleted: {
+        _deleted_: {
             index: true,
             type: Boolean,
             default: false

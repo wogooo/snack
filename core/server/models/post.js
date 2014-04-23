@@ -1,9 +1,9 @@
-var Hapi = require('hapi');
-var Utils = require('hoek');
 var HtmlStrip = require('htmlstrip-native').html_strip;
 var Schema = require('jugglingdb').Schema;
 var Uslug = require('uslug');
 var Capitalize = require('inflection').capitalize;
+
+var Helpers = require('../helpers').models;
 
 var internals = {};
 
@@ -219,6 +219,9 @@ internals.register = function (model, next) {
         if (_data.user) {
             data.updatedById = _data.user.id;
         }
+
+        // Check for dirty
+        _data.dirty = Helpers.checkDirty(['title', 'body'], data, this.__dataWas);
 
         next();
     };

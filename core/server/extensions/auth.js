@@ -1,7 +1,9 @@
 var LocalStrategy = require('passport-local').Strategy;
+var Jwt = require('jsonwebtoken');
 var Bcrypt = require('bcrypt');
 var Hapi = require('hapi');
-var Utils = require('hoek');
+
+var privateKey = 'YourApplicationsPrivateKey';
 
 var internals = {};
 
@@ -55,7 +57,9 @@ internals.Auth.prototype._setup = function () {
 
         // Only store the id, but in obj form so upgrades
         // to request.user don't break functionality.
-        done(null, { id: user.id });
+        done(null, {
+            id: user.id
+        });
     });
 
     Passport.deserializeUser(function (user, done) {
@@ -67,12 +71,18 @@ internals.Auth.prototype._setup = function () {
     });
 };
 
-internals.Auth.prototype.upgradeUser = function (request/*, reset, done*/) {
+internals.Auth.prototype.upgradeUser = function (request /*, reset, done*/ ) {
 
     var reset = (arguments.length === 3 ? arguments[1] : null);
     var done = (arguments.length === 3 ? arguments[2] : arguments[1]);
 
-    var user = request.session.user || request.user;
+    var user;
+
+    if (request.session && request.session.user) {
+        user = request.session.user;
+    } else {
+        user = request.user;
+    }
 
     if (!user || !(user instanceof Object) || !user.id) {
 
@@ -95,7 +105,9 @@ internals.Auth.prototype.upgradeUser = function (request/*, reset, done*/) {
         user = user.toJSON();
 
         // Store in the session so this doesn't happen over and over
-        request.session.user = user;
+        if (request.session) {
+            request.session.user = user;
+        }
 
         // Return the user
         done(null, user);
@@ -130,6 +142,67 @@ internals.Auth.prototype.authenticate = function (request, reply) {
     Passport.authenticate(settings.strategy, settings.authenticate)(request, reply);
 };
 
+internals.Auth.prototype.validateBasic = function (username, password, done) {
+
+    var self = this,
+        invalid = {};
+
+    invalid.message = 'Invalid credentials';
+
+    if (username && password) {
+
+        this.verifyUser(username, password, function (err, user) {
+
+            if (err) return done(err);
+
+            if (!user) {
+                return done(null, false, invalid);
+            }
+
+            done(null, true, user.toJSON());
+        });
+
+    } else {
+
+        done(null, false, invalid);
+    }
+};
+
+internals.Auth.prototype.getToken = function (user) {
+
+    var credentials = {
+        id: user.id
+    };
+
+    var accessToken = Jwt.sign(credentials, privateKey);
+
+    var token = {
+        token_type: 'bearer',
+        access_token: accessToken
+    };
+
+    return token;
+};
+
+internals.Auth.prototype.validateToken = function (decodedToken, done) {
+
+    if (!decodedToken) return done(null, false);
+
+    var pseudoRequest = {
+        user: decodedToken
+    };
+
+    // TODO: Temporary
+
+    this.upgradeUser(pseudoRequest, function (err, user) {
+
+        if (err) return done(err);
+        if (!user) return done(null, false);
+
+        return done(null, true, user);
+    });
+};
+
 internals.register = function (extensions, next) {
 
     var Server = extensions.server,
@@ -141,10 +214,23 @@ internals.register = function (extensions, next) {
         passport: Server.plugins.travelogue.passport
     };
 
-    Server.auth.strategy('passport', 'passport');
-
     var auth = new internals.Auth(authOptions);
+
+    Server.auth.strategy('passport', 'passport');
     extensions.expose('auth', auth);
+
+    Server.auth.strategy('basic', 'basic', {
+        validateFunc: function (username, password, cb) {
+            auth.validateBasic(username, password, cb);
+        }
+    });
+
+    Server.auth.strategy('token', 'jwt', {
+        key: privateKey,
+        validateFunc: function (decodedToken, cb) {
+            auth.validateToken(decodedToken, cb);
+        }
+    });
 
     next();
 };

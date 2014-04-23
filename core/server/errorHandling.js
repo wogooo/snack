@@ -45,7 +45,9 @@ internals.responseHandler = function (server) {
             }
         }
 
-        if (request.path.search(/^\/api/i) > -1) {
+        if (   (request.headers['content-type'] &&
+                request.headers['content-type'].search('application/json') > -1) ||
+                request.path.search(/^\/api/i) > -1 ) {
 
             // Api paths can just return unrendered.
             return reply();

@@ -19,11 +19,15 @@ internals.init = function (server, next) {
     };
 
     plugins.travelogue = {
+        apiMode: true,
         urls: {
             failureRedirect: '/login',
             successRedirect: '/snack'
         }
     };
+
+    plugins['hapi-auth-basic'] = {};
+    plugins['hapi-auth-jwt'] = {};
 
     server.pack.require(plugins, next);
 };

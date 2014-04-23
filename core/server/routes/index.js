@@ -1,5 +1,3 @@
-/*jshint sub:true*/
-
 var Hapi = require('hapi');
 
 var requires = [

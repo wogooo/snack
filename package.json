@@ -34,6 +34,8 @@
     "aws-sdk": "^2.0.0-rc12",
     "htmlstrip-native": "0.0.2",
     "travelogue": "git+ssh://git@github.com:snackco/travelogue.git",
+    "hapi-auth-basic": "git+ssh://git@github.com:snackco/hapi-auth-basic.git",
+    "hapi-auth-jwt": "git+ssh://git@github.com:snackco/hapi-auth-jwt.git",
     "passport": "^0.2.0",
     "passport-twitter": "^1.0.2",
     "passport-local": "^1.0.0",
@@ -43,7 +45,8 @@
     "consoleplusplus": "^1.3.0",
     "yar": "^2.1.0",
     "hoek": "^2.0.0",
-    "snack-search-solr": "0.0.3"
+    "snack-search-solr": "0.0.3",
+    "jsonwebtoken": "^0.3.0"
   },
   "devDependencies": {
     "grunt": "^0.4.2",

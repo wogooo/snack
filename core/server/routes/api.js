@@ -446,4 +446,19 @@ module.exports = function (route) {
         }
     });
 
+    server.route({
+        method: 'POST',
+        path: '/api/v1/token',
+        config: {
+            auth: {
+                strategies: [ 'basic' ]
+            }
+        },
+        handler: function (request, reply) {
+
+            var token = Auth.getToken(request.auth.credentials);
+            reply(token);
+        }
+    });
+
 };

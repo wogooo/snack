@@ -3,8 +3,7 @@
 // Contains all path information to be used throughout
 // the codebase.
 
-var moment = require('moment'),
-    _ = require('lodash'),
+var Moment = require('moment'),
     Inflection = require('inflection'),
     Path = require('path'),
     snackConfig = '';
@@ -61,13 +60,13 @@ function urlPathForPost(post, permalinks) {
     var output = '',
         tags = {
             year: function () {
-                return moment(post.published_at).format('YYYY');
+                return Moment(post.published_at).format('YYYY');
             },
             month: function () {
-                return moment(post.published_at).format('MM');
+                return Moment(post.published_at).format('MM');
             },
             day: function () {
-                return moment(post.published_at).format('DD');
+                return Moment(post.published_at).format('DD');
             },
             slug: function () {
                 return post.slug;
@@ -85,8 +84,9 @@ function urlPathForPost(post, permalinks) {
 
     // replace tags like :slug or :year with actual values
     output = output.replace(/(:[a-z]+)/g, function (match) {
-        if (_.has(tags, match.substr(1))) {
-            return tags[match.substr(1)]();
+        var tag = match.substr(1);
+        if (tags.hasOwnProperty(tag)) {
+            return tags[tag]();
         }
     });
 
@@ -139,13 +139,13 @@ function urlPathForAsset(asset, key) {
     var output = '',
         tags = {
             year: function () {
-                return moment(asset.createdAt).format('YYYY');
+                return Moment(asset.createdAt).format('YYYY');
             },
             month: function () {
-                return moment(asset.createdAt).format('MM');
+                return Moment(asset.createdAt).format('MM');
             },
             day: function () {
-                return moment(asset.createdAt).format('DD');
+                return Moment(asset.createdAt).format('DD');
             },
             filename: function () {
                 return asset.filename.toLowerCase();
@@ -156,8 +156,9 @@ function urlPathForAsset(asset, key) {
 
     // replace tags like :slug or :year with actual values
     output = output.replace(/(:[a-z]+)/g, function (match) {
-        if (_.has(tags, match.substr(1))) {
-            return tags[match.substr(1)]();
+        var tag = match.substr(1);
+        if (tags.hasOwnProperty(tag)) {
+            return tags[tag]();
         }
     });
 
@@ -197,14 +198,14 @@ function urlFor(context, data, absolute) {
     // TODO: do with args, this is silly.
 
     // Make data properly optional
-    if (_.isBoolean(data)) {
+    if (typeof data === 'boolean') {
         absolute = data;
         data = null;
     }
 
-    if (_.isObject(context) && context.relativeUrl) {
+    if (context instanceof Object && context.relativeUrl) {
         urlPath = context.relativeUrl;
-    } else if (_.isString(context) && _.indexOf(knownObjects, context) !== -1) {
+    } else if (typeof context === 'string' && knownObjects.indexOf(context) > -1) {
         // trying to create a url for an object
         if (context === 'post' && data.post && data.permalinks) {
             urlPath = urlPathForPost(data.post, data.permalinks);
@@ -216,7 +217,7 @@ function urlFor(context, data, absolute) {
             urlPath = urlPathForAsset(data.asset);
         }
         // other objects are recognised but not yet supported
-    } else if (_.isString(context) && _.indexOf(_.keys(knownPaths), context) !== -1) {
+    } else if (typeof context === 'string' && Object.keys(knownPaths).indexOf(context) > -1) {
         // trying to create a url for a named path
         urlPath = knownPaths[context] || '/';
     }

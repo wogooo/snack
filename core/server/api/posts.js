@@ -1,6 +1,6 @@
 var Async = require('async');
 var Hapi = require('hapi');
-var Utils = require('hoek');
+var Hoek = require('hoek');
 
 function Posts(options) {
 
@@ -32,7 +32,7 @@ Posts.prototype.list = function (args, done) {
     }
 
     var get = Api.base.listParams(options);
-    var where = Utils.clone(get.where);
+    var where = Hoek.clone(get.where);
 
     Models.Post.all(get, function (err, posts) {
 

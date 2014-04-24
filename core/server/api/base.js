@@ -1,7 +1,7 @@
 var Async = require('async');
 var Inflection = require('inflection');
 var Hapi = require('hapi');
-var Utils = require('hoek');
+var Hoek = require('hoek');
 
 var internals = {};
 
@@ -568,7 +568,7 @@ internals.Base.prototype.listParams = function (options) {
 
         // autocomplete
         get.where = {};
-        get.where.key = new RegExp('^' + Utils.escapeRegex(options.autocomplete) + '.*?', 'i');
+        get.where.key = new RegExp('^' + Hoek.escapeRegex(options.autocomplete) + '.*?', 'i');
     }
 
     if (options.filters && !get.where) {

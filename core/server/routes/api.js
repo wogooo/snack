@@ -16,16 +16,16 @@ module.exports = function (route) {
     // ----------------------
     // Posts
 
-    server.route({
-        method: 'GET',
-        path: '/api/v1/posts',
-        handler: function (request, reply) {
+    // server.route({
+    //     method: 'GET',
+    //     path: '/api/v1/posts',
+    //     handler: function (request, reply) {
 
-            Api.posts.list(request, function (err, results) {
-                reply(err ? err : results);
-            });
-        }
-    });
+    //         Api.posts.list(request, function (err, results) {
+    //             reply(err ? err : results);
+    //         });
+    //     }
+    // });
 
     server.route({
         method: 'GET',
@@ -38,75 +38,81 @@ module.exports = function (route) {
         }
     });
 
+    // server.route({
+    //     method: 'POST',
+    //     path: '/api/v1/posts',
+    //     config: {
+    //         payload: {
+    //             output: 'file',
+    //             parse: true,
+    //             allow: 'multipart/form-data'
+    //         },
+    //         handler: function (request, reply) {
+
+    //             Api.posts.create(request, function (err, results) {
+    //                 reply(err ? err : results);
+    //             });
+    //         }
+    //     }
+    // });
+
     server.route({
         method: 'POST',
-        path: '/api/v1/posts',
+        path: '/api/v1/posts.json',
         config: {
-            payload: {
-                output: 'file',
-                parse: true,
-                allow: 'multipart/form-data'
+            auth: {
+                strategies: ['token', 'passport']
             },
-            handler: function (request, reply) {
-
-                Api.posts.create(request, function (err, results) {
-                    reply(err ? err : results);
-                });
-            }
-        }
-    });
-
-    server.route({
-        method: 'POST',
-        path: '/api/v1/posts.json',
-        config: {
             payload: {
                 output: 'data',
                 parse: true,
                 allow: ['application/json', 'application/x-www-form-urlencoded']
-            },
-            handler: function (request, reply) {
-
-                Api.posts.create(request, function (err, results) {
-                    reply(err ? err : results);
-                });
             }
+        },
+        handler: function (request, reply) {
+
+            Api.posts.create(request, function (err, results) {
+                reply(err ? err : results);
+            });
         }
     });
 
-    server.route({
-        method: 'PUT',
-        path: '/api/v1/posts/{id}',
-        config: {
-            payload: {
-                output: 'file',
-                parse: true,
-                allow: 'multipart/form-data'
-            },
-            handler: function (request, reply) {
+    // server.route({
+    //     method: 'PUT',
+    //     path: '/api/v1/posts/{id}',
+    //     config: {
+    //         payload: {
+    //             output: 'file',
+    //             parse: true,
+    //             allow: 'multipart/form-data'
+    //         },
+    //         handler: function (request, reply) {
 
-                Api.posts.edit(request, function (err, results) {
-                    reply(err ? err : results);
-                });
-            }
-        }
-    });
+    //             Api.posts.edit(request, function (err, results) {
+    //                 reply(err ? err : results);
+    //             });
+    //         }
+    //     }
+    // });
 
     server.route({
         method: 'PUT',
         path: '/api/v1/posts/{id}.json',
         config: {
+            auth: {
+                strategies: ['token', 'passport']
+            },
             payload: {
                 output: 'data',
                 parse: true,
                 allow: ['application/json', 'application/x-www-form-urlencoded']
-            },
-            handler: function (request, reply) {
-
-                Api.posts.edit(request, function (err, results) {
-                    reply(err ? err : results);
-                });
             }
+        },
+        handler: function (request, reply) {
+
+            Api.posts.edit(request, function (err, results) {
+                reply(err ? err : results);
+            });
         }
     });
 
@@ -124,6 +130,11 @@ module.exports = function (route) {
     server.route({
         method: 'DELETE',
         path: '/api/v1/posts/{id}.json',
+        config: {
+            auth: {
+                strategies: ['token', 'passport']
+            }
+        },
         handler: function (request, reply) {
 
             Api.posts.remove(request, function (err, results) {
@@ -451,7 +462,7 @@ module.exports = function (route) {
         path: '/api/v1/token',
         config: {
             auth: {
-                strategies: [ 'basic' ]
+                strategies: ['basic']
             }
         },
         handler: function (request, reply) {

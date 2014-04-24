@@ -13,6 +13,12 @@ var Async = require('async');
 var Kue = require('kue'),
     Job = Kue.Job;
 
+var apiTokenEndpoint = 'http://localhost:8008/api/v1/token';
+var apiUser = 'test';
+var apiSecret = 'test';
+
+var apiToken;
+
 var internals = {};
 
 internals.DemonMaster = function (options) {
@@ -81,6 +87,25 @@ internals.DemonMaster.prototype.init = function (callback) {
     });
 };
 
+internals.DemonMaster.prototype._getApiToken = function (done) {
+
+    var encoded = (new Buffer(apiUser + ':' + apiSecret, 'utf8')).toString('base64');
+
+    var options = {
+        headers: {
+            'Authorization': 'Basic ' + encoded
+        }
+    };
+
+    Nipple.post(apiTokenEndpoint, options, function (err, res, payload) {
+
+        if (err) return done(err);
+
+        apiToken = payload.access_token;
+        done();
+    });
+};
+
 internals.DemonMaster.prototype._processCleanUp = function (jobId, endpoint) {
 
     if (!endpoint) {
@@ -90,7 +115,25 @@ internals.DemonMaster.prototype._processCleanUp = function (jobId, endpoint) {
         return;
     }
 
-    Nipple.put(endpoint + '?clearQueue=' + jobId, noop);
+    function cleanup() {
+
+        var options = {
+            headers: {
+                'Authorization': 'Bearer ' + apiToken
+            }
+        };
+
+        Nipple.put(endpoint + '?clearQueue=' + jobId, options);
+    }
+
+    if (!apiToken) {
+
+        this._getApiToken(cleanup);
+
+    } else {
+
+        cleanup();
+    }
 };
 
 internals.DemonMaster.prototype._jobDone = function (jobId) {
@@ -138,7 +181,7 @@ internals.DemonMaster.prototype._processHandlers = function () {
             // Get the processes array,
             // for the async series
             var event = job.data.event,
-                processes = appProcesses[event],
+                processes = appProcesses[event] || [],
                 pending = processes.length,
                 total = pending;
 

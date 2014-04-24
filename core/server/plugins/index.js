@@ -13,7 +13,7 @@ internals.init = function (server, next) {
 
     plugins.yar = {
         cookieOptions: {
-            password: 'foo',
+            password: Config().secret,
             isSecure: false
         }
     };
@@ -21,7 +21,7 @@ internals.init = function (server, next) {
     plugins.travelogue = {
         apiMode: true,
         urls: {
-            failureRedirect: '/login',
+            failureRedirect: '/snack/login',
             successRedirect: '/snack'
         }
     };

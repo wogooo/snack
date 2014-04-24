@@ -1,6 +1,6 @@
 var Async = require('async');
 var Hapi = require('hapi');
-var Utils = require('hoek');
+var Hoek = require('hoek');
 
 var internals = {};
 

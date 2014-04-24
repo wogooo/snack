@@ -3,23 +3,15 @@ var Jwt = require('jsonwebtoken');
 var Bcrypt = require('bcrypt');
 var Hapi = require('hapi');
 
-var privateKey = 'YourApplicationsPrivateKey';
-
 var internals = {};
 
 internals.Auth = function (options) {
 
     this.models = options.models;
     this.passport = options.passport;
+    this.secret = options.secret;
 
-    this._settings = {
-        strategy: 'local',
-        authenticate: {
-            successRedirect: '/snack',
-            failureRedirect: '/snack/login',
-            failureFlash: true
-        }
-    };
+    this._settings = {};
 
     this._setup();
 };
@@ -136,10 +128,9 @@ internals.Auth.prototype.verifyUser = function (usernameOrEmail, password, done)
 
 internals.Auth.prototype.authenticate = function (request, reply) {
 
-    var Passport = this.passport,
-        settings = this._settings;
+    var Passport = this.passport;
 
-    Passport.authenticate(settings.strategy, settings.authenticate)(request, reply);
+    Passport.authenticate('local', { failureFlash: true })(request, reply);
 };
 
 internals.Auth.prototype.validateBasic = function (username, password, done) {
@@ -170,11 +161,13 @@ internals.Auth.prototype.validateBasic = function (username, password, done) {
 
 internals.Auth.prototype.getToken = function (user) {
 
+    var secret = this.secret;
+
     var credentials = {
         id: user.id
     };
 
-    var accessToken = Jwt.sign(credentials, privateKey);
+    var accessToken = Jwt.sign(credentials, secret);
 
     var token = {
         token_type: 'bearer',
@@ -207,9 +200,12 @@ internals.register = function (extensions, next) {
 
     var Server = extensions.server,
         Snack = Server.app,
-        Models = Snack.models;
+        Models = Snack.models,
+        Config = Snack.config,
+        secret = Config().secret;
 
     var authOptions = {
+        secret: secret,
         models: Models,
         passport: Server.plugins.travelogue.passport
     };
@@ -217,7 +213,6 @@ internals.register = function (extensions, next) {
     var auth = new internals.Auth(authOptions);
 
     Server.auth.strategy('passport', 'passport');
-    extensions.expose('auth', auth);
 
     Server.auth.strategy('basic', 'basic', {
         validateFunc: function (username, password, cb) {
@@ -226,11 +221,13 @@ internals.register = function (extensions, next) {
     });
 
     Server.auth.strategy('token', 'jwt', {
-        key: privateKey,
+        key: secret,
         validateFunc: function (decodedToken, cb) {
             auth.validateToken(decodedToken, cb);
         }
     });
+
+    extensions.expose('auth', auth);
 
     next();
 };

@@ -1,7 +1,7 @@
 var Path = require('path');
 var Async = require('async');
 var Hapi = require('hapi');
-var Utils = require('hoek');
+var Hoek = require('hoek');
 
 function Assets(options) {
 
@@ -63,7 +63,7 @@ Assets.prototype._fileToAsset = function (file, options, done) {
         //* If no asset was provided, create a new one
 
         // Merge file props onto item properties
-        item = Utils.merge(item || {}, file);
+        item = Hoek.merge(item || {}, file);
 
         // Create the new asset model
         asset = new Models.Asset(item);

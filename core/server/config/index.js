@@ -7,7 +7,7 @@
 
 var Path = require('path'),
     Hapi = require('hapi'),
-    Utils = require('hoek'),
+    Hoek = require('hoek'),
     Url = require('url'),
     ConfigUrl = require('./url'),
     appRoot = Path.resolve(__dirname, '../../../'),
@@ -31,7 +31,7 @@ function updateConfig(config) {
 
     // Merge passed in config object onto
     // the cached snackConfig object
-    snackConfig = Utils.merge(snackConfig, config);
+    snackConfig = Hoek.merge(snackConfig, config);
 
     // Protect against accessing a non-existant object.
     // This ensures there's always at least a paths object
@@ -71,7 +71,7 @@ function updateConfig(config) {
     snackConfig.packs.plugins = snackConfig.packs.plugins || {};
     snackConfig.packs.demons = snackConfig.packs.demons || {};
 
-    snackConfig = Utils.merge(snackConfig, {
+    snackConfig = Hoek.merge(snackConfig, {
         api: {
             'basePath': '/api',
             'version': 1

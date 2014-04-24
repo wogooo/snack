@@ -90,6 +90,11 @@ internals.modelDefinition = function () {
             length: 255,
             default: 'pending'
         },
+        _api_: {
+            index: true,
+            type: Boolean,
+            default: false
+        },
         _version_: {
             type: Number
         },

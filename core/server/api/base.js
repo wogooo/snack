@@ -76,6 +76,10 @@ internals.Base.prototype._enqueue = function (hook, item, done) {
         task.data.obj = JSON.stringify(item.obj);
     }
 
+    if (item.dirty) {
+        task.data.dirty = JSON.stringify(item.dirty);
+    }
+
     Server.methods.queue('createJob', task, function (err, job) {
 
         if (err) return done(err);

@@ -179,11 +179,11 @@ internals.Auth.prototype.getToken = function (user) {
         expires = 86400;
 
     var tokenOptions = {
-        expiresInMinutes: 1
+        expiresInMinutes: expires / 60
     };
 
     var credentials = {
-        id: user.id
+        client_id: user.username
     };
 
     var accessToken = Jwt.sign(credentials, secret, tokenOptions);
@@ -204,13 +204,11 @@ internals.Auth.prototype.getToken = function (user) {
 */
 internals.Auth.prototype.validateToken = function (decodedToken, done) {
 
-    var Models = this.models;
-
-    if (!decodedToken) return done(null, false);
+    if (!decodedToken || !decodedToken.client_id) return done(null, false);
 
     // TODO: Temporary
 
-    Models.User.find(decodedToken.id, function (err, user) {
+    this._findUser(decodedToken.client_id, function (err, user) {
 
         if (err) return done(err);
         if (!user) return done(null, false);

@@ -8,6 +8,7 @@ var Path = require('path');
 var Hapi = require('hapi');
 var Hoek = require('hoek');
 
+var Jwt = require('jsonwebtoken');
 var Nipple = require('nipple');
 var Async = require('async');
 var Kue = require('kue'),
@@ -53,8 +54,6 @@ internals.DemonMaster = function (options) {
     this._apps['snack-app'] = {};
 
     this._registered = {};
-
-    this._apiToken;
 };
 
 internals.DemonMaster.prototype.usingKue = function (settings) {
@@ -79,78 +78,89 @@ internals.DemonMaster.prototype.init = function (callback) {
     });
 };
 
-internals.DemonMaster.prototype._getApiToken = function (done) {
+/*
+    The demonMaster, as an internal process, can generate it's own tokens,
+    and will pass them to sub-processes.
 
-    var self = this,
-        apiToken = this._apiToken;
+    It's important that if your demon is running separate from your server
+    that it still get the appropriate credentials
+*/
+internals.DemonMaster.prototype._getAccessToken = function () {
 
-    var encoded = (new Buffer(apiUser + ':' + apiSecret, 'utf8')).toString('base64');
+    var Config = this.config,
+        secret = Config().secret,
+        // 1 day
+        expires = 86400;
 
-    var options = {
-        headers: {
-            'Authorization': 'Basic ' + encoded
-        }
+    var tokenOptions = {
+        expiresInMinutes: expires / 60
     };
 
-    Nipple.post(apiTokenEndpoint, options, function (err, res, payload) {
+    var credentials = {
+        client_id: apiUser
+    };
 
-        if (err) return done(err);
+    return Jwt.sign(credentials, secret, tokenOptions);
 
-        self._apiToken = JSON.parse(payload).access_token;
+    // NOTE: SAMPLE CODE FOR GETTING A TOKEN FROM THE API, FOR A NORMAL CONSUMER
 
-        done();
-    });
+    // var self = this,
+    //     apiToken = this._apiToken;
+
+    // var encoded = (new Buffer(apiUser + ':' + apiSecret, 'utf8')).toString('base64');
+
+    // var options = {
+    //     headers: {
+    //         'Authorization': 'Basic ' + encoded
+    //     }
+    // };
+
+    // Nipple.post(apiTokenEndpoint, options, function (err, res, payload) {
+
+    //     if (err) return done(err);
+
+    //     self._apiToken = JSON.parse(payload).access_token;
+
+    //     done();
+    // });
 };
 
 /*
     Clears the job from the item being processed
 */
-internals.DemonMaster.prototype._processCleanUp = function (jobId, endpoint) {
+internals.DemonMaster.prototype._processCleanUp = function (jobId, accessToken, endpoint) {
 
     // TODO: This should callback and flag a task as errored if it can't be cleaned up
 
-    var self = this,
-        cleanupAttempts = 3;
-
-    if (!endpoint) {
+    if (!endpoint || !accessToken) {
 
         // Without an endpoint, we can't cleanup,
         // so just let things finish
         return;
     }
 
-    function cleanupAttempt() {
-
-        cleanupAttempts--;
+    function cleanup() {
 
         var options = {
             headers: {
-                'Authorization': 'Bearer ' + self._apiToken
+                'Authorization': 'Bearer ' + accessToken
             }
         };
 
         Nipple.put(endpoint + '?clearQueue=' + jobId, options, function (err, res, payload) {
 
-            if (res.statusCode === 401 && cleanupAttempts > 0) {
+            if (res.statusCode !== 200) {
 
-                // Unauthorized, most likely because of an expired token
-                self._apiToken = null;
-                return self._processCleanUp(jobId, endpoint);
+                console.debug('Problem with demonMaster cleanup.');
+                // Something was wrong, should callback
             }
         });
     }
 
-    if (!this._apiToken) {
-
-        this._getApiToken(cleanupAttempt);
-
-    } else {
-
-        cleanupAttempt();
-    }
+    cleanup();
 };
 
-internals.DemonMaster.prototype._jobDone = function (jobId) {
+internals.DemonMaster.prototype._jobDone = function (jobId, options) {
 
     var self = this;
 
@@ -160,7 +170,7 @@ internals.DemonMaster.prototype._jobDone = function (jobId) {
         if (job.data && job.data.cleanup) {
 
             // Cleanup requested
-            self._processCleanUp(jobId, job.data.endpoint);
+            self._processCleanUp(jobId, options.accessToken, job.data.endpoint);
             return;
         }
     });
@@ -168,17 +178,21 @@ internals.DemonMaster.prototype._jobDone = function (jobId) {
 
 internals.DemonMaster.prototype._processHandlers = function () {
 
-    var self = this;
+    var self = this,
+        queue = this.queue,
+        apps = this._apps,
+        accessToken = this._getAccessToken();
 
-    var queue = this.queue;
-    var apps = this._apps;
+    var options = {
+        accessToken: accessToken
+    };
 
     queue.on('job complete', function (id) {
-        self._jobDone(id);
+        self._jobDone(id, options);
     });
 
     queue.on('job failed', function (id) {
-        self._jobDone(id);
+        self._jobDone(id, options);
     });
 
     var processHandlers = function (appName) {
@@ -197,7 +211,8 @@ internals.DemonMaster.prototype._processHandlers = function () {
             var event = job.data.event,
                 processes = appProcesses[event] || [],
                 pending = processes.length,
-                total = pending;
+                total = pending,
+                processSignature;
 
             if (total === 0) {
 
@@ -212,11 +227,46 @@ internals.DemonMaster.prototype._processHandlers = function () {
                     // progress becomes a percent of processes complete.
                     --pending;
 
-                    // Pass in the job
-                    proc.fn(job, function (err) {
-                        job.progress(total - pending, total);
-                        next(err);
-                    });
+                    // The processSignature, if I can figure out how to store
+                    // it, should help determine where an item failed.
+                    processSignature = proc.app + '.' + proc.event;
+
+                    function doProcess() {
+                        // Pass in the job
+                        proc.fn(job, options, function (err) {
+
+                            job.progress(total - pending, total);
+
+                            if (err) {
+                                job.set('failed_at_process', processSignature);
+                            }
+
+                            next(err);
+                        });
+                    }
+
+                    if (job._attempts && job._attempts > 0) {
+
+                        console.debug('Job failed, trying %s again', processSignature);
+
+                        // We're retying, so, find where it failed and restart
+                        // there.
+                        job.get('failed_at_process', function (err, failedAt) {
+
+                            if (failedAt === processSignature) {
+
+                                doProcess();
+
+                            } else {
+
+                                next();
+                            }
+                        });
+
+                    } else {
+
+                        doProcess();
+                    }
                 },
                 function (err) {
 
@@ -226,7 +276,7 @@ internals.DemonMaster.prototype._processHandlers = function () {
 
                     done(err);
                 });
-        }
+        };
     };
 
     // Iterate hooks, to set up queue processes to handle
@@ -272,6 +322,8 @@ internals.DemonMaster.prototype._addProcessHandler = function (env, app, event, 
 
     // processes with no priority are put at the end
     this._apps[app][event].push({
+        app: app,
+        event: event,
         fn: fn,
         priority: options.hasOwnProperty('priority') ? options.priority : 99
     });

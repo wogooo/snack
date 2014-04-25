@@ -4,7 +4,6 @@ var Async = require('async');
 var Hapi = require('hapi');
 var Utils = require('hoek');
 
-var Config = require('./config');
 var ErrorHandling = require('./errorHandling');
 var Extensions = require('./extensions');
 var Storage = require('./storage');
@@ -19,9 +18,9 @@ var Models = require('./models');
 
 var envVal = process.env.NODE_ENV;
 
-function messages(tags, log) {
+function messages(server, tags, log) {
 
-    var config = Config();
+    var serverInfo = server.info;
 
     if (tags.error) {
 
@@ -45,7 +44,7 @@ function messages(tags, log) {
             "#green{Snack is running...}\
             \nYour site is now available on %s\
             \n#grey{Ctrl+C to shut down}",
-            config.url
+            serverInfo.uri
         );
 
         // ensure that Snack exits correctly on Ctrl+C
@@ -61,7 +60,7 @@ function messages(tags, log) {
                       \n#grey{Listening on} %s:%s\
                       \n#grey{Url configured as} %s\
                       \n#grey{Ctrl+C to shut down}",
-                      envVal, config.server.host, config.server.port, config.url);
+                      envVal, serverInfo.host, serverInfo.port, serverInfo.uri);
 
         // ensure that Snack exits correctly on Ctrl+C
         process.on('SIGINT', function () {
@@ -81,7 +80,7 @@ function logging(server) {
     server.pack.events.on('log', function (event, tags) {
 
         if (tags.start || tags.error) {
-            messages(tags, event.data);
+            messages(server, tags, event.data);
         }
     });
 }
@@ -96,15 +95,16 @@ function start(server) {
     });
 }
 
-function setup() {
+function setup(bootstrap) {
 
     // Set up the server and init all modules.
 
+    var Config = bootstrap.config;
     var config = Config();
 
     var options = {};
 
-    options.labels = ['snack-app', 'socket.io'];
+    options.labels = ['snack-app'];
 
     options.views = {
         engines: {
@@ -179,9 +179,9 @@ function setup() {
         });
 }
 
-function init() {
+function startServer(bootstrap) {
 
-    setup();
+    setup(bootstrap);
 }
 
-module.exports = init;
+module.exports = startServer;

@@ -105,6 +105,9 @@ function updateConfig(config) {
             'port': redisPort,
             'password': redisAuth
         },
+        machine: {
+            'user': 'snackMachine'
+        },
         queue: {
             'basePath': '/api/v1',
             'attempts': 3,

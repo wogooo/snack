@@ -3,7 +3,7 @@ require('colors');
 require('consoleplusplus');
 
 var Fs = require('fs'),
-    Config = require('./server/config');
+    Config = require('./shared/config');
 
 function setLogLevel() {
 

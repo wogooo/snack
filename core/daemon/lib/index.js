@@ -1,10 +1,10 @@
 var Path = require('path');
 
-var DemonMaster = require('./demonMaster');
+var SnackMachine = require('snack-machine');
 
 var internals = {};
 
-internals.startDemons = function (bootstrap) {
+internals.startMachine = function (bootstrap) {
 
     var Config = bootstrap.config;
 
@@ -19,13 +19,15 @@ internals.startDemons = function (bootstrap) {
         contentPath: Config().paths.contentPath
     };
 
-    var demonMaster = new DemonMaster(config);
+    var snackMachine = new SnackMachine(config);
 
-    demonMaster.init(function () {
+    snackMachine.init(function () {
 
-        var registered = demonMaster._registered;
+        var registered = snackMachine._registered;
+
         var enabled = [],
             disabled = [];
+
         for (var reg in registered) {
             if (registered[reg]) {
                 enabled.push(reg);
@@ -35,11 +37,11 @@ internals.startDemons = function (bootstrap) {
         }
 
         console.log(
-            "Snack Demon is running...".green,
+            "Snack Machine is running...".green,
             enabled.length ? ("\nEnabled: " + enabled.join(', ')).grey : '',
             disabled.length ? ("\nDisabled: " + disabled.join(', ')).red : ''
         );
     });
 };
 
-module.exports = internals.startDemons;
+module.exports = internals.startMachine;

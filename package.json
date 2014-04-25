@@ -21,6 +21,7 @@
     "jugglingdb": "git+ssh://git@github.com:mshick/jugglingdb.git",
     "jugglingdb-rethink": "git+ssh://git@github.com:snackco/jugglingdb-rethink.git",
     "snack-queue": "git+ssh://git@github.com:snackco/snack-queue.git",
+    "snack-machine": "git+ssh://git@github.com:snackco/snack-machine.git",
     "inflection": "^1.3.5",
     "colors": "^0.6.2",
     "nipple": "^2.2.0",

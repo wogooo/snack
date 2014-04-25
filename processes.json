@@ -12,13 +12,13 @@
     "NODE_ENV": "development"
   }
 }, {
-  "name": "snack-demon",
+  "name": "snack-daemon",
   "script": "./index.js",
-  "args": "['demon']",
+  "args": "['daemon']",
   "instances": "1",
-  "error_file": "./logs/snack-demon-err.log",
-  "out_file": "./logs/snack-demon-out.log",
-  "pid_file": "./pids/snack-demon.pid",
+  "error_file": "./logs/snack-daemon-err.log",
+  "out_file": "./logs/snack-daemon-out.log",
+  "pid_file": "./pids/snack-daemon.pid",
   "exec_mode": "cluster_mode",
   "env": {
     "NODE_ENV": "development"

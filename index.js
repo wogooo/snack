@@ -6,9 +6,9 @@ var Snack = require('./core');
 
 if (Cluster.isMaster && !argv._.length) {
 
-    // One worker for app, one for demon
+    // One worker for app, one for daemon
     Cluster.fork({ SNACK_ENV: 'app'});
-    Cluster.fork({ SNACK_ENV: 'demon'});
+    Cluster.fork({ SNACK_ENV: 'daemon'});
 
     // On disconnect notice, restart worker
     Cluster.on('disconnect', function (instance) {

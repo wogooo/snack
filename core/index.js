@@ -1,5 +1,5 @@
 var Hapi = require('hapi');
-var Utils = require('hoek');
+var Hoek = require('hoek');
 
 var Bootstrap = require('./bootstrap');
 
@@ -11,8 +11,8 @@ function startServer(bootstrap) {
 }
 
 function startDemon(bootstrap) {
-    var Demon = require('./demon');
-    Demon(bootstrap);
+    var Daemon = require('./daemon');
+    Daemon(bootstrap);
 }
 
 function start(options) {
@@ -21,13 +21,13 @@ function start(options) {
 
     Bootstrap(options.config, function (err, bootstrap) {
 
-        Utils.assert(!err, 'Cannot start Snack!', err);
+        Hoek.assert(!err, 'Cannot start Snack!', err);
 
         var SNACK_ENV = options.SNACK_ENV || [];
 
-        if (SNACK_ENV.indexOf('demon') > -1 || !SNACK_ENV.length) {
+        if (SNACK_ENV.indexOf('daemon') > -1 || !SNACK_ENV.length) {
 
-            startDemon(bootstrap);
+            startDaemon(bootstrap);
         }
 
         if (SNACK_ENV.indexOf('app') > -1 || !SNACK_ENV.length) {

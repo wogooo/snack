@@ -16,7 +16,9 @@ internals.startMachine = function (bootstrap) {
         packs: Config().packs.demons,
         appRoot: Config().paths.appRoot,
         packsPath: Config().paths.packsPath,
-        contentPath: Config().paths.contentPath
+        contentPath: Config().paths.contentPath,
+        apiUser: 'test',
+        serverSecret: Config().secret
     };
 
     var snackMachine = new SnackMachine(config);

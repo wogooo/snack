@@ -10,7 +10,7 @@ function startServer(bootstrap) {
     Server(bootstrap);
 }
 
-function startDemon(bootstrap) {
+function startDaemon(bootstrap) {
     var Daemon = require('./daemon');
     Daemon(bootstrap);
 }

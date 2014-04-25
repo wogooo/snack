@@ -107,6 +107,12 @@ internals.Base.prototype._enqueueItem = function (model, hook, next) {
         cleanup: true
     };
 
+    if (model.__data.dirty) {
+
+        // Check private data for dirty fields
+        queueItem.dirty = model.__data.dirty;
+    }
+
     if (hook.search('.destroyed') > -1) {
 
         // When destroying, embed the model and no

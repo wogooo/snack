@@ -6,7 +6,7 @@ var Fs = require('fs');
 var Util = require('util');
 var Path = require('path');
 var Hapi = require('hapi');
-var Utils = require('hoek');
+var Hoek = require('hoek');
 
 var Nipple = require('nipple');
 var Async = require('async');
@@ -16,8 +16,6 @@ var Kue = require('kue'),
 var apiTokenEndpoint = 'http://localhost:8008/api/v1/token';
 var apiUser = 'test';
 var apiSecret = 'test';
-
-var apiToken;
 
 var internals = {};
 
@@ -39,7 +37,7 @@ internals.DemonMaster = function (options) {
     this._settings.packsPath = options.packsPath || '';
     this._settings.contentPath = options.contentPath || '';
 
-    Utils.assert(options.queue, 'No queue settings defined!');
+    Hoek.assert(options.queue, 'No queue settings defined!');
 
     if (options.queue.kue) {
 
@@ -54,15 +52,9 @@ internals.DemonMaster = function (options) {
     this._apps = {};
     this._apps['snack-app'] = {};
 
-    // if (options.hooks) {
-
-    //     // Pre-populate the hooks that will need processing
-    //     for (var hook in options.hooks) {
-    //         this._hooks[hook] = [];
-    //     }
-    // }
-
     this._registered = {};
+
+    this._apiToken;
 };
 
 internals.DemonMaster.prototype.usingKue = function (settings) {
@@ -71,7 +63,7 @@ internals.DemonMaster.prototype.usingKue = function (settings) {
         disableSearch: true
     };
 
-    var config = Utils.applyToDefaults(defaults, settings);
+    var config = Hoek.applyToDefaults(defaults, settings);
 
     return Kue.createQueue(config);
 };
@@ -89,6 +81,9 @@ internals.DemonMaster.prototype.init = function (callback) {
 
 internals.DemonMaster.prototype._getApiToken = function (done) {
 
+    var self = this,
+        apiToken = this._apiToken;
+
     var encoded = (new Buffer(apiUser + ':' + apiSecret, 'utf8')).toString('base64');
 
     var options = {
@@ -101,12 +96,21 @@ internals.DemonMaster.prototype._getApiToken = function (done) {
 
         if (err) return done(err);
 
-        apiToken = payload.access_token;
+        self._apiToken = JSON.parse(payload).access_token;
+
         done();
     });
 };
 
+/*
+    Clears the job from the item being processed
+*/
 internals.DemonMaster.prototype._processCleanUp = function (jobId, endpoint) {
+
+    // TODO: This should callback and flag a task as errored if it can't be cleaned up
+
+    var self = this,
+        cleanupAttempts = 3;
 
     if (!endpoint) {
 
@@ -115,24 +119,34 @@ internals.DemonMaster.prototype._processCleanUp = function (jobId, endpoint) {
         return;
     }
 
-    function cleanup() {
+    function cleanupAttempt() {
+
+        cleanupAttempts--;
 
         var options = {
             headers: {
-                'Authorization': 'Bearer ' + apiToken
+                'Authorization': 'Bearer ' + self._apiToken
             }
         };
 
-        Nipple.put(endpoint + '?clearQueue=' + jobId, options);
+        Nipple.put(endpoint + '?clearQueue=' + jobId, options, function (err, res, payload) {
+
+            if (res.statusCode === 401 && cleanupAttempts > 0) {
+
+                // Unauthorized, most likely because of an expired token
+                self._apiToken = null;
+                return self._processCleanUp(jobId, endpoint);
+            }
+        });
     }
 
-    if (!apiToken) {
+    if (!this._apiToken) {
 
-        this._getApiToken(cleanup);
+        this._getApiToken(cleanupAttempt);
 
     } else {
 
-        cleanup();
+        cleanupAttempt();
     }
 };
 

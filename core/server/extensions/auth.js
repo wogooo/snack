@@ -130,8 +130,18 @@ internals.Auth.prototype.authenticate = function (request, reply) {
 
     var Passport = this.passport;
 
-    Passport.authenticate('local', { failureFlash: true })(request, reply);
+    Passport.authenticate('local', {
+        failureFlash: true
+    })(request, reply);
 };
+
+/*
+    Basic auth can only be reliable if used over a secure connection.
+    TODO: Consider an implementation of public key + private key signing
+          of a packet, with a resulting comparison to db-stored private key
+          decrypt, to determine whether the user can get a token. Sort of like
+          AWS, but only for the intial auth.
+*/
 
 internals.Auth.prototype.validateBasic = function (username, password, done) {
 
@@ -159,40 +169,53 @@ internals.Auth.prototype.validateBasic = function (username, password, done) {
     }
 };
 
+/*
+    A token will be jwt signed with our server secret.
+*/
 internals.Auth.prototype.getToken = function (user) {
 
-    var secret = this.secret;
+    var secret = this.secret,
+        // 1 day
+        expires = 86400;
+
+    var tokenOptions = {
+        expiresInMinutes: 1
+    };
 
     var credentials = {
         id: user.id
     };
 
-    var accessToken = Jwt.sign(credentials, secret);
+    var accessToken = Jwt.sign(credentials, secret, tokenOptions);
 
     var token = {
-        token_type: 'bearer',
-        access_token: accessToken
+        token_type: 'Bearer',
+        access_token: accessToken,
+        expires_in: expires
     };
 
     return token;
 };
 
+/*
+    Test for a valid token by ensuring it was cryptographically signed
+    with our secret, and contains a valid user object as the payload.
+    Load that user so we're able to determine any permissions.
+*/
 internals.Auth.prototype.validateToken = function (decodedToken, done) {
+
+    var Models = this.models;
 
     if (!decodedToken) return done(null, false);
 
-    var pseudoRequest = {
-        user: decodedToken
-    };
-
     // TODO: Temporary
 
-    this.upgradeUser(pseudoRequest, function (err, user) {
+    Models.User.find(decodedToken.id, function (err, user) {
 
         if (err) return done(err);
         if (!user) return done(null, false);
 
-        return done(null, true, user);
+        return done(null, true, user.toJSON());
     });
 };
 
@@ -212,7 +235,17 @@ internals.register = function (extensions, next) {
 
     var auth = new internals.Auth(authOptions);
 
-    Server.auth.strategy('passport', 'passport');
+    Server.auth.strategy('passport', 'passport', {
+        apiMode: false,
+        urls: {
+            failureRedirect: '/snack/login',
+            successRedirect: '/snack'
+        }
+    });
+
+    Server.auth.strategy('passport-api', 'passport', {
+        apiMode: true
+    });
 
     Server.auth.strategy('basic', 'basic', {
         validateFunc: function (username, password, cb) {

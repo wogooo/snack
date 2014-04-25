@@ -28,7 +28,7 @@ module.exports = function (route) {
         path: '/jwt-auth',
         config: {
             auth: {
-                strategies: ['token', 'passport']
+                strategies: ['token']
             }
         },
         handler: function (request, reply) {

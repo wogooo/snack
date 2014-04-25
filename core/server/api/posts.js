@@ -25,7 +25,8 @@ Posts.prototype.list = function (args, done) {
         '_deleted_': false
     };
 
-    if (!args.user) {
+    if (!args.auth.credentials) {
+        // TODO: There should be read all permissions?
         options.filters.availableAt = {
             lte: new Date()
         };
@@ -60,14 +61,14 @@ Posts.prototype.list = function (args, done) {
 
 Posts.prototype.create = function (args, done) {
 
-    if (!args.user) {
-        return done(Hapi.error.unauthorized('You must be logged in to edit'));
+    if (!args.auth.credentials) {
+        return done(Hapi.error.unauthorized('Insufficient privileges'));
     }
 
     var Models = this.models,
         Api = this.api,
         Permission = this.permission,
-        user = args.user,
+        user = args.auth.credentials,
         query = args.query,
         payload = args.payload,
         post;
@@ -131,8 +132,8 @@ Posts.prototype.read = function (args, done) {
 
 Posts.prototype.edit = function (args, done) {
 
-    if (!args.user) {
-        return done(Hapi.error.unauthorized('You must be logged in to edit'));
+    if (!args.auth.credentials) {
+        return done(Hapi.error.unauthorized('Insufficient privileges'));
     }
 
     var Models = this.models,
@@ -140,7 +141,7 @@ Posts.prototype.edit = function (args, done) {
         Permission = this.permission,
         query = args.query,
         params = args.params,
-        user = args.user,
+        user = args.auth.credentials,
         payload = args.payload,
         clearQueue = false,
         created = false,
@@ -193,9 +194,7 @@ Posts.prototype.edit = function (args, done) {
             }
 
             // Add the user object, for applying to update
-            if (user) {
-                post.__data.user = user;
-            }
+            post.__data.user = user;
 
             post.updateAttributes(payload, function (err) {
 
@@ -225,38 +224,51 @@ Posts.prototype.edit = function (args, done) {
 
 Posts.prototype.remove = function (args, done) {
 
-    var Models = this.models;
-    var Api = this.api;
+    if (!args.auth.credentials) {
+        return done(Hapi.error.unauthorized('Insufficient privileges'));
+    }
 
-    var query = args.query;
-    var params = args.params;
+    var Models = this.models,
+        Api = this.api,
+        Permission = this.permission,
+        query = args.query,
+        params = args.params,
+        user = args.auth.credentials;
 
-    Models.Posts.find(params.id, function (err, post) {
+    var canUser = Permission(user);
 
-        if (err) return done(err);
+    canUser.remove.Post(params.id, function (err, permitted) {
 
-        if (!post) return done(Hapi.error.notFound());
+        if (!permitted) return done(Hapi.error.unauthorized('Insufficient privileges'));
 
-        if (query.destroy === 'true') {
+        Models.Posts.find(params.id, function (err, post) {
 
-            // A true destructive delete
-            post.destroy(function (err) {
-                Api.base.enqueue(post, 'post.destroyed', function (err) {
-                    done(err);
+            if (err) return done(err);
+
+            if (!post) return done(Hapi.error.notFound());
+
+            if (query.destroy === 'true') {
+
+                // A true destructive delete
+                post.destroy(function (err) {
+                    Api.base.enqueue(post, 'post.destroyed', function (err) {
+                        done(err);
+                    });
                 });
-            });
 
-        } else {
+            } else {
 
-            // Soft delete by default
-            post.updateAttributes({
-                _deleted_: true
-            }, function (err) {
-                Api.base.enqueue(post, 'post.deleted', function (err) {
-                    done(err);
+                post._deleted_ = true;
+                post.__data.user = user;
+
+                // Soft delete by default
+                post.save(function (err) {
+                    Api.base.enqueue(post, 'post.deleted', function (err) {
+                        done(err);
+                    });
                 });
-            });
-        }
+            }
+        });
     });
 };
 

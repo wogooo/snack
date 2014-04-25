@@ -18,14 +18,7 @@ internals.init = function (server, next) {
         }
     };
 
-    plugins.travelogue = {
-        apiMode: true,
-        urls: {
-            failureRedirect: '/snack/login',
-            successRedirect: '/snack'
-        }
-    };
-
+    plugins.travelogue = {};
     plugins['hapi-auth-basic'] = {};
     plugins['hapi-auth-jwt'] = {};
 

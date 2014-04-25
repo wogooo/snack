@@ -15,6 +15,20 @@ internals.errorMismatch = function (error) {
     return false;
 };
 
+internals.respondWithJson = function (request) {
+
+    var headers = request.headers || {},
+        path = request.path,
+        contentType = headers['content-type'] || '';
+
+    if (contentType.search('application/json') > -1 ||
+        contentType.search('application/x-www-form-urlencoded') > -1 ||
+        path.search(/^\/api/) > -1) {
+
+        return true;
+    }
+};
+
 internals.responseHandler = function (server) {
 
     server.ext('onPreResponse', function (request, reply) {
@@ -45,9 +59,9 @@ internals.responseHandler = function (server) {
             }
         }
 
-        if (   (request.headers['content-type'] &&
-                request.headers['content-type'].search('application/json') > -1) ||
-                request.path.search(/^\/api/i) > -1 ) {
+        var respondWithJson = internals.respondWithJson(request);
+
+        if (respondWithJson) {
 
             // Api paths can just return unrendered.
             return reply();

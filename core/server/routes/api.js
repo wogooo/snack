@@ -61,7 +61,7 @@ module.exports = function (route) {
         path: '/api/v1/posts.json',
         config: {
             auth: {
-                strategies: ['token', 'passport']
+                strategies: ['token', 'passport-api']
             },
             payload: {
                 output: 'data',
@@ -100,7 +100,7 @@ module.exports = function (route) {
         path: '/api/v1/posts/{id}.json',
         config: {
             auth: {
-                strategies: ['token', 'passport']
+                strategies: ['token', 'passport-api']
             },
             payload: {
                 output: 'data',
@@ -132,7 +132,7 @@ module.exports = function (route) {
         path: '/api/v1/posts/{id}.json',
         config: {
             auth: {
-                strategies: ['token', 'passport']
+                strategies: ['token', 'passport-api']
             }
         },
         handler: function (request, reply) {
@@ -153,7 +153,6 @@ module.exports = function (route) {
         config: {
             payload: {
                 output: 'file',
-                parse: true,
                 allow: 'multipart/form-data'
             },
             handler: function (request, reply) {
@@ -172,7 +171,6 @@ module.exports = function (route) {
         config: {
             payload: {
                 output: 'data',
-                parse: true,
                 allow: ['application/json', 'application/x-www-form-urlencoded']
             },
             handler: function (request, reply) {
@@ -191,8 +189,7 @@ module.exports = function (route) {
         path: '/api/v1/files',
         config: {
             payload: {
-                output: 'stream',
-                parse: true
+                output: 'stream'
             },
             handler: function (request, reply) {
 
@@ -208,8 +205,7 @@ module.exports = function (route) {
         path: '/api/v1/files/{id}',
         config: {
             payload: {
-                output: 'stream',
-                parse: true
+                output: 'stream'
             },
             handler: function (request, reply) {
 
@@ -226,7 +222,6 @@ module.exports = function (route) {
         config: {
             payload: {
                 output: 'file',
-                parse: true,
                 allow: 'multipart/form-data'
             },
             handler: function (request, reply) {
@@ -244,7 +239,6 @@ module.exports = function (route) {
         config: {
             payload: {
                 output: 'data',
-                parse: true,
                 allow: ['application/json', 'application/x-www-form-urlencoded']
             },
             handler: function (request, reply) {

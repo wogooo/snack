@@ -1,5 +1,6 @@
 var Hapi = require('hapi');
-var Capitalize = require('inflection').capitalize;
+    Capitalize = require('inflection').capitalize,
+    Promise = require('bluebird');
 
 var internals = {};
 
@@ -7,17 +8,7 @@ internals.CheckResult = function (options) {
 
     this.models = options.models;
     this.actions = options.actions;
-
-    this._user = {};
-
-    Object.defineProperty(this, 'user', {
-        get: function () {
-            return this._user;
-        },
-        set: function (val) {
-            this._user = val;
-        }
-    });
+    this.user = options.user;
 
     this._init();
 };
@@ -32,43 +23,51 @@ internals.CheckResult.prototype._buildActionForHandlers = function (actionForTyp
 
         var TargetModel = Models[Capitalize(actionFor)];
 
-        return function (modelOrId, done) {
+        return function (modelOrId) {
 
-            var userId = self.user.id;
-            var modelId = null;
+            return new Promise(function (resolve, reject) {
 
-            if (modelOrId instanceof Object) {
-                modelId = modelOrId.id;
-            } else if (modelOrId) {
-                modelId = modelOrId;
-            }
-
-            Models.User.effectivePermissions(userId, function (err, userPermissions) {
-
-                if (err) return done(err);
-
-                // Allow for a target model to implement a "Permissable" interface
-                if (TargetModel && (TargetModel.permissable instanceof Function)) {
-
-                    var permissable = {
-                        modelId: modelId,
-                        action: action,
-                        userId: userId,
-                        userPermissions: userPermissions
-                    };
-
-                    return TargetModel.permissable(permissable, done);
+                if (!self.user) {
+                    throw Hapi.error.unauthorized();
                 }
 
-                var perm;
-                for (var i in userPermissions) {
-                    perm = userPermissions[i];
-                    if (perm.action === action && perm.actionFor === actionFor) {
-                        return done(null, true);
+                var userId = self.user.id;
+                var modelId = null;
+
+                if (modelOrId instanceof Object) {
+                    modelId = modelOrId.id;
+                } else if (modelOrId) {
+                    modelId = modelOrId;
+                }
+
+                Models.User.effectivePermissions(userId, function (err, userPermissions) {
+
+                    if (err) return reject(err);
+
+                    // Allow for a target model to implement a "Permissable" interface
+                    // if (TargetModel && (TargetModel.permissable instanceof Function)) {
+
+                    //     var permissable = {
+                    //         modelId: modelId,
+                    //         action: action,
+                    //         userId: userId,
+                    //         userPermissions: userPermissions
+                    //     };
+
+                    //     return TargetModel.permissable(permissable, done);
+                    // }
+
+                    var perm;
+                    for (var i in userPermissions) {
+                        perm = userPermissions[i];
+                        if (perm.action === action && perm.actionFor === actionFor) {
+
+                            return resolve(null, true);
+                        }
                     }
-                }
 
-                done(null, false);
+                    resolve(null, false);
+                });
             });
         };
     };
@@ -103,29 +102,34 @@ internals.CheckResult.prototype._init = function () {
 
 internals.Permissions = function (options) {
 
-    this.models = options.models;
+    this._models = options.models;
+    this._actions = {};
 
     this._checkResult = {};
 };
 
 internals.Permissions.prototype.check = function (user) {
 
-    var checkResult = this._checkResult;
-    checkResult.user = user;
+    var checkResult = new internals.CheckResult({
+        models: this._models,
+        actions: this._actions,
+        user: user
+    });
+
     return checkResult;
 };
 
 internals.Permissions.prototype.init = function (done) {
 
     var self = this,
-        checkResult = {},
-        Models = this.models,
+        Models = this._models,
         actions = {},
         seen = {};
 
     Models.Permission.all(function (err, permissions) {
 
         if (err) return done(err);
+
         permissions.forEach(function (perm) {
 
             actions[perm.action] = actions[perm.action] || [];
@@ -139,10 +143,7 @@ internals.Permissions.prototype.init = function (done) {
             seen[perm.action][perm.actionFor] = true;
         });
 
-        self._checkResult = new internals.CheckResult({
-            models: Models,
-            actions: actions
-        });
+        self._actions = actions;
 
         done();
     });
@@ -169,6 +170,20 @@ internals.init = function (server, next) {
         };
 
         next(err);
+    });
+
+    server.pack.events.on('permissions.refresh', function () {
+
+        permissions.init(function (err) {
+
+            // If the permissions couldn't be refreshed,
+            // will need a server restart.
+            if (err) {
+                Snack.errorHandling.restartServer(server);
+            }
+
+            server.log(['info', 'permissions'], 'Permissions refreshed');
+        });
     });
 };
 

@@ -11,13 +11,15 @@ internals.relations = function (model, next) {
     var models = model.models;
     var Model = models[modelName];
 
+    // Model.hasMany(models.Alias, 'aliases', 'key', 'assetId');
+
     Model.belongsTo('owner', {
         model: models.User
     });
 
-    Model.hasAndBelongsToMany('tags', {
-        model: models.Tag
-    });
+    // Model.hasAndBelongsToMany('tags', {
+    //     model: models.Tag
+    // });
 
     Model.hasAndBelongsToMany('posts', {
         model: models.Post

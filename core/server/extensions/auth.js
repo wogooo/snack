@@ -1,7 +1,7 @@
-var LocalStrategy = require('passport-local').Strategy;
-var Jwt = require('jsonwebtoken');
-var Bcrypt = require('bcrypt');
-var Hapi = require('hapi');
+var LocalStrategy = require('passport-local').Strategy,
+    Jwt = require('jsonwebtoken'),
+    Bcrypt = require('bcrypt'),
+    Hapi = require('hapi');
 
 var internals = {};
 
@@ -12,6 +12,7 @@ internals.Auth = function (options) {
     this.secret = options.secret;
 
     this._settings = {};
+    this._settings.urls = options.urls;
 
     this._setup();
 };
@@ -126,13 +127,12 @@ internals.Auth.prototype.verifyUser = function (usernameOrEmail, password, done)
     });
 };
 
-internals.Auth.prototype.authenticate = function (request, reply) {
+internals.Auth.prototype.authenticate = function (request, reply, options) {
 
-    var Passport = this.passport;
+    var options = options || {},
+        Passport = this.passport;
 
-    Passport.authenticate('local', {
-        failureFlash: true
-    })(request, reply);
+    Passport.authenticate('local', options)(request, reply);
 };
 
 /*
@@ -234,11 +234,7 @@ internals.register = function (extensions, next) {
     var auth = new internals.Auth(authOptions);
 
     Server.auth.strategy('passport', 'passport', {
-        apiMode: false,
-        urls: {
-            failureRedirect: '/snack/login',
-            successRedirect: '/snack'
-        }
+        apiMode: false
     });
 
     Server.auth.strategy('passport-api', 'passport', {

@@ -1,3 +1,4 @@
+var Path = require('path');
 var Http = require('http');
 var Cluster = require('cluster');
 var Hapi = require('hapi');
@@ -74,56 +75,67 @@ internals.responseHandler = function (server) {
             message: 'An error has occurred'
         };
 
-        var locals = Utils.applyToDefaults(defaults, error.output.payload || {});
+        var context = Utils.applyToDefaults(defaults, error.output.payload || {});
 
-        if (locals.statusCode === 404) {
-            locals.message = 'Page not found.';
-            locals.path = request.path;
+        if (context.statusCode === 404) {
+            context.message = 'Page not found.';
+            context.path = request.path;
         }
 
-        reply.view('error', locals, {
+        reply.view('error', context, {
+            engines: {
+                html: 'handlebars'
+            },
+            path: Path.join(__dirname, './views'),
+            partialsPath: Path.join(__dirname, './views/partials'),
             layout: false
         });
     });
 };
 
-internals.internalError = function (server) {
+internals.restartServer = function (server) {
 
     // Safely bring down the server and either restart, or
     // trigger a cluster disconnect.
+    try {
+
+        // make sure we close down within 30 seconds
+        var killtimer = setTimeout(function () {
+            process.exit(1);
+        }, 30000);
+
+        // But don't keep the process open just for that!
+        killtimer.unref();
+
+        // stop taking new requests.
+        server.stop(function () {
+            server.log(['error', 'serverStop']);
+        });
+
+        // Let the master know we're dead.  This will trigger a
+        // 'disconnect' in the cluster master, and then it will fork
+        // a new worker.
+        if (Cluster.isWorker) {
+            Cluster.worker.disconnect();
+        } else {
+            server.start(function () {
+                server.log(['error', 'serverRestart']);
+            });
+        }
+    } catch (er2) {
+
+        // oh well, not much we can do at this point.
+        console.error('Error sending 500!', er2.stack);
+    }
+};
+
+internals.internalError = function (server) {
+
+    // Handle internalError events, restart server if necessary
     server.on('internalError', function (request, err) {
 
         if (err.domainThrown) {
-            try {
-
-                // make sure we close down within 30 seconds
-                var killtimer = setTimeout(function () {
-                    process.exit(1);
-                }, 30000);
-
-                // But don't keep the process open just for that!
-                killtimer.unref();
-
-                // stop taking new requests.
-                server.stop(function () {
-                    server.log(['error', 'serverStop']);
-                });
-
-                // Let the master know we're dead.  This will trigger a
-                // 'disconnect' in the cluster master, and then it will fork
-                // a new worker.
-                if (Cluster.isWorker) {
-                    Cluster.worker.disconnect();
-                } else {
-                    server.start(function () {
-                        server.log(['error', 'serverRestart']);
-                    });
-                }
-            } catch (er2) {
-
-                // oh well, not much we can do at this point.
-                console.error('Error sending 500!', er2.stack);
-            }
+            internals.restartServer(server);
         }
     });
 };
@@ -132,6 +144,10 @@ exports.init = function (server, next) {
 
     internals.internalError(server);
     internals.responseHandler(server);
+
+    server.app.errorHandling = {
+        restartServer: internals.restartServer
+    };
 
     next();
 };

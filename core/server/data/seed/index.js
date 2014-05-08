@@ -12,37 +12,28 @@ internals.seed = {
 
     posts: [{
         "headline": "Sample Post",
-        "key": "sample",
         "body": "Simple starter post.",
-        "page": false,
         "language": "en_US"
     }, {
         "headline": "Cum Sociis",
-        "key": "cum-sociis",
         "body": "Pellentesque habitant morbi tristique senectus et netus. Ab illo tempore, ab est sed immemorabili. Cum ceteris in veneratione tui montes, nascetur mus. Gallia est omnis divisa in partes tres, quarum. Phasellus laoreet lorem vel dolor tempus vehicula. Fictum,  deserunt mollit anim laborum astutumque!",
-        "page": false,
         "language": "en_US",
-        "availableAt": new Date(2014, 3, 17, 8)
+        "availableAt": new Date(2014, 3, 28, 8)
     }, {
         "headline": "Natoque Penatibus",
-        "key": "natoque-penatibus",
         "body": "Morbi odio eros, volutpat ut pharetra vitae, lobortis sed nibh. Salutantibus vitae elit libero, a pharetra augue. Curabitur est gravida et libero vitae dictum. Quisque ut dolor gravida, placerat libero vel, euismod. A communi observantia non est recedendum. Quisque ut dolor gravida, placerat libero vel, euismod.",
-        "page": false,
         "language": "en_US",
-        "availableAt": new Date(2014, 3, 16, 8)
+        "availableAt": new Date(2014, 3, 29, 8)
     }, {
         "headline": "Et Magnis Dis",
-        "key": "et-magnis-dis",
         "body": "Prima luce, cum quibus mons aliud  consensu ab eo. Magna pars studiorum, prodita quaerimus. Idque Caesaris facere voluntate liceret: sese habere. Ullamco laboris nisi ut aliquid ex ea commodi consequat. Quo usque tandem abutere, Catilina, patientia nostra? Quis aute iure reprehenderit in voluptate velit esse.",
-        "page": false,
         "language": "en_US",
-        "availableAt": new Date(2014, 3, 19, 8)
+        "availableAt": new Date(2014, 3, 30, 8)
     }],
 
     tags: [{
         "name": "Getting Started",
-        "key": "tag/getting-started",
-        "description": null,
+        "description": "Your very first tag."
     }],
 
     roles: [{
@@ -59,15 +50,51 @@ internals.seed = {
     permissions: [{
         "name": "Edit posts",
         "action": "edit",
-        "actionFor": "Post"
+        "actionFor": "post"
     }, {
         "name": "Remove posts",
         "action": "remove",
-        "actionFor": "Post"
+        "actionFor": "post"
     }, {
         "name": "Create posts",
         "action": "create",
-        "actionFor": "Post"
+        "actionFor": "post"
+    }, {
+        "name": "Edit users",
+        "action": "edit",
+        "actionFor": "user"
+    }, {
+        "name": "Remove users",
+        "action": "remove",
+        "actionFor": "user"
+    }, {
+        "name": "Create users",
+        "action": "create",
+        "actionFor": "user"
+    }, {
+        "name": "Create tags",
+        "action": "create",
+        "actionFor": "tag"
+    }, {
+        "name": "Edit tags",
+        "action": "edit",
+        "actionFor": "tag"
+    }, {
+        "name": "Remove tags",
+        "action": "remove",
+        "actionFor": "tag"
+    }, {
+        "name": "Create assets",
+        "action": "create",
+        "actionFor": "asset"
+    }, {
+        "name": "Edit assets",
+        "action": "edit",
+        "actionFor": "asset"
+    }, {
+        "name": "Remove assets",
+        "action": "remove",
+        "actionFor": "asset"
     }]
 };
 
@@ -207,9 +234,15 @@ exports.getTasks = function (snack) {
 
         var createTag = function (tag, cb) {
 
-            tag.createdById = users[0].id;
+            // tag.createdById = users[0].id;
 
-            Models.Tag.create(tag, function (err) {
+            // Models.Tag.create(tag, function (err) {
+                // cb(err);
+            // });
+
+            Models.Tag.create(tag).then(function (){
+                cb();
+            }).catch(function (err) {
                 cb(err);
             });
         };
@@ -218,6 +251,8 @@ exports.getTasks = function (snack) {
             console.info("#green{\u2713 Tags created}");
             next(err);
         });
+
+
     });
 
     tasks.push(function seedPosts(next) {
@@ -230,10 +265,10 @@ exports.getTasks = function (snack) {
 
             Models.Post.create(post, function (err, post) {
                 if (err) return cb(err);
-                Models.Tag.findBy('key', 'tag/getting-started', function (err, tag) {
-                    if (err) return cb(err);
-                    post.tags.add(tag, cb);
-                });
+                // Models.Tag.findBy('key', 'tag/getting-started', function (err, tag) {
+                //     if (err) return cb(err);
+                //     post.tags.add(tag, cb);
+                // });
             });
         };
 

@@ -612,6 +612,72 @@ internals.Base.prototype.listParams = function (options) {
     return get;
 };
 
+internals.Base.prototype.formatListParams = function (options) {
+
+    var includes, include, inc, key;
+
+    var get = {
+        order: 'createdAt',
+        offset: 0,
+        limit: 10
+    };
+
+    if (options.ids) {
+        get.where = {};
+        get.where.id = {};
+        get.where.id.in = options.ids.split(',');
+    }
+
+    if (options.autocomplete) {
+
+        // Key for autocompletion
+        key = options.key || 'key';
+
+        // Autocomplete
+        get.where = {};
+        get.where[key] = new RegExp('^' + Hoek.escapeRegex(options.autocomplete) + '.*?', 'i');
+    }
+
+    if (options.filters instanceof Object && !get.where) {
+        get.where = options.filters;
+    }
+
+    if (options.sort) {
+        get.sort = options.sort.toLowerCase() === 'asc' ? 'asc' : 'desc';
+    }
+
+    if (options.order) {
+        get.order = options.order;
+    }
+
+    if (options.offset) {
+        get.offset = +options.offset;
+    }
+
+    if (options.limit) {
+        get.limit = +options.limit;
+    }
+
+    if (options.include) {
+
+        includes = options.include.split(',');
+        get.include = {};
+
+        for (var i in includes) {
+
+            get.include[includes[i]] = true;
+
+            // NOTE: Consider supporting nested includes, via serialization
+            //       scheme similar to this:
+            //       include=foo.bar.baz
+            //       [ 'foo', 'bar', 'baz' ]
+            //       { foo: { bar: { baz: true }}}
+        }
+    }
+
+    return get;
+};
+
 internals.readParams = function (options) {
 
     var get = {};

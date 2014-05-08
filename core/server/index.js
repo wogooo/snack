@@ -15,10 +15,11 @@ var Packs = require('./packs');
 var Routes = require('./routes');
 var Api = require('./api');
 var Models = require('./models');
+var Themes = require('./themes');
 
 var envVal = process.env.NODE_ENV;
 
-function messages(server, tags, log) {
+function messages(server, tags, data) {
 
     var serverInfo = server.info;
 
@@ -34,52 +35,83 @@ function messages(server, tags, log) {
             return;
         }
 
-        console.error("#red{%s}", log);
+        if (data) {
+            console.error("#red{%s}", data);
+        }
+
+        return;
+
+    }
+
+    if (tags.info && data) {
+
+        var infoMessage;
+
+        if (data instanceof Object) {
+
+            if (data.message) {
+                infoMessage = data.message;
+            } else {
+                infoMessage = JSON.stringify(data);
+            }
+
+        } else {
+
+            infoMessage = data;
+        }
+
+        console.info("#grey{" + infoMessage + "}");
+
         return;
     }
 
-    // Startup & Shutdown messages
-    if (envVal === 'production') {
-        console.info(
-            "#green{Snack is running...}\
+    if (tags.start) {
+
+        // Startup & Shutdown messages
+        if (envVal === 'production') {
+            console.info(
+                "#green{Snack is running...}\
             \nYour site is now available on %s\
             \n#grey{Ctrl+C to shut down}",
-            serverInfo.uri
-        );
-
-        // ensure that Snack exits correctly on Ctrl+C
-        process.on('SIGINT', function () {
-            console.warn(
-                "\n#red{Snack has shut down}\
-                \nYour site is now offline"
+                serverInfo.uri
             );
-            process.exit(0);
-        });
-    } else {
-        console.info("#green{Snack is running in %s...}\
+
+            // ensure that Snack exits correctly on Ctrl+C
+            process.on('SIGINT', function () {
+                console.warn(
+                    "\n#red{Snack has shut down}\
+                \nYour site is now offline"
+                );
+                process.exit(0);
+            });
+        } else {
+            console.info("#green{Snack is running in %s...}\
                       \n#grey{Listening on} %s:%s\
                       \n#grey{Url configured as} %s\
                       \n#grey{Ctrl+C to shut down}",
-                      envVal, serverInfo.host, serverInfo.port, serverInfo.uri);
+                envVal, serverInfo.host, serverInfo.port, serverInfo.uri);
 
-        // ensure that Snack exits correctly on Ctrl+C
-        process.on('SIGINT', function () {
-            console.warn(
-                "#red{Snack has shutdown}\
+            // ensure that Snack exits correctly on Ctrl+C
+            process.on('SIGINT', function () {
+                console.warn(
+                    "#red{Snack has shutdown}\
                 \nSnack was running for %d seconds",
-                Math.round(process.uptime())
-            );
-            process.exit(0);
-        });
+                    Math.round(process.uptime())
+                );
+                process.exit(0);
+            });
+        }
     }
 }
 
 function logging(server) {
 
     // This is weird, but pack events also get server events?
-    server.pack.events.on('log', function (event, tags) {
+    // NOTE: HAPI docs show signature (tags, [data, timestamp]), but I
+    //       find data in the event object.
+    server.pack.events.on('log', function (event, tags, data) {
 
-        if (tags.start || tags.error) {
+        if (tags.start || tags.error || tags.info) {
             messages(server, tags, event.data);
         }
     });
@@ -131,6 +163,9 @@ function setup(bootstrap) {
 
     server.app.config = Config;
 
+    // NOTE: Weird, but necessary to share Snack all around...
+    server.pack.app = server.app;
+
     var init = [{
         name: 'errorHandling',
         module: ErrorHandling
@@ -158,6 +193,9 @@ function setup(bootstrap) {
     }, {
         name: 'extensions',
         module: Extensions
+    }, {
+        name: 'themes',
+        module: Themes
     }, {
         name: 'routes',
         module: Routes

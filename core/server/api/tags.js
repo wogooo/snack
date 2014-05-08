@@ -1,207 +1,187 @@
-var Async = require('async');
-var Hapi = require('hapi');
-var Hoek = require('hoek');
+var Hapi = require('hapi'),
+    Hoek = require('hoek'),
+    Promise = require('bluebird');
 
-var internals = {};
+var Helpers = require('../helpers').api;
 
-internals.Tags = function (options) {
+function Tags (options) {
 
-    this.server = options.server;
     this.models = options.models;
     this.config = options.config;
     this.api = options.api;
-    this.hooks = options.config().hooks;
-};
+    this.check = options.snack.permissions.check;
+}
 
-internals.Tags.prototype.list = function (args, done) {
-
-    var Models = this.models,
-        Api = this.api,
-        query = args.query,
-        options = query,
-        list;
-
-    var get = Api.base.listParams(options);
-
-    Models.Tag.all(get, function (err, tags) {
-
-        list = {
-            type: 'tagList',
-            sort: get.order.split(' ')[1].toLowerCase(),
-            order: get.order.split(' ')[0],
-            offset: get.skip,
-            limit: get.limit,
-            count: tags.length,
-            items: tags
-        };
-
-        done(err, err ? null : list);
-    });
-};
-
-internals.Tags.prototype.create = function (args, done) {
-
-    var self = this;
+Tags.prototype.list = function (options, context, done) {
 
     var Models = this.models,
-        Api = this.api,
-        payload = args.payload || {},
-        query = args.query || {},
-        implicit = (query.implicit === true);
+        Tag = Models.Tag;
 
-    var multi = true,
-        tags = [],
-        tag,
-        items = [];
-
-    // Can create 1 or many tags at once.
-    if (payload.items) {
-
-        items = payload.items;
-
-    } else {
-
-        items.push(payload);
-        multi = false;
-    }
-
-    Async.eachSeries(items, function (item, next) {
-
-            tag = new Models.Tag(item);
-
-            tag.isValid(function (valid) {
-
-                // implicit creation shouldn't return
-                // validation errors.
-                if (!valid && implicit) return done();
-
-                tag.save(function (err, t) {
-                    if (err) return next(err);
-
-                    tags.push(t);
-                    next();
-                });
-            });
-        },
-        function (err) {
-            if (err) return done(err);
-
-            Api.base.enqueue(tags, 'tag.created', function (err) {
-                if (err) return done(err);
-
-                done(err, multi ? tags : tags[0]);
-            });
+    Tag.find(options)
+        .bind({})
+        .then(function (tagList) {
+            done(null, tagList);
+        })
+        .catch (function (err) {
+            done(err);
         });
 };
 
-internals.Tags.prototype.read = function (args, done) {
+Tags.prototype.read = function (options, context, done) {
 
     var Models = this.models,
-        Api = this.api;
+        Tag = Models.Tag;
 
-    var get = Api.base.readParams(args);
+    Tag.findOne(options)
+        .then(function (tag) {
+            if (!tag) return done(Hapi.error.notFound());
+            done(null, tag);
+        })
+        .catch (function (err) {
+            done(Hapi.error.badImplementation(err.message));
+        });
+};
 
-    if (!get) {
+Tags.prototype.create = function (options, context, done) {
 
+    var Models = this.models,
+        Tag = Models.Tag,
+        Alias = Models.Alias,
+        Config = this.config;
+
+    var payload = options.payload,
+        implicit = Boolean(options.implicit === true),
+        multi,
+        tasks = [],
+        task;
+
+    if (!payload) {
         return done(Hapi.error.badRequest());
     }
 
-    Models.Tag[get.method](get.params, function (err, tag) {
+    function createTag(item) {
 
-        if (err) return done(err);
+        return Tag
+            .create(item)
+            .bind({})
+            .then(function (tag) {
 
-        if (!tag) {
-            return done(Hapi.error.notFound());
-        }
+                this.tag = tag;
+                tagAlias = Config.createAlias(tag);
+                return Alias.createUnique(tagAlias);
+            })
+            .then(function (alias) {
 
-        done(err, tag);
-    });
-};
+                alias.primary = true;
+                this.tag.aliases = [ alias ];
+                return this.tag.saveAll();
+            })
+            .then(function (tag) {
 
-internals.Tags.prototype.edit = function (args, done) {
+                return this.tag.enqueue('created');
+            })
+            .catch(function (err) {
 
-    var Models = this.models,
-        Api = this.api,
-        query = args.query,
-        params = args.params,
-        payload = args.payload,
-        clearQueue = false,
-        jobId;
-
-    if (query.clearQueue) {
-        clearQueue = true;
-        jobId = parseInt(query.clearQueue, 10);
+                if (err && err.code === 409 && err.rejectedKey) {
+                    return Tag.findOne(err.rejectedKey);
+                } else {
+                    throw err;
+                }
+            });
     }
 
-    Models.Tag.find(params.id, function (err, tag) {
+    if (payload.items && payload.items instanceof Array) {
 
-        if (err) return done(err);
+        // Can create many tags at once.
+        multi = true;
 
-        if (!tag) {
-            return done(Hapi.error.notFound());
+        for (var i in payload.items) {
+            task = createTag(items[i]);
+            tasks.push(task);
         }
 
-        // Simple version control
-        if (query.version && tag._version_ !== query.version) {
+    } else {
 
-            // Return conflict if version (timestamp) doesn't match
-            return done(Hapi.error.conflict());
-        }
+        // Or a single tag.
+        multi = false;
 
-        if (clearQueue) {
+        task = createTag(payload);
+        tasks.push(task);
+    }
 
-            // Pass in the private queue clearing flag
-            tag.__data.clearQueue = jobId;
-        }
+    Promise
+        .all(tasks)
+        .then(function(tags) {
 
-        tag.updateAttributes(payload, function (err, tag) {
+            done(null, multi ? tags : tags[0]);
+        })
+        .catch(function (err) {
 
-            if (!clearQueue) {
-
-                Api.base.processRelations(tag, payload, function (err) {
-                    Api.base.enqueue(tag, 'tag.updated', function (err) {
-                        done(err, !err ? tag : null);
-                    });
-                });
-
-            } else {
-
-                done(err, !err ? tag : null);
-            }
+            done(err);
         });
-    });
 };
 
-internals.Tags.prototype.remove = function (args, done) {
+Tags.prototype.edit = function (options, context, done) {
 
-    var Models = this.models;
-    var Api = this.api;
+    var Models = this.models,
+        Tag = Models.Tag,
+        Check = this.check;
 
-    var query = args.query;
-    var params = args.params;
+    var payload = options.payload;
+    var user = context.user;
 
-    Models.Tag.find(params.id, function (err, tag) {
+    Check(user)
+        .edit
+        .tag(options.where)
+        .then(function () {
+            return Tag.update(payload, options);
+        })
+        .then(function (tag) {
 
-        if (err) return done(err);
+            if (!options.clearQueue) {
+                return tag.enqueue('edited');
+            }
+            return tag;
+        })
+        .then(function (tag) {
 
-        if (!tag) {
-            return done(Hapi.error.notFound());
-        }
+            done(null, tag)
+        })
+        .catch(function (err) {
 
-        // A true destructive delete
-        tag.destroy(function (err) {
-            Api.base.enqueue(tag, 'tag.destroyed', function (err) {
-                var results = {
-                    message: 'Destroyed'
-                };
-                done(err, results);
-            });
+            console.log(err);
+            done(err);
         });
-    });
+
+};
+
+Tags.prototype.remove = function (options, context, done) {
+
+    var Models = this.models,
+        Tag = Models.Tag;
+
+    // Tags are always destroyed.
+    Tag
+        .destroy(options)
+        .then(function (tag) {
+
+            return tag.enqueue('destroyed');
+        })
+        .then(function (tag) {
+
+            var results = {
+                message: 'Destroyed'
+            };
+
+            done(null, results);
+        })
+        .catch(function (err) {
+            done(err);
+        });
 };
 
 module.exports = function (root) {
 
-    var tags = new internals.Tags(root);
+    var tags = new Tags(root);
     return tags;
 };

@@ -36,4 +36,8 @@ would be of `type` "tag".
 `kind` is a further subdivision: with the Asset model example above, it may have
 `type` "asset", `kind` "image".
 
+## Alias
 
+A sort of routing table for content. Everything that needs a URL / web home on
+the site should use this, as the primary key is the path key, like
+'foo/bar/baz' which ensures quick, valid uniqueness checks.

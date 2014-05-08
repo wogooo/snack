@@ -5,7 +5,9 @@
 
 var Moment = require('moment'),
     Inflection = require('inflection'),
+    Uslug = require('uslug'),
     Path = require('path'),
+    Mime = require('mime'),
     snackConfig = '';
 
 // ## setConfig
@@ -67,6 +69,18 @@ function urlPathForPost(post, permalinks) {
             },
             day: function () {
                 return Moment(post.published_at).format('DD');
+            },
+            type: function () {
+                return post.type;
+            },
+            kind: function () {
+                return post.kind;
+            },
+            collection: function () {
+                return Inflection.pluralize(post.type);
+            },
+            kindCollection: function () {
+                return Inflection.pluralize(post.kind);
             },
             slug: function () {
                 return post.slug;
@@ -152,7 +166,7 @@ function urlPathForAsset(asset, key) {
             }
         };
 
-    output += snackConfig.paths.assetsRelPathPattern;
+    output += snackConfig.permalinks.assets;
 
     // replace tags like :slug or :year with actual values
     output = output.replace(/(:[a-z]+)/g, function (match) {
@@ -167,6 +181,70 @@ function urlPathForAsset(asset, key) {
     }
 
     return output;
+}
+
+function _createAlias(model, permalinkPattern) {
+    var output = '',
+        datetime = model.publishedAt || model.createdAt;
+        tokens = {
+            year: function () {
+                return Moment(datetime).format('YYYY');
+            },
+            month: function () {
+                return Moment(datetime).format('MM');
+            },
+            day: function () {
+                return Moment(datetime).format('DD');
+            },
+            type: function () {
+                return model.type;
+            },
+            kind: function () {
+                return model.kind || model.type;
+            },
+            types: function () {
+                return Inflection.pluralize(model.type);
+            },
+            kinds: function () {
+                return Inflection.pluralize(model.kind || model.type);
+            },
+            slug: function () {
+                return Uslug(model.slug || model.title || model.name);
+            },
+            id: function () {
+                return model.id;
+            },
+            filename: function () {
+                return model.filename ? model.filename.toLowerCase() : tokens.slug();
+            },
+            extension: function () {
+                return model.mimetype ? Mime(model.mimetype) : 'html';
+            }
+        };
+
+    output += permalinkPattern;
+
+    // replace tokens like :slug or :year with actual values
+    output = output.replace(/({[a-z]+})/g, function (match) {
+        var token = match.substr(1, match.length-2);
+        if (tokens.hasOwnProperty(token)) {
+            return tokens[token]();
+        }
+    });
+
+    return output;
+}
+
+function createAlias(model) {
+
+    var collection = Inflection.pluralize(model.type);
+    var permalinkPattern = snackConfig.permalinks[collection];
+
+    if (!permalinkPattern) {
+        permalinkPattern = snackConfig.permalinks['default'];
+    }
+
+    return _createAlias(model, permalinkPattern);
 }
 
 // ## urlFor
@@ -243,7 +321,10 @@ function keyForAsset(asset) {
     return urlPathForAsset(asset, true);
 }
 
-module.exports.setConfig = setConfig;
-module.exports.urlFor = urlFor;
+
+
+exports.setConfig = setConfig;
+exports.urlFor = urlFor;
 // module.exports.urlForPost = urlForPost;
-module.exports.keyForAsset = keyForAsset;
+exports.keyForAsset = keyForAsset;
+exports.createAlias = createAlias;

@@ -1,4 +1,4 @@
-/*! snack - v0.0.1 - 2014-04-02
+/*! snack - v0.0.1 - 2014-04-30
  * Copyright (c) 2014 ;
  * Licensed MIT
  */

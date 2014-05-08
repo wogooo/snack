@@ -22,11 +22,6 @@ internals.modelDefinition = function () {
         headline: {
             type: Schema.Text
         },
-        key: {
-            index: true,
-            type: String,
-            length: 255
-        },
         type: {
             type: String,
             length: 255,
@@ -103,9 +98,19 @@ internals.relations = function (model, next) {
         model: models.User
     });
 
-    Model.hasAndBelongsToMany('tags', {
-        model: models.Tag
-    });
+    // Model.belongsTo('alias', {
+    //     as: 'key',
+    //     model: models.Alias
+    // });
+
+    // Model.hasMany('aliases', {
+    //     as: 'aliases',
+    //     model: models.Alias
+    // });
+
+    // Model.hasAndBelongsToMany('tags', {
+    //     model: models.Tag
+    // });
 
     Model.hasAndBelongsToMany('assets', {
         model: models.Asset
@@ -174,7 +179,7 @@ internals.register = function (model, next) {
         var _data = this.__data;
         var userId;
 
-        if (_data.user) {
+        if (_data.user && !_data.user._api_) {
             userId = _data.user.id;
         } else if (data.createdById) {
             userId = data.createdById;
@@ -216,7 +221,7 @@ internals.register = function (model, next) {
             data.title = HtmlStrip(data.headline, stripOpts).trim();
         }
 
-        if (_data.user) {
+        if (_data.user && !_data.user._api_) {
             data.updatedById = _data.user.id;
         }
 

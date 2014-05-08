@@ -1,5 +1,6 @@
+var Path = require('path');
+
 var Hapi = require('hapi');
-var Utils = require('hoek');
 
 var Config = require('../config');
 
@@ -7,13 +8,20 @@ var internals = {};
 
 internals.init = function (server, next) {
 
+    var Snack = server.app;
+    var config = Snack.config();
+
     var plugins = {};
 
-    plugins['snack-queue'] = Config().queue;
+    plugins['snack-talk'] = {
+        redis: config.redis
+    };
+
+    plugins['snack-queue'] = config.queue;
 
     plugins.yar = {
         cookieOptions: {
-            password: Config().secret,
+            password: config.secret,
             isSecure: false
         }
     };

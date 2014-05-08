@@ -25,6 +25,25 @@ module.exports = function (route) {
 
     server.route({
         method: 'GET',
+        path: '/server-view',
+        config: {
+            auth: {
+                strategies: ['token']
+            }
+        },
+        handler: function (request, reply) {
+            var replyObj = {
+                text: 'I am a JSON response, and you needed a token to get me.',
+                credentials: request.auth.credentials
+            };
+            reply.view('index', replyObj);
+        }
+    });
+
+
+
+    server.route({
+        method: 'GET',
         path: '/jwt-auth',
         config: {
             auth: {
@@ -37,6 +56,21 @@ module.exports = function (route) {
                 credentials: request.auth.credentials
             };
             reply(replyObj);
+        }
+    });
+
+
+    server.pack.events.on('sampleEvent', function (data) {
+        console.log('on sampleEvent', data);
+    });
+
+    server.route({
+        method: 'GET',
+        path: '/trigger-event',
+        handler: function (request, reply) {
+
+            server.methods.broadcast('permissions.refresh', { test: 'result' }, function () {});
+            reply('ok');
         }
     });
 };

@@ -1,7 +1,6 @@
 var Hapi = require('hapi');
 
 var requires = [
-    'admin',
     'api',
     'debug',
     'static'

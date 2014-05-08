@@ -12,7 +12,7 @@ function startDaemon(bootstrap) {
         queue: config.queue,
         packs: config.packs.demons,
         appRoot: config.paths.appRoot,
-        packsPath: config.paths.packsPath,
+        packsPath: config.paths.packPath,
         contentPath: config.paths.contentPath,
         apiUser: config.machine.user,
         serverSecret: config.secret

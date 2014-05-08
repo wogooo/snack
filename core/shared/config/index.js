@@ -21,6 +21,7 @@ function updateConfig(config) {
     var localPath,
         contentPath,
         pluginsPath,
+        baseRelPath,
         subdir,
         logLevel,
         serverPort,
@@ -48,6 +49,7 @@ function updateConfig(config) {
     }
 
     subdir = localPath === '/' ? '' : localPath;
+    basePath = subdir ? '/' + subdir + '/' : '/';
 
     if (snackConfig.logging) {
         logLevel = snackConfig.logging.level ? snackConfig.logging.level.toUpperCase() : 'ERROR';
@@ -65,7 +67,7 @@ function updateConfig(config) {
     // Allow contentPath to be over-written by passed in config object
     // Otherwise default to default content path location
     contentPath = snackConfig.paths.contentPath || Path.resolve(appRoot, 'content');
-    packsPath = snackConfig.paths.packsPath || Path.resolve(appRoot, 'packs');
+    packPath = snackConfig.paths.packPath || Path.resolve(appRoot, 'packs');
 
     snackConfig.packs = snackConfig.packs || {};
     snackConfig.packs.plugins = snackConfig.packs.plugins || {};
@@ -134,11 +136,12 @@ function updateConfig(config) {
             'sharedLib': sharedLib,
 
             'contentPath': contentPath,
-            'packsPath': packsPath,
+            'packPath': packPath,
             'themePath': Path.resolve(contentPath, 'themes'),
             'assetsPath': Path.resolve(contentPath, 'assets'),
-            'assetsRelPath': '/content/assets',
-            'assetsRelPathPattern': snackConfig.paths.assetsRelPathPattern || ':filename'
+
+            'basePath': basePath,
+            'assetsRelPath': 'content/assets'
 
             // 'adminViews': path.join(corePath, '/server/views/'),
             // 'helperTemplates': path.join(corePath, '/server/helpers/tpl/'),
@@ -184,3 +187,4 @@ module.exports.init = initConfig;
 module.exports.urlFor = ConfigUrl.urlFor;
 // module.exports.urlForPost = ConfigUrl.urlForPost;
 module.exports.keyForAsset = ConfigUrl.keyForAsset;
+module.exports.createAlias = ConfigUrl.createAlias;

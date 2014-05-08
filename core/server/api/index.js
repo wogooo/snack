@@ -1,5 +1,5 @@
 var Hapi = require('hapi');
-var Utils = require('hoek');
+var Helpers = require('../helpers').api;
 
 var requires = [
     'assets',
@@ -28,6 +28,18 @@ exports.init = function (server, next) {
     });
 
     Snack.api = root.api;
+
+    Snack.api.requestHandler = function (collection, method, request, reply) {
+
+        var options = Helpers.requestHandler(method, request) || {};
+        var context = request;
+
+        context.user = context.user || context.auth.credentials;
+
+        Snack.api[collection][method](options, context, function (err, results) {
+            reply(err ? err : results);
+        });
+    };
 
     next();
 };

@@ -15,12 +15,12 @@ internals.findPacks = function (name, done) {
     var config = Config();
     var SharedLib = require(config.paths.sharedLib);
     var appRoot = config.paths.appRoot;
-    var packsPath = config.paths.packsPath;
+    var packPath = config.paths.packPath;
 
     var testPaths = [];
 
     testPaths.push(Path.join(appRoot, 'node_modules', name));
-    testPaths.push(Path.join(packsPath, name));
+    testPaths.push(Path.join(packPath, name));
     testPaths.push(Path.join(__dirname, name));
 
     SharedLib.testPaths(testPaths, done);

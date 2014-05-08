@@ -14,99 +14,6 @@ module.exports = function (route) {
 
     server.route({
         method: 'GET',
-        path: '/snack/{path*}',
-        config: {
-            auth: 'passport'
-        },
-        handler: function (request, reply) {
-            reply.view('index', {
-                title: 'Snack',
-                packageInfo: packageInfo
-            }, {
-                path: Path.join(clientPath, 'views'),
-                partialsPath: Path.join(clientPath, 'views/partials'),
-                layout: false
-            });
-        }
-    });
-
-    server.route({
-        method: 'GET',
-        path: '/snack/login',
-        config: {
-            auth: false
-        },
-        handler: function (request, reply) {
-
-            var flash = request.session.flash(),
-                flashErr = false,
-                flashErrMsg = '';
-
-            if (flash.error && flash.error.length) {
-                flashErr = true;
-                flashErrMsg = flash.error[0];
-            }
-
-            if (request.session._isAuthenticated()) {
-
-                reply().redirect('/snack');
-
-            } else {
-
-                reply.view('login', {
-                    title: 'Sign In',
-                    packageInfo: packageInfo,
-                    error: flashErr,
-                    errorMessage: flashErrMsg
-                }, {
-                    path: Path.join(clientPath, 'views'),
-                    partialsPath: Path.join(clientPath, 'views/partials'),
-                    layout: false
-                });
-            }
-        }
-    });
-
-    server.route({
-        method: 'GET',
-        path: '/snack/static/{path*}',
-        config: {
-            auth: false
-        },
-        handler: {
-            directory: {
-                path: Path.join(clientPath, 'static'),
-                listing: false
-            }
-        }
-    });
-
-    server.route({
-        method: 'POST',
-        path: '/snack/login',
-        config: {
-            auth: false
-        },
-        handler: function (request, reply) {
-
-            Auth.authenticate(request, reply);
-        }
-    });
-
-    server.route({
-        method: ['POST', 'GET'],
-        path: '/snack/logout',
-        config: {
-            auth: false,
-            handler: function (request, reply) {
-                request.session._logout();
-                reply().redirect('/snack/login');
-            }
-        }
-    });
-
-    server.route({
-        method: 'GET',
         path: '/logout',
         config: {
             auth: false,
@@ -126,9 +33,6 @@ module.exports = function (route) {
             }
         }
     });
-
-
-
 
     server.route({
         method: 'GET',

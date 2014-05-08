@@ -98,7 +98,7 @@ module.exports = function (grunt) {
                     banner: "<%= banner %>"
                 },
                 src: ['<%= src.js %>', '<%= src.jsTpl %>'],
-                dest: '<%= distdir %>/<%= pkg.name %>.js'
+                dest: '<%= distdir %>/snack-admin.js'
             },
             angular: {
                 src: ['core/client/vendor/angular/angular.js', 'core/client/vendor/angular/*.js'],
@@ -119,7 +119,7 @@ module.exports = function (grunt) {
                     banner: "<%= banner %>"
                 },
                 src: ['<%= src.js %>', '<%= src.jsTpl %>'],
-                dest: '<%= distdir %>/<%= pkg.name %>.js'
+                dest: '<%= distdir %>/snack-admin.js'
             },
             angular: {
                 src: ['<%= concat.angular.src %>'],
@@ -140,11 +140,11 @@ module.exports = function (grunt) {
                     strictMath: true,
                     sourceMap: true,
                     outputSourceFiles: true,
-                    sourceMapURL: '<%= pkg.name %>.css.map',
-                    sourceMapFilename: '<%= distdir %>/<%= pkg.name %>.css.map'
+                    sourceMapURL: 'snack-admin.css.map',
+                    sourceMapFilename: '<%= distdir %>/snack-admin.css.map'
                 },
                 files: {
-                    '<%= distdir %>/<%= pkg.name %>.css': ['<%= src.less %>']
+                    '<%= distdir %>/snack-admin.css': ['<%= src.less %>']
                 }
             },
             min: {
@@ -153,7 +153,7 @@ module.exports = function (grunt) {
                     report: 'min'
                 },
                 files: {
-                    '<%= distdir %>/<%= pkg.name %>.css': ['<%= src.less %>']
+                    '<%= distdir %>/snack-admin.css': ['<%= src.less %>']
                 }
             }
         },

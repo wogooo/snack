@@ -16,17 +16,6 @@ module.exports = function (route) {
     // ----------------------
     // Posts
 
-    // server.route({
-    //     method: 'GET',
-    //     path: '/api/v1/posts',
-    //     handler: function (request, reply) {
-
-    //         Api.posts.list(request, function (err, results) {
-    //             reply(err ? err : results);
-    //         });
-    //     }
-    // });
-
     server.route({
         method: 'GET',
         path: '/api/v1/posts.json',
@@ -38,23 +27,22 @@ module.exports = function (route) {
         }
     });
 
-    // server.route({
-    //     method: 'POST',
-    //     path: '/api/v1/posts',
-    //     config: {
-    //         payload: {
-    //             output: 'file',
-    //             parse: true,
-    //             allow: 'multipart/form-data'
-    //         },
-    //         handler: function (request, reply) {
+    server.route({
+        method: 'POST',
+        path: '/api/v1/posts.multipart',
+        config: {
+            payload: {
+                output: 'file',
+                allow: 'multipart/form-data'
+            },
+            handler: function (request, reply) {
 
-    //             Api.posts.create(request, function (err, results) {
-    //                 reply(err ? err : results);
-    //             });
-    //         }
-    //     }
-    // });
+                Api.posts.create(request, function (err, results) {
+                    reply(err ? err : results);
+                });
+            }
+        }
+    });
 
     server.route({
         method: 'POST',
@@ -65,8 +53,7 @@ module.exports = function (route) {
             },
             payload: {
                 output: 'data',
-                parse: true,
-                allow: ['application/json', 'application/x-www-form-urlencoded']
+                allow: 'application/json'
             }
         },
         handler: function (request, reply) {
@@ -77,23 +64,22 @@ module.exports = function (route) {
         }
     });
 
-    // server.route({
-    //     method: 'PUT',
-    //     path: '/api/v1/posts/{id}',
-    //     config: {
-    //         payload: {
-    //             output: 'file',
-    //             parse: true,
-    //             allow: 'multipart/form-data'
-    //         },
-    //         handler: function (request, reply) {
+    server.route({
+        method: 'PUT',
+        path: '/api/v1/posts/{id}.multipart',
+        config: {
+            payload: {
+                output: 'file',
+                allow: 'multipart/form-data'
+            },
+            handler: function (request, reply) {
 
-    //             Api.posts.edit(request, function (err, results) {
-    //                 reply(err ? err : results);
-    //             });
-    //         }
-    //     }
-    // });
+                Api.posts.edit(request, function (err, results) {
+                    reply(err ? err : results);
+                });
+            }
+        }
+    });
 
     server.route({
         method: 'PUT',
@@ -104,8 +90,7 @@ module.exports = function (route) {
             },
             payload: {
                 output: 'data',
-                parse: true,
-                allow: ['application/json', 'application/x-www-form-urlencoded']
+                allow: 'application/json'
             }
         },
         handler: function (request, reply) {
@@ -143,13 +128,50 @@ module.exports = function (route) {
         }
     });
 
+
+    // ----------------------
+    // Files
+
+    // Handle HTML5-style file uploads as streams (preferred)
+    server.route({
+        method: 'POST',
+        path: '/api/v1/files.file',
+        config: {
+            payload: {
+                output: 'stream'
+            },
+            handler: function (request, reply) {
+
+                Api.assets.storeFile(request, function (err, results) {
+                    reply(err ? err : results);
+                });
+            }
+        }
+    });
+
+    server.route({
+        method: 'PUT',
+        path: '/api/v1/files/{id}.file',
+        config: {
+            payload: {
+                output: 'stream'
+            },
+            handler: function (request, reply) {
+
+                Api.assets.storeFile(request, function (err, results) {
+                    reply(err ? err : results);
+                });
+            }
+        }
+    });
+
     // ----------------------
     // Assets
 
     // Handle multipart uploads
     server.route({
         method: 'POST',
-        path: '/api/v1/assets',
+        path: '/api/v1/assets.multipart',
         config: {
             payload: {
                 output: 'file',
@@ -171,7 +193,7 @@ module.exports = function (route) {
         config: {
             payload: {
                 output: 'data',
-                allow: ['application/json', 'application/x-www-form-urlencoded']
+                allow: ['application/json']
             },
             handler: function (request, reply) {
 
@@ -182,43 +204,9 @@ module.exports = function (route) {
         }
     });
 
-    // Handle HTML5-style file uploads as streams (preferred)
-    // TODO: Consider explicit allows, or user-configurable allows.
-    server.route({
-        method: 'POST',
-        path: '/api/v1/files',
-        config: {
-            payload: {
-                output: 'stream'
-            },
-            handler: function (request, reply) {
-
-                Api.assets.storeFile(request, function (err, results) {
-                    reply(err ? err : results);
-                });
-            }
-        }
-    });
-
     server.route({
         method: 'PUT',
-        path: '/api/v1/files/{id}',
-        config: {
-            payload: {
-                output: 'stream'
-            },
-            handler: function (request, reply) {
-
-                Api.assets.storeFile(request, function (err, results) {
-                    reply(err ? err : results);
-                });
-            }
-        }
-    });
-
-    server.route({
-        method: 'PUT',
-        path: '/api/v1/assets/{id}',
+        path: '/api/v1/assets/{id}.multipart',
         config: {
             payload: {
                 output: 'file',
@@ -239,7 +227,7 @@ module.exports = function (route) {
         config: {
             payload: {
                 output: 'data',
-                allow: ['application/json', 'application/x-www-form-urlencoded']
+                allow: ['application/json']
             },
             handler: function (request, reply) {
 
@@ -252,21 +240,10 @@ module.exports = function (route) {
 
     server.route({
         method: 'DELETE',
-        path: '/api/v1/assets/{id}',
+        path: '/api/v1/assets/{id}.json',
         handler: function (request, reply) {
 
             Api.assets.remove(request, function (err) {
-                reply(err ? err : results);
-            });
-        }
-    });
-
-    server.route({
-        method: 'GET',
-        path: '/api/v1/assets/{id}',
-        handler: function (request, reply) {
-
-            Api.assets.read(request, function (err, results) {
                 reply(err ? err : results);
             });
         }
@@ -278,17 +255,6 @@ module.exports = function (route) {
         handler: function (request, reply) {
 
             Api.assets.read(request, function (err, results) {
-                reply(err ? err : results);
-            });
-        }
-    });
-
-    server.route({
-        method: 'GET',
-        path: '/api/v1/assets',
-        handler: function (request, reply) {
-
-            Api.assets.list(request, function (err, results) {
                 reply(err ? err : results);
             });
         }
@@ -309,57 +275,78 @@ module.exports = function (route) {
     // Tags
 
     server.route({
-        method: 'POST',
+        method: 'GET',
         path: '/api/v1/tags.json',
+        config: {
+            description: 'Returns a tagList, scoped by optional query params.',
+            tags: ['api', 'tags', 'list']
+        },
         handler: function (request, reply) {
 
-            Api.tags.create(request, function (err, results) {
-                reply(err ? err : results);
-            });
+            Api.requestHandler('tags', 'list', request, reply);
+        }
+    });
+
+    server.route({
+        method: 'POST',
+        path: '/api/v1/tags.json',
+        config: {
+            auth: {
+                strategies: ['token', 'passport-api'],
+            },
+            description: 'Creates a new tag, or several tags if `items` array is used.',
+            tags: ['api', 'tags', 'create', 'auth']
+        },
+        handler: function (request, reply) {
+
+            Api.requestHandler('tags', 'create', request, reply);
+        }
+    });
+
+    server.route({
+        method: 'GET',
+        path: '/api/v1/tags/{id}.json',
+        config: {
+            description: 'Get an existing tag by id.',
+            tags: ['api', 'tags', 'read']
+        },
+        handler: function (request, reply) {
+
+            Api.requestHandler('tags', 'read', request, reply);
         }
     });
 
     server.route({
         method: 'PUT',
         path: '/api/v1/tags/{id}.json',
+        config: {
+            auth: {
+                strategies: ['token', 'passport-api'],
+                mode: 'try'
+            },
+            description: 'Edit an existing tag by id.',
+            tags: ['api', 'tags', 'edit', 'auth']
+        },
         handler: function (request, reply) {
 
-            Api.tags.edit(request, function (err, results) {
-                reply(err ? err : results);
-            });
-        }
-    });
-
-    server.route({
-        method: 'GET',
-        path: '/api/v1/tags.json',
-        handler: function (request, reply) {
-
-            Api.tags.list(request, function (err, results) {
-                reply(err ? err : results);
-            });
-        }
-    });
-
-    server.route({
-        method: 'GET',
-        path: '/api/v1/tags/{id}.json',
-        handler: function (request, reply) {
-
-            Api.tags.read(request, function (err, results) {
-                reply(err ? err : results);
-            });
+            Api.requestHandler('tags', 'edit', request, reply);
         }
     });
 
     server.route({
         method: 'DELETE',
         path: '/api/v1/tags/{id}.json',
+        config: {
+            auth: {
+                strategies: ['token', 'passport-api'],
+                mode: 'try'
+            },
+            description: 'Remove an existing tag by id.',
+            tags: ['api', 'tags', 'remove', 'auth']
+        },
         handler: function (request, reply) {
 
-            Api.tags.remove(request, function (err, results) {
-                reply(err ? err : results);
-            });
+            Api.requestHandler('tags', 'remove', request, reply);
         }
     });
 
@@ -370,8 +357,11 @@ module.exports = function (route) {
         method: 'POST',
         path: '/api/v1/users.json',
         config: {
+            auth: {
+                strategies: ['token', 'passport-api']
+            },
             payload: {
-                allow: ['application/json', 'application/x-www-form-urlencoded']
+                allow: ['application/json']
             },
             handler: function (request, reply) {
 
@@ -386,8 +376,11 @@ module.exports = function (route) {
         method: 'PUT',
         path: '/api/v1/users/{id}.json',
         config: {
+            auth: {
+                strategies: ['token', 'passport-api']
+            },
             payload: {
-                allow: ['application/json', 'application/x-www-form-urlencoded']
+                allow: ['application/json']
             },
             handler: function (request, reply) {
 
@@ -425,20 +418,6 @@ module.exports = function (route) {
     });
 
     server.route({
-        method: 'GET',
-        path: '/api/v1/users/current.json',
-        config: {
-            auth: false,
-            handler: function (request, reply) {
-
-                Auth.upgradeUser(request, function (err, user) {
-                    reply(err ? err : user);
-                });
-            }
-        }
-    });
-
-    server.route({
         method: 'DELETE',
         path: '/api/v1/users/{id}.json',
         config: {
@@ -452,11 +431,46 @@ module.exports = function (route) {
     });
 
     server.route({
+        method: 'GET',
+        path: '/api/v1/users/current.json',
+        config: {
+            auth: false,
+            handler: function (request, reply) {
+
+                Auth.upgradeUser(request, function (err, user) {
+                    reply(err ? err : user);
+                });
+            }
+        }
+    });
+
+    // ----------------------
+    // API authentication
+
+    server.route({
         method: 'POST',
-        path: '/api/v1/token',
+        path: '/api/v1/token.json',
         config: {
             auth: {
                 strategies: ['basic']
+            }
+        },
+        handler: function (request, reply) {
+
+            var token = Auth.getToken(request.auth.credentials);
+            reply(token);
+        }
+    });
+
+    // ----------------------
+    // DB interactions
+
+    server.route({
+        method: 'POST',
+        path: '/api/v1/db.json',
+        config: {
+            auth: {
+                strategies: ['token']
             }
         },
         handler: function (request, reply) {

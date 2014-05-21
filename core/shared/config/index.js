@@ -79,18 +79,14 @@ function updateConfig(config) {
             'version': 1
         },
         hooks: {
-            'post.created': true,
-            'post.updated': true,
-            'post.deleted': true,
-            'post.destroyed': true,
+            'story.created': true,
+            'story.edited': true,
+            'story.deleted': true,
+            'story.destroyed': true,
             'asset.created': true,
-            'asset.updated': true,
+            'asset.edited': true,
             'asset.deleted': true,
-            'asset.destroyed': true,
-            'tag.created': false,
-            'tag.updated': false,
-            'tag.deleted': false,
-            'tag.destroyed': false
+            'asset.destroyed': true
         },
         server: {
             'port': serverPort,
@@ -188,3 +184,4 @@ module.exports.urlFor = ConfigUrl.urlFor;
 // module.exports.urlForPost = ConfigUrl.urlForPost;
 module.exports.keyForAsset = ConfigUrl.keyForAsset;
 module.exports.createAlias = ConfigUrl.createAlias;
+module.exports.aliasForFile = ConfigUrl.aliasForFile;

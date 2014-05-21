@@ -1,8 +1,8 @@
-var Path = require('path');
-var Cluster = require('cluster');
-var Async = require('async');
-var Hapi = require('hapi');
-var Utils = require('hoek');
+var Path = require('path'),
+    Cluster = require('cluster'),
+    Async = require('async'),
+    Hapi = require('hapi'),
+    Hoek = require('hoek');
 
 var ErrorHandling = require('./errorHandling');
 var Extensions = require('./extensions');
@@ -19,9 +19,7 @@ var Themes = require('./themes');
 
 var envVal = process.env.NODE_ENV;
 
-function messages(server, tags, data) {
-
-    var serverInfo = server.info;
+function messages(tags, data, server) {
 
     if (tags.error) {
 
@@ -65,72 +63,68 @@ function messages(server, tags, data) {
         return;
     }
 
-    if (tags.start) {
+    if (tags.start && data) {
 
         // Startup & Shutdown messages
         if (envVal === 'production') {
             console.info(
                 "#green{Snack is running...}\
-            \nYour site is now available on %s\
-            \n#grey{Ctrl+C to shut down}",
-                serverInfo.uri
+                \nYour site is now available on %s\
+                \n#grey{Ctrl+C to shut down}",
+                data.uri
             );
 
             // ensure that Snack exits correctly on Ctrl+C
             process.on('SIGINT', function () {
                 console.warn(
                     "\n#red{Snack has shut down}\
-                \nYour site is now offline"
+                     \nYour site is now offline"
                 );
                 process.exit(0);
             });
         } else {
             console.info("#green{Snack is running in %s...}\
-                      \n#grey{Listening on} %s:%s\
-                      \n#grey{Url configured as} %s\
-                      \n#grey{Ctrl+C to shut down}",
-                envVal, serverInfo.host, serverInfo.port, serverInfo.uri);
+                        \n#grey{Listening on} %s:%s\
+                        \n#grey{Url configured as} %s\
+                        \n#grey{Ctrl+C to shut down}",
+                envVal, data.host, data.port, data.uri);
 
             // ensure that Snack exits correctly on Ctrl+C
             process.on('SIGINT', function () {
                 console.warn(
                     "#red{Snack has shutdown}\
-                \nSnack was running for %d seconds",
+                    \nSnack was running for %d seconds",
                     Math.round(process.uptime())
                 );
                 process.exit(0);
             });
         }
+
+        return;
     }
 }
 
-function logging(server) {
+function logging(pack) {
 
-    // This is weird, but pack events also get server events?
-    // NOTE: HAPI docs show signature (tags, [data, timestamp]), but I
-    //       find data in the event object.
-    server.pack.events.on('log', function (event, tags, data) {
-
-        if (tags.start || tags.error || tags.info) {
-            messages(server, tags, event.data);
-        }
+    // Pass good events to the messages function.
+    pack.events.on('log', function (event, tags, data) {
+        messages(tags, event.data, event.server);
     });
 }
 
-function start(server) {
+function start(pack, serverInfo) {
 
-    // Start the server!
-    server.start(function () {
+    // Start the pack!
+    pack.start(function () {
 
         // Log the start.
-        server.log('start');
+        pack.log('start', serverInfo);
     });
 }
 
 function setup(bootstrap) {
 
     // Set up the server and init all modules.
-
     var Config = bootstrap.config;
     var config = Config();
 
@@ -147,79 +141,60 @@ function setup(bootstrap) {
         layout: true
     };
 
-    options.cache = {
+    var cache = {
         engine: 'catbox-redis',
         name: 'snack-app'
     };
 
-    options.cache = Utils.merge(options.cache, config.redis);
+    cache = Hoek.merge(cache, config.redis);
 
-    options = Utils.applyToDefaults(config.server.options, options);
+    options = Hoek.applyToDefaults(config.server.options, options);
 
-    var server = Hapi.createServer(config.server.host, config.server.port, options);
+    var pack = new Hapi.Pack({
+        cache: cache
+    });
+    var server = pack.server(config.server.host, config.server.port, options);
 
     // Set up the server.log listener.
-    logging(server);
+    logging(pack);
 
     server.app.config = Config;
 
     // NOTE: Weird, but necessary to share Snack all around...
     server.pack.app = server.app;
 
-    var init = [{
-        name: 'errorHandling',
-        module: ErrorHandling
-    }, {
-        name: 'storage',
-        module: Storage
-    }, {
-        name: 'services',
-        module: Services
-    }, {
-        name: 'models',
-        module: Models
-    }, {
-        name: 'data',
-        module: Data
-    }, {
-        name: 'permissions',
-        module: Permissions
-    }, {
-        name: 'plugins',
-        module: Plugins
-    }, {
-        name: 'api',
-        module: Api
-    }, {
-        name: 'extensions',
-        module: Extensions
-    }, {
-        name: 'themes',
-        module: Themes
-    }, {
-        name: 'routes',
-        module: Routes
-    }, {
-        name: 'packs',
-        module: Packs
-    }];
+    var initModules = [
+        ErrorHandling,
+        Storage,
+        Services,
+        Models,
+        Permissions,
+        Api,
+        Data,
+        Plugins,
+        Extensions,
+        Themes,
+        Routes,
+        Packs
+    ];
 
-    Async.eachSeries(init, function (item, next) {
+    Async.eachSeries(initModules, function (module, next) {
 
-            item.module.init(server, next);
+            module.init(server, next);
         },
         function (err) {
+
             if (err) {
-                server.log(['error', 'registration'], 'One or more core includes didn\'t load.');
+                pack.log(['error', 'registration'], 'One or more core includes didn\'t load.');
             }
 
-            start(server);
+            start(pack, server.info);
         });
 }
 
-function startServer(bootstrap) {
+function startErUp(bootstrap) {
 
     setup(bootstrap);
 }
 
-module.exports = startServer;
+module.exports = startErUp;

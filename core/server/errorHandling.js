@@ -1,9 +1,8 @@
-var Path = require('path');
-var Http = require('http');
-var Cluster = require('cluster');
-var Hapi = require('hapi');
-var Utils = require('hoek');
-var Boom = Hapi.boom;
+var Path = require('path'),
+    Http = require('http'),
+    Cluster = require('cluster'),
+    Hapi = require('hapi'),
+    Utils = require('hoek');
 
 var internals = {};
 
@@ -42,6 +41,9 @@ internals.responseHandler = function (server) {
 
         var error = response;
 
+        console.error("#red{%s}", error.message);
+        console.debug(error.stack);
+
         if (internals.errorMismatch(error)) {
 
             // Boom unintelligently wraps any error in a 500.
@@ -75,7 +77,7 @@ internals.responseHandler = function (server) {
             message: 'An error has occurred'
         };
 
-        var context = Utils.applyToDefaults(defaults, error.output.payload || {});
+        var context = Hoek.applyToDefaults(defaults, error.output.payload || {});
 
         if (context.statusCode === 404) {
             context.message = 'Page not found.';

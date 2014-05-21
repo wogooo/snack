@@ -31,10 +31,13 @@ internals.settings = function (groupName) {
     return settings;
 };
 
-internals.freshDb = function (snack, done) {
+internals.freshDb = function (options, done) {
 
-    var Snack = snack,
+    var dbVersion = options.dbVersion,
+        pack = options.pack,
+        Snack = pack.app,
         Models = Snack.models,
+        Setting = Models.Setting,
         schema = Snack.services.schema,
         settings = internals.settings(),
         setting,
@@ -52,9 +55,32 @@ internals.freshDb = function (snack, done) {
 
     var addSetting = function (sett) {
 
-        return function addSetting(next) {
-            Models.Setting.create(sett, next);
-        };
+        if (dbVersion && sett.key === 'databaseVersion') {
+
+            return function updateSetting(next) {
+                Setting
+                    .update(sett, { where: { key: sett.key } })
+                    .then(function (setting) {
+                        next();
+                    })
+                    .caught(function (err) {
+                        next(err);
+                    });
+            };
+
+        } else {
+
+            return function addSetting(next) {
+                Setting
+                    .create(sett)
+                    .then(function (setting) {
+                        next();
+                    })
+                    .caught(function (err) {
+                        next(err);
+                    });
+            };
+        }
     };
 
     for (var i in settings) {
@@ -68,25 +94,28 @@ internals.freshDb = function (snack, done) {
 
     Async.series(tasks, function (err) {
 
-        if (err) {
+            if (err) {
 
-            console.error("#red{Something went wrong initializing the database!}");
+                console.error("#red{Something went wrong initializing the database!}");
+                console.error(err);
 
-            Models.Setting.findBy('key', 'databaseVersion', function (err, setting) {
-                setting.value = 'error';
-                setting.save();
-                done(err);
-            });
+                Setting
+                    .update({ value: 'error' }, { where: { key: 'databaseVersion' } })
+                    .then(function () {
+                        done(err);
+                    });
         } else {
 
+            pack.events.emit('permissions.refresh');
             done();
         }
     });
 };
 
-internals.updateDb = function (snack, done) {
+internals.updateDb = function (options, done) {
 
-    var Snack = snack,
+    var pack = options.pack,
+        Snack = pack.app,
         Models = Snack.models,
         schema = Snack.services.schema,
         settings = internals.settings('core'),
@@ -99,13 +128,14 @@ internals.updateDb = function (snack, done) {
     var updateSetting = function (sett) {
 
         return function updateSetting(next) {
-            Models.Setting.findOne({
-                where: {
-                    key: sett.key
-                }
-            }, function (err, setting) {
-                setting.updateAttributes(sett, next);
-            });
+            Models.Setting
+                .update(sett, { key: sett.key })
+                .then(function (setting) {
+                    next();
+                })
+                .caught(function (err) {
+                    next(err);
+                });
         };
     };
 
@@ -116,86 +146,102 @@ internals.updateDb = function (snack, done) {
     Async.series(tasks, done);
 };
 
-exports.init = function (server, next) {
+internals.interactiveInit = function (pack, dbVersion, next) {
 
-    var Snack = server.app,
-        Models = Snack.models,
-        schema = Snack.services.schema,
-        freshDb = internals.freshDb,
+    var freshDb = internals.freshDb,
         updateDb = internals.updateDb,
         inputFor = false;
 
-    var root = {};
-    root.server = server;
-    root.snack = Snack;
+    // Switch behavior based on assumption about setting return value.
 
-    // Really awful test for uninitted db...
-    Models.Setting.findBy('key', 'databaseVersion', function (err, setting) {
+    if (!dbVersion) {
 
-        // If there's an error, or no setting, the assumption is
-        // this hasn't been initted...
-        if (err || !setting || setting.value === 'error') {
+        console.info("#grey{---}\
+                    \n#red{Uninitialized database detected!}\
+                    \nShould I create a new one?\
+                    \n");
 
-            console.info("#grey{---}\
-                        \n#red{Uninitialized database detected!}\
-                        \nShould I create a new one?\
-                        \n");
+        inputFor = 'fresh';
+    }
 
-            inputFor = 'fresh';
-        }
+    if (dbVersion && dbVersion.value === 'error') {
 
-        if (setting && setting.value === 'error') {
+        console.info("#grey{---}\
+                    \n#red{The database appears to have failed to initialize!}\
+                    \nShould I create a new one?\
+                    \n");
 
-            console.info("#grey{---}\
-                        \n#red{The database appears to have failed to initialize!}\
-                        \nShould I create a new one?\
-                        \n");
+        inputFor = 'fresh';
+    }
 
-            inputFor = 'fresh';
-        }
+    if (!inputFor && dbVersion && dbVersion.value !== defaultSettings.core.databaseVersion.value) {
 
-        if (!inputFor && setting && setting.value !== defaultSettings.core.databaseVersion.value) {
+        console.info("#grey{---}\
+                    \n#blue{Database upgrade needed}\
+                    \nShould I proceed?\
+                    \n");
 
-            console.info("#grey{---}\
-                        \n#blue{Database upgrade needed}\
-                        \nShould I proceed?\
-                        \n");
+        inputFor = 'update';
+    }
 
-            inputFor = 'update';
-        }
+    if (inputFor) {
+        Prompt.message = '';
+        Prompt.delimiter = '';
+        Prompt.start();
 
-        if (inputFor) {
+        Prompt.get([{
+            name: 'yesno',
+            description: 'Yes or No:',
+            'default': 'No'
+        }], function (err, decide) {
 
-            Prompt.message = '';
-            Prompt.delimiter = '';
-            Prompt.start();
+            if (err) return next();
 
-            Prompt.get([{
-                name: 'yesno',
-                description: 'Yes or No:',
-                'default': 'No'
-            }], function (err, decide) {
+            if (decide && decide.yesno.search(/yes/i) > -1) {
 
-                if (err) return next();
+                console.info("#grey{Great! Just a minute.}\n");
 
-                if (decide && decide.yesno.search(/yes/i) > -1) {
-
-                    console.info("#grey{Great! Just a minute.}\n");
-
-                    if (inputFor === 'fresh') {
-                        return freshDb(Snack, next);
-                    } else {
-                        return updateDb(Snack, next);
-                    }
+                if (inputFor === 'fresh') {
+                    return freshDb({
+                        pack: pack,
+                        dbVersion: dbVersion
+                    }, next);
+                } else {
+                    return updateDb({
+                        pack: pack,
+                        dbVersion: dbVersion
+                    }, next);
                 }
-
-                next();
-            });
-
-
-        } else {
+            }
 
             next();
-        }
-    });
+        });
+
+    } else {
+
+        next();
+    }
+};
+
+exports.init = function (server, next) {
+
+    var pack = server.pack,
+        Snack = pack.app,
+        Models = Snack.models;
+
+    var Setting = Models.Setting;
+
+    Setting
+        .findOne({
+            key: 'databaseVersion'
+        })
+        .then(function (databaseVersion) {
+
+            internals.interactiveInit(pack, databaseVersion, next);
+        })
+        .catch (function (err) {
+
+            console.error("#red{Something went wrong and the database cannot be initialized!}");
+            next(err);
+        });
 };

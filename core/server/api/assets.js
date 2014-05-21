@@ -1,7 +1,7 @@
-var Path = require('path');
-var Async = require('async');
-var Hapi = require('hapi');
-var Hoek = require('hoek');
+var Path = require('path'),
+    Hapi = require('hapi'),
+    Hoek = require('hoek'),
+    Helpers = require('../helpers').api;
 
 function Assets(options) {
 
@@ -9,384 +9,187 @@ function Assets(options) {
     this.models = options.models;
     this.storage = options.storage;
     this.api = options.api;
+    this.check = options.snack.permissions.check;
 }
 
-Assets.prototype._generateUniqueKey = function (file, done) {
+Assets.prototype.list = function (options, context, done) {
 
-    var self = this,
-        Api = this.api,
-        Config = this.config,
-        retries = 10,
-        assetKey,
-        keyExt,
-        keyBase;
+    var Asset = this.models.Asset;
 
-    // File needs a time to generate a proper asset key
-    file.createdAt = file.createdAt || new Date();
-
-    // Parse, according to user tokens
-    assetKey = Config.keyForAsset(file);
-
-    // Break out pieces necessary for the key finder to increment
-    keyExt = Path.extname(assetKey);
-    keyBase = Path.join(Path.dirname(assetKey), Path.basename(assetKey, keyExt));
-
-    Api.base.findUniqueKey('Asset', keyBase, keyExt, null, function (err, key) {
-
-        if (err) return done(err);
-
-        file.filename = Path.basename(key);
-        file.key = key;
-
-        done();
-    });
-};
-
-Assets.prototype._fileToAsset = function (file, options, done) {
-
-    var Models = this.models,
-        Config = this.config,
-        item = options.item,
-        implicit = options.implicit,
-        asset = options.asset;
-
-    if (asset) {
-
-        // If there is an existing asset, just update it
-        // with new file data
-        asset.updateAttributes(file, function (err, asset) {
-            done(err, asset);
-        });
-
-    } else {
-
-        //* If no asset was provided, create a new one
-
-        // Merge file props onto item properties
-        item = Hoek.merge(item || {}, file);
-
-        // Create the new asset model
-        asset = new Models.Asset(item);
-
-        // Check for valid
-        asset.isValid(function (valid) {
-
-            // Ignore in implicit creation scenario
-            if (!valid && implicit) return done();
-
-            // Save and return newly created asset
-            asset.save(function (err) {
-
-                done(err, asset);
-            });
-        });
+    if (!context.user) {
+        options.where = options.where || {};
+        options.where._deleted_ = false;
     }
+
+    Asset
+        .find(options)
+        .then(function (assetList) {
+
+            done(null, assetList);
+        })
+        .caught(function (err) {
+
+            done(err);
+        });
 };
 
-Assets.prototype.list = function (args, done) {
+Assets.prototype.read = function (options, context, done) {
 
-    var Models = this.models,
-        Api = this.api,
-        query = args.query || {},
-        list = {};
+    var Asset = this.models.Asset;
 
-    var get = Api.base.listParams(query);
+    if (!context.user) {
+        options.where = options.where || {};
+        options.where._deleted_ = false;
+    }
 
-    Models.Asset.all(get, function (err, assets) {
+    Asset
+        .findOne(options)
+        .then(function (asset) {
 
-        if (err) return done(err);
-
-        list = {
-            type: 'assetList',
-            sort: get.order.split(' ')[1].toLowerCase(),
-            order: get.order.split(' ')[0],
-            offset: get.skip,
-            limit: get.limit,
-            count: assets.length,
-            items: assets
-        };
-
-        done(null, list);
-    });
-};
-
-/*
-    Finishing a file creation involves generating or updating
-    an asset, and determining whether the asset is ready to be
-    queued.
-*/
-Assets.prototype._finalizeFile = function (file, options, done) {
-
-    options = options || {};
-
-    var Api = this.api;
-
-    // Merges the file data with an asset
-    this._fileToAsset(file, options, function (err, asset) {
-
-        if (err) return done(err);
-
-        // If storage is set, the asset is considered created
-        // The creation event could be triggered even on asset file
-        // replacement, the assumption being that a demon process
-        // is going to need to do something similar in cases of either
-        // replacement or initial creation.
-        // TODO: consider a replacement flag and an `asset.updated` hook?
-        if (asset.storage) {
-
-            // Queue everything up.
-            Api.base.enqueue(asset, 'asset.created', function (err) {
-
-                done(err, err ? null : asset);
-            });
-
-        } else {
+            if (!asset) {
+                throw Hapi.error.notFound();
+            }
 
             done(null, asset);
-        }
-    });
-};
+        })
+        .caught(function (err) {
 
-/*
-    Stores an incoming file and returns an asset resource.
-    Should eventually accept existing assets, and replace
-    the files that lie behind resources...
-*/
-Assets.prototype.storeFile = function (args, done) {
-
-    var self = this,
-        Models = this.models,
-        Storage = this.storage,
-        headers = args.headers,
-        params = args.params || {},
-        fileStream = args.payload,
-        finalizeOptions;
-
-    if (!fileStream) {
-
-        return done(Hapi.error.badRequest('No file present'));
-    }
-
-    var fileData = {
-        filename: headers['x-file-name'],
-        bytes: headers['x-file-size'],
-        mimetype: headers['content-type'],
-        createdAt: new Date()
-    };
-
-    if (params.id) {
-
-        // Updating an existing asset, get the key and filename
-        Models.Asset.find(params.id, function (err, asset) {
-
-            fileData.key = asset.key;
-            fileData.filename = asset.filename;
-
-            Storage.save(fileStream, fileData, function (err, fileData) {
-
-                if (err) return done(err);
-
-                finalizeOptions = {
-                    asset: asset
-                };
-
-                self._finalizeFile(fileData, finalizeOptions, done);
-            });
+            done(err);
         });
-
-    } else {
-
-        this._generateUniqueKey(fileData, function (err) {
-
-            Storage.save(fileStream, fileData, function (err, fileData) {
-
-                if (err) return done(err);
-
-                self._finalizeFile(fileData, finalizeOptions, done);
-            });
-        });
-    }
 };
 
-/*
-    Create can just create an asset object (provisioning scenario)
-    or it can handle a multipart file upload to do everything at once.
-*/
-Assets.prototype.create = function (args, done) {
+Assets.prototype.create = function (options, context, done) {
 
-    var self = this,
-        Storage = this.storage,
-        payload = args.payload || {},
-        query = args.query || {},
-        implicit = (query.implicit === true),
-        file = payload.file,
-        store;
+    var Asset = this.models.Asset,
+        Check = this.check;
 
-    if (file) {
+    var data = options.payload,
+        user = context.user;
 
-        item = payload;
-        delete item.file;
-
-        if (file.path) {
-            store = true;
-        }
-
-    } else {
-
-        return done(Hapi.error.badRequest('No file uploaded'));
-    }
-
-    var options = {
-        item: item,
-        implicit: implicit
-    };
-
-    this._generateUniqueKey(file, function (err) {
-
-        if (err) return done(err);
-
-        if (store) {
-
-            // Save our files
-            Storage.save(file, function (err, file) {
-
-                // Always returns an array.
-                self._finalizeFile(file, options, done);
-            });
-
-        } else {
-
-            // Just creating an asset object, but the file isn't
-            // yet ready, so don't queue it.
-            self._finalizeFile(file, options, done);
-        }
-    });
-};
-
-Assets.prototype.read = function (args, done) {
-
-    var Models = this.models,
-        Api = this.api;
-
-    var get = Api.base.readParams(args);
-
-    if (!get) {
-
+    if (!data) {
         return done(Hapi.error.badRequest());
     }
 
-    Models.Asset[get.method](get.params, function (err, asset) {
+    Check(user)
+        .create
+        .asset()
+        .bind({})
+        .then(function (allowed) {
 
-        if (err) return done(err);
-
-        if (!asset) {
-            return done(Hapi.error.notFound());
-        }
-
-        Api.base.loadRelations(asset, function (err) {
-            done(err, asset);
-        });
-    });
-};
-
-Assets.prototype.edit = function (args, done) {
-
-    var Models = this.models,
-        Api = this.api,
-        query = args.query,
-        params = args.params,
-        payload = args.payload,
-        clearQueue = false,
-        jobId;
-
-    if (query.clearQueue) {
-        clearQueue = true;
-        jobId = parseInt(query.clearQueue, 10);
-    }
-
-    this.read(args, function (err, asset) {
-        if (err) return done(err);
-        if (!asset) return done(Hapi.error.notFound());
-
-        // Simple version control
-        if (query.version && asset._version_ !== query.version) {
-
-            // Return conflict if version (timestamp) doesn't match
-            return done(Hapi.error.conflict());
-        }
-
-        if (clearQueue) {
-
-            // Pass in the private queue clearing flag
-            asset.__data.clearQueue = jobId;
-        }
-
-        asset.updateAttributes(payload, function (err, asset) {
-
-            if (!clearQueue) {
-
-                Api.base.processRelations(asset, payload, function (err) {
-                    Api.base.enqueue(asset, 'asset.updated', function (err) {
-                        done(err, !err ? asset : null);
-                    });
-                });
-
-            } else {
-
-                done(err, !err ? asset : null);
+            if (!allowed) {
+                throw Hapi.error.unauthorized();
             }
+
+            if (!data.ownedBy) {
+                data.ownedBy = user;
+            }
+
+            return Asset.create(data);
+        })
+        .then(function (asset) {
+
+            this.asset = asset;
+
+            return asset.enqueue('created');
+        })
+        .then(function (job) {
+
+            this.job = job;
+
+            this.asset._queue_.unshift({
+                id: job.id,
+                path: job.path
+            });
+
+            this.asset.save();
+        })
+        .then(function (asset) {
+
+            if (this.job) {
+                this.job.start();
+            }
+
+            done(null, this.asset);
+        })
+        .caught(function (err) {
+
+            done(err);
         });
-    });
 };
 
-Assets.prototype.remove = function (args, done) {
+Assets.prototype.edit = function (options, context, done) {
 
-    var Api = this.api;
-    var Models = this.models;
+    var Asset = this.models.Asset,
+        Check = this.check;
 
-    var query = args.query;
-    var params = args.params;
+    var payload = options.payload,
+        user = context.user;
 
-    Models.Asset.find(params.id, function (err, asset) {
-        if (err) {
-            return done(err);
-        }
+    Check(user)
+        .edit
+        .asset(options.where)
+        .then(function () {
 
-        if (!asset) {
-            return done(Hapi.error.notFound());
-        }
+            return Asset.update(payload, options);
+        })
+        .then(function (asset) {
 
-        if (query.destroy === 'true') {
+            if (!options.clearQueue) {
+                return asset.enqueue('edited');
+            }
 
-            // A true destructive delete
-            asset.destroy(function (err) {
-                Api.base.enqueue(asset, 'asset.destroyed', function (err) {
-                    var results = {
-                        message: 'Destroyed'
-                    };
-                    done(err, results);
-                });
-            });
+            return asset;
+        })
+        .then(function (asset) {
 
-        } else {
+            done(null, asset);
+        })
+        .caught(function (err) {
 
-            // A more commons setting to make it unavailable
-            asset.updateAttributes({
-                _deleted_: true
-            }, function (err) {
-                Api.base.enqueue(asset, 'asset.deleted', function (err) {
-                    var results = {
-                        message: 'Deleted'
-                    };
-                    done(err, results);
-                });
-            });
-        }
-    });
+            done(err);
+        });
+};
+
+Assets.prototype.remove = function (options, context, done) {
+
+    var Asset = this.models.Asset,
+        Check = this.check;
+
+    var user = context.user;
+
+    Check(user)
+        .remove
+        .asset(options.where)
+        .then(function (allowed) {
+
+            if (!allowed) {
+                throw Hapi.error.unauthorized();
+            }
+
+            if (options.destroy) {
+                return Asset.destroy(options);
+            } else {
+                return Asset.update({
+                    _deleted_: true
+                }, options);
+            }
+
+        })
+        .then(function (asset) {
+
+            return asset.enqueue(options.destroy ? 'destroyed' :  'deleted');
+        })
+        .then(function (tag) {
+
+            done(null, options.destroy ? 'destroyed' :  'deleted');
+        })
+        .caught(function (err) {
+
+            done(err);
+        });
 };
 
 module.exports = function (root) {
 
-    var assets = new Assets(root);
-    return assets;
+    return new Assets(root);
 };

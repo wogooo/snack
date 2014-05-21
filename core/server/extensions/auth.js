@@ -26,22 +26,15 @@ internals.Auth.prototype._setup = function () {
     invalid.message = 'Invalid credentials';
 
     Passport.use(new LocalStrategy(function (username, password, done) {
-
         if (username && password) {
-
             self.verifyUser(username, password, function (err, user) {
-
                 if (err) return done(err);
-
                 if (!user) {
                     return done(null, false, invalid);
                 }
-
                 done(null, user);
             });
-
         } else {
-
             done(null, false, invalid);
         }
     }));
@@ -69,70 +62,50 @@ internals.Auth.prototype.upgradeUser = function (request /*, reset, done*/ ) {
     var reset = (arguments.length === 3 ? arguments[1] : null);
     var done = (arguments.length === 3 ? arguments[2] : arguments[1]);
 
-    var user;
-
-    if (request.session && request.session.user) {
-        user = request.session.user;
-    } else {
+    var User = this.models.User,
         user = request.user;
-    }
 
     if (!user || !(user instanceof Object) || !user.id) {
 
         // Without a user / id this user must not be logged in
-        return done(Hapi.error.unauthorized('Not logged in.'));
+        return done(Hapi.error.unauthorized());
     }
 
-    if (user.username && !reset) {
+    User
+        .findOne(user.id)
+        .then(function (user) {
 
-        // Assume already upgraded if a username is set
-        return done(null, user);
-    }
+            if (!user) throw Hapi.error.unauthorized();
 
-    var Models = this.models;
+            // Return the user
+            done(null, user);
+        })
+        .caught(function (err) {
 
-    Models.User.find(user.id, function (err, user) {
-        if (err || !user) return done(Hapi.error.badImplementation('Find user error.'));
-
-        // Don't pass around this big vivified user
-        user = user.toJSON();
-
-        // Store in the session so this doesn't happen over and over
-        if (request.session) {
-            request.session.user = user;
-        }
-
-        // Return the user
-        done(null, user);
-    });
-};
-
-internals.Auth.prototype._findUser = function (emailOrUsername, done) {
-
-    var Models = this.models;
-
-    Models.User.check(emailOrUsername, done);
-};
-
-internals.Auth.prototype.verifyUser = function (usernameOrEmail, password, done) {
-
-    this._findUser(usernameOrEmail, function (err, user) {
-
-        if (err) return done(err);
-        if (!user) return done(null, null);
-
-        Bcrypt.compare(password, user.password, function (err, match) {
-            done(err, match ? user : null);
+            done(err);
         });
-    });
+};
+
+internals.Auth.prototype.verifyUser = function (emailOrUsername, password, done) {
+
+    var User = this.models.User;
+
+    User
+        .check(emailOrUsername, password)
+        .then(function (user) {
+
+            done(null, user);
+        })
+        .caught(function (err) {
+
+            done(err);
+        });
 };
 
 internals.Auth.prototype.authenticate = function (request, reply, options) {
 
-    var options = options || {},
-        Passport = this.passport;
-
-    Passport.authenticate('local', options)(request, reply);
+    options = options || {};
+    this.passport.authenticate('local', options)(request, reply);
 };
 
 /*
@@ -204,17 +177,30 @@ internals.Auth.prototype.getToken = function (user) {
 */
 internals.Auth.prototype.validateToken = function (decodedToken, done) {
 
-    if (!decodedToken || !decodedToken.client_id) return done(null, false);
+    var User = this.models.User;
 
-    // TODO: Temporary
+    if (!decodedToken || !decodedToken.client_id) {
+        return done(null, false);
+    }
 
-    this._findUser(decodedToken.client_id, function (err, user) {
+    var options = {
+        username: decodedToken.client_id
+    };
 
-        if (err) return done(err);
-        if (!user) return done(null, false);
+    User
+        .findOne(options)
+        .then(function (user) {
 
-        return done(null, true, user.toJSON());
-    });
+            if (!user) {
+                done(null, false);
+            } else {
+                done(null, true, user.toJSON());
+            }
+        })
+        .catch(function (err) {
+
+            done(err, false);
+        });
 };
 
 internals.register = function (extensions, next) {

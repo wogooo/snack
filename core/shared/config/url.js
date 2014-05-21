@@ -58,7 +58,7 @@ function createUrl(urlPath, absolute) {
 // Parameters:
 // - post - a json object representing a post
 // - permalinks - a json object containing the permalinks setting
-function urlPathForPost(post, permalinks) {
+function urlPathForStory(post, permalinks) {
     var output = '',
         tags = {
             year: function () {
@@ -149,104 +149,6 @@ function urlPathForApi(api) {
     return urlPath;
 }
 
-function urlPathForAsset(asset, key) {
-    var output = '',
-        tags = {
-            year: function () {
-                return Moment(asset.createdAt).format('YYYY');
-            },
-            month: function () {
-                return Moment(asset.createdAt).format('MM');
-            },
-            day: function () {
-                return Moment(asset.createdAt).format('DD');
-            },
-            filename: function () {
-                return asset.filename.toLowerCase();
-            }
-        };
-
-    output += snackConfig.permalinks.assets;
-
-    // replace tags like :slug or :year with actual values
-    output = output.replace(/(:[a-z]+)/g, function (match) {
-        var tag = match.substr(1);
-        if (tags.hasOwnProperty(tag)) {
-            return tags[tag]();
-        }
-    });
-
-    if (!key) {
-        output = Path.join(snackConfig.paths.assetsRelPath, output);
-    }
-
-    return output;
-}
-
-function _createAlias(model, permalinkPattern) {
-    var output = '',
-        datetime = model.publishedAt || model.createdAt;
-        tokens = {
-            year: function () {
-                return Moment(datetime).format('YYYY');
-            },
-            month: function () {
-                return Moment(datetime).format('MM');
-            },
-            day: function () {
-                return Moment(datetime).format('DD');
-            },
-            type: function () {
-                return model.type;
-            },
-            kind: function () {
-                return model.kind || model.type;
-            },
-            types: function () {
-                return Inflection.pluralize(model.type);
-            },
-            kinds: function () {
-                return Inflection.pluralize(model.kind || model.type);
-            },
-            slug: function () {
-                return Uslug(model.slug || model.title || model.name);
-            },
-            id: function () {
-                return model.id;
-            },
-            filename: function () {
-                return model.filename ? model.filename.toLowerCase() : tokens.slug();
-            },
-            extension: function () {
-                return model.mimetype ? Mime(model.mimetype) : 'html';
-            }
-        };
-
-    output += permalinkPattern;
-
-    // replace tokens like :slug or :year with actual values
-    output = output.replace(/({[a-z]+})/g, function (match) {
-        var token = match.substr(1, match.length-2);
-        if (tokens.hasOwnProperty(token)) {
-            return tokens[token]();
-        }
-    });
-
-    return output;
-}
-
-function createAlias(model) {
-
-    var collection = Inflection.pluralize(model.type);
-    var permalinkPattern = snackConfig.permalinks[collection];
-
-    if (!permalinkPattern) {
-        permalinkPattern = snackConfig.permalinks['default'];
-    }
-
-    return _createAlias(model, permalinkPattern);
-}
-
 // ## urlFor
 // Synchronous url creation for a given context
 // Can generate a url for a named path, given path, or known object (post)
@@ -285,8 +187,8 @@ function urlFor(context, data, absolute) {
         urlPath = context.relativeUrl;
     } else if (typeof context === 'string' && knownObjects.indexOf(context) > -1) {
         // trying to create a url for an object
-        if (context === 'post' && data.post && data.permalinks) {
-            urlPath = urlPathForPost(data.post, data.permalinks);
+        if (context === 'story' && data.story && data.permalinks) {
+            urlPath = urlPathForStory(data.story, data.permalinks);
         } else if (context === 'tag' && data.tag) {
             urlPath = '/tag/' + data.tag.slug + '/';
         } else if (context === 'api' && data.api) {
@@ -326,5 +228,3 @@ function keyForAsset(asset) {
 exports.setConfig = setConfig;
 exports.urlFor = urlFor;
 // module.exports.urlForPost = urlForPost;
-exports.keyForAsset = keyForAsset;
-exports.createAlias = createAlias;

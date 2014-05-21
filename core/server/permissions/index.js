@@ -1,4 +1,4 @@
-var Hapi = require('hapi');
+var Hapi = require('hapi'),
     Capitalize = require('inflection').capitalize,
     Promise = require('bluebird');
 
@@ -17,6 +17,7 @@ internals.CheckResult.prototype._buildActionForHandlers = function (actionForTyp
 
     var self = this,
         Models = this.models,
+        User = Models.User,
         handlers = {};
 
     var handler = function (actionFor) {
@@ -25,13 +26,12 @@ internals.CheckResult.prototype._buildActionForHandlers = function (actionForTyp
 
         return function (modelOrId) {
 
-            return new Promise(function (resolve, reject) {
+                var user = self.user;
 
-                if (!self.user) {
+                if (!user) {
                     throw Hapi.error.unauthorized();
                 }
 
-                var userId = self.user.id;
                 var modelId = null;
 
                 if (modelOrId instanceof Object) {
@@ -40,35 +40,37 @@ internals.CheckResult.prototype._buildActionForHandlers = function (actionForTyp
                     modelId = modelOrId;
                 }
 
-                Models.User.effectivePermissions(userId, function (err, userPermissions) {
+                return User
+                    .effectivePermissions(user)
+                    .then(function (permissions) {
 
-                    if (err) return reject(err);
+                        // Allow for a target model to implement a "Permissable" interface
+                        if (TargetModel && (TargetModel.permissable instanceof Function)) {
 
-                    // Allow for a target model to implement a "Permissable" interface
-                    // if (TargetModel && (TargetModel.permissable instanceof Function)) {
+                            var permissable = {
+                                actionForId: modelId,
+                                action: action,
+                                user: user,
+                                userPermissions: permissions
+                            };
 
-                    //     var permissable = {
-                    //         modelId: modelId,
-                    //         action: action,
-                    //         userId: userId,
-                    //         userPermissions: userPermissions
-                    //     };
-
-                    //     return TargetModel.permissable(permissable, done);
-                    // }
-
-                    var perm;
-                    for (var i in userPermissions) {
-                        perm = userPermissions[i];
-                        if (perm.action === action && perm.actionFor === actionFor) {
-
-                            return resolve(null, true);
+                            return TargetModel.permissable(permissable);
                         }
-                    }
 
-                    resolve(null, false);
-                });
-            });
+                        var perm, p;
+
+                        for (p in permissions) {
+                            perm = permissions[p];
+                            if (perm.action === action && perm.actionFor === actionFor) {
+
+                                if (perm.actionForId && perm.actionForId !== modelId) {
+                                    return false;
+                                }
+
+                                return true;
+                            }
+                        }
+                    });
         };
     };
 
@@ -122,31 +124,35 @@ internals.Permissions.prototype.check = function (user) {
 internals.Permissions.prototype.init = function (done) {
 
     var self = this,
-        Models = this._models,
+        Permission = this._models.Permission,
         actions = {},
         seen = {};
 
-    Models.Permission.all(function (err, permissions) {
+    Permission
+        .find()
+        .then(function (permissions) {
 
-        if (err) return done(err);
+            permissions.forEach(function (perm) {
 
-        permissions.forEach(function (perm) {
+                actions[perm.action] = actions[perm.action] || [];
+                seen[perm.action] = seen[perm.action] || {};
 
-            actions[perm.action] = actions[perm.action] || [];
-            seen[perm.action] = seen[perm.action] || {};
+                if (seen[perm.action][perm.actionFor]) {
+                    return;
+                }
 
-            if (seen[perm.action][perm.actionFor]) {
-                return;
-            }
+                actions[perm.action].push(perm.actionFor);
+                seen[perm.action][perm.actionFor] = true;
+            });
 
-            actions[perm.action].push(perm.actionFor);
-            seen[perm.action][perm.actionFor] = true;
+            self._actions = actions;
+
+            done();
+        })
+        .caught(function (err) {
+
+            done(err);
         });
-
-        self._actions = actions;
-
-        done();
-    });
 };
 
 internals.init = function (server, next) {

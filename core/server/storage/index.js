@@ -1,6 +1,8 @@
-var Path = require('path');
-var Async = require('async');
-var Hapi = require('hapi');
+var Path = require('path'),
+    Async = require('async'),
+    Hapi = require('hapi'),
+    Promise = require('bluebird');
+
 var Config = require('../config');
 
 var PROVIDER = Config().storage;
@@ -58,6 +60,7 @@ exports.init = function (server, done) {
     var _providers = {};
 
     var root = {};
+
     root.server = server;
     root.snack = Snack;
     root.hapi = Hapi;
@@ -102,7 +105,12 @@ exports.init = function (server, done) {
         },
         function (err) {
 
-            Snack.storage = _providers[PROVIDER];
+            Snack.storage = {};
+
+            var provider = _providers[PROVIDER];
+            for (var method in provider) {
+                Snack.storage[method] = Promise.promisify(provider[method]);
+            }
 
             done(err);
         });

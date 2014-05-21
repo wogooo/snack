@@ -1,10 +1,9 @@
 var Hapi = require('hapi'),
     Hoek = require('hoek'),
-    Promise = require('bluebird');
+    Promise = require('bluebird'),
+    Helpers = require('../helpers').api;
 
-var Helpers = require('../helpers').api;
-
-function Tags (options) {
+function Tags(options) {
 
     this.models = options.models;
     this.config = options.config;
@@ -17,12 +16,12 @@ Tags.prototype.list = function (options, context, done) {
     var Models = this.models,
         Tag = Models.Tag;
 
-    Tag.find(options)
-        .bind({})
+    Tag
+        .find(options)
         .then(function (tagList) {
             done(null, tagList);
         })
-        .catch (function (err) {
+        .catch(function (err) {
             done(err);
         });
 };
@@ -32,13 +31,19 @@ Tags.prototype.read = function (options, context, done) {
     var Models = this.models,
         Tag = Models.Tag;
 
-    Tag.findOne(options)
+    Tag
+        .findOne(options)
         .then(function (tag) {
-            if (!tag) return done(Hapi.error.notFound());
+
+            if (!tag) {
+                return done(Hapi.error.notFound());
+            }
+
             done(null, tag);
         })
-        .catch (function (err) {
-            done(Hapi.error.badImplementation(err.message));
+        .catch(function (err) {
+
+            done(err);
         });
 };
 
@@ -46,45 +51,44 @@ Tags.prototype.create = function (options, context, done) {
 
     var Models = this.models,
         Tag = Models.Tag,
-        Alias = Models.Alias,
-        Config = this.config;
+        Check = this.check;
 
-    var payload = options.payload,
+    var data = options.payload,
+        user = context.user,
         implicit = Boolean(options.implicit === true),
         multi,
         tasks = [],
         task;
 
-    if (!payload) {
+    if (!data) {
         return done(Hapi.error.badRequest());
     }
 
     function createTag(item) {
 
         return Tag
-            .create(item)
-            .bind({})
+            .create(data)
             .then(function (tag) {
 
-                this.tag = tag;
-                tagAlias = Config.createAlias(tag);
-                return Alias.createUnique(tagAlias);
-            })
-            .then(function (alias) {
-
-                alias.primary = true;
-                this.tag.aliases = [ alias ];
-                return this.tag.saveAll();
+                return tag.createAlias(null, true);
             })
             .then(function (tag) {
 
-                return this.tag.enqueue('created');
+                return tag.saveAll();
             })
             .catch(function (err) {
 
                 if (err && err.code === 409 && err.rejectedKey) {
-                    return Tag.findOne(err.rejectedKey);
+
+                    return Tag.findOne({
+                        where: {
+                            id: err.rejectedKey
+                        },
+                        include: '*'
+                    });
+
                 } else {
+
                     throw err;
                 }
             });
@@ -109,9 +113,20 @@ Tags.prototype.create = function (options, context, done) {
         tasks.push(task);
     }
 
-    Promise
-        .all(tasks)
-        .then(function(tags) {
+    var createTags = Promise.all(tasks);
+
+    Check(user)
+        .create
+        .tag()
+        .then(function (allowed) {
+
+            if (!allowed) {
+                throw Hapi.error.unauthorized();
+            }
+
+            return createTags;
+        })
+        .then(function (tags) {
 
             done(null, multi ? tags : tags[0]);
         })
@@ -127,13 +142,18 @@ Tags.prototype.edit = function (options, context, done) {
         Tag = Models.Tag,
         Check = this.check;
 
-    var payload = options.payload;
-    var user = context.user;
+    var payload = options.payload,
+        user = context.user;
 
     Check(user)
         .edit
         .tag(options.where)
-        .then(function () {
+        .then(function (allowed) {
+
+            if (!allowed) {
+                throw Hapi.error.unauthorized();
+            }
+
             return Tag.update(payload, options);
         })
         .then(function (tag) {
@@ -141,15 +161,15 @@ Tags.prototype.edit = function (options, context, done) {
             if (!options.clearQueue) {
                 return tag.enqueue('edited');
             }
+
             return tag;
         })
         .then(function (tag) {
 
-            done(null, tag)
+            done(null, tag);
         })
         .catch(function (err) {
 
-            console.log(err);
             done(err);
         });
 
@@ -158,30 +178,38 @@ Tags.prototype.edit = function (options, context, done) {
 Tags.prototype.remove = function (options, context, done) {
 
     var Models = this.models,
-        Tag = Models.Tag;
+        Tag = Models.Tag,
+        Check = this.check;
+
+    var user = context.user;
 
     // Tags are always destroyed.
-    Tag
-        .destroy(options)
+    Check(user)
+        .remove
+        .tag(options.where)
+        .then(function (allowed) {
+
+            if (!allowed) {
+                throw Hapi.error.unauthorized();
+            }
+
+            return Tag.destroy(options);
+        })
         .then(function (tag) {
 
             return tag.enqueue('destroyed');
         })
         .then(function (tag) {
 
-            var results = {
-                message: 'Destroyed'
-            };
-
-            done(null, results);
+            done(null, 'destroyed');
         })
         .catch(function (err) {
+
             done(err);
         });
 };
 
 module.exports = function (root) {
 
-    var tags = new Tags(root);
-    return tags;
+    return new Tags(root);
 };

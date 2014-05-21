@@ -49,7 +49,7 @@
     "snack-search-solr": "0.0.3",
     "jsonwebtoken": "^0.3.0",
     "redis": "^0.10.1",
-    "thinky": "^1.1.0",
+    "thinky": "^1.1.1",
     "bluebird": "^1.2.4"
   },
   "devDependencies": {

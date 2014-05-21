@@ -1,8 +1,6 @@
-var Fs = require('fs');
-var Path = require('path');
-var Async = require('async');
-var Hapi = require('hapi');
-var Boom = Hapi.boom;
+var Fs = require('fs'),
+    Path = require('path'),
+    Hapi = require('hapi');
 
 module.exports = function (route) {
 
@@ -14,39 +12,48 @@ module.exports = function (route) {
     var Auth = Snack.extensions.auth;
 
     // ----------------------
-    // Posts
+    // Stories
 
     server.route({
         method: 'GET',
-        path: '/api/v1/posts.json',
+        path: '/api/v1/stories.json',
+        config: {
+            auth: {
+                strategies: ['token', 'passport-api'],
+                mode: 'try'
+            },
+            description: 'Get a list of stories.',
+            tags: ['api', 'stories', 'list', 'auth-optional']
+        },
         handler: function (request, reply) {
 
-            Api.posts.list(request, function (err, results) {
-                reply(err ? err : results);
-            });
+            Api.requestHandler('stories', 'list', request, reply);
         }
     });
 
     server.route({
         method: 'POST',
-        path: '/api/v1/posts.multipart',
+        path: '/api/v1/stories.multipart',
         config: {
+            auth: {
+                strategies: ['token', 'passport-api']
+            },
             payload: {
                 output: 'file',
                 allow: 'multipart/form-data'
             },
-            handler: function (request, reply) {
+            description: 'Create a new story via multipart/form-data.',
+            tags: ['api', 'stories', 'create', 'auth']
+        },
+        handler: function (request, reply) {
 
-                Api.posts.create(request, function (err, results) {
-                    reply(err ? err : results);
-                });
-            }
+            Api.requestHandler('stories', 'create', request, reply);
         }
     });
 
     server.route({
         method: 'POST',
-        path: '/api/v1/posts.json',
+        path: '/api/v1/stories.json',
         config: {
             auth: {
                 strategies: ['token', 'passport-api']
@@ -54,36 +61,39 @@ module.exports = function (route) {
             payload: {
                 output: 'data',
                 allow: 'application/json'
-            }
+            },
+            description: 'Create a new story via json data.',
+            tags: ['api', 'stories', 'create', 'auth']
         },
         handler: function (request, reply) {
 
-            Api.posts.create(request, function (err, results) {
-                reply(err ? err : results);
-            });
+            Api.requestHandler('stories', 'create', request, reply);
         }
     });
 
     server.route({
         method: 'PUT',
-        path: '/api/v1/posts/{id}.multipart',
+        path: '/api/v1/stories/{id}.multipart',
         config: {
+            auth: {
+                strategies: ['token', 'passport-api']
+            },
             payload: {
                 output: 'file',
                 allow: 'multipart/form-data'
             },
-            handler: function (request, reply) {
+            description: 'Edit a story via multipart/form-data.',
+            tags: ['api', 'stories', 'edit', 'auth']
+        },
+        handler: function (request, reply) {
 
-                Api.posts.edit(request, function (err, results) {
-                    reply(err ? err : results);
-                });
-            }
+            Api.requestHandler('stories', 'edit', request, reply);
         }
     });
 
     server.route({
         method: 'PUT',
-        path: '/api/v1/posts/{id}.json',
+        path: '/api/v1/stories/{id}.json',
         config: {
             auth: {
                 strategies: ['token', 'passport-api']
@@ -91,43 +101,48 @@ module.exports = function (route) {
             payload: {
                 output: 'data',
                 allow: 'application/json'
-            }
+            },
+            description: 'Edit a story via json data.',
+            tags: ['api', 'stories', 'create', 'auth']
         },
         handler: function (request, reply) {
 
-            Api.posts.edit(request, function (err, results) {
-                reply(err ? err : results);
-            });
+            Api.requestHandler('stories', 'edit', request, reply);
         }
     });
 
     server.route({
         method: 'GET',
-        path: '/api/v1/posts/{id}.json',
+        path: '/api/v1/stories/{id}.json',
+        config: {
+            auth: {
+                strategies: ['token', 'passport-api'],
+                mode: 'try'
+            },
+            description: 'Read a story.',
+            tags: ['api', 'stories', 'read', 'auth-optional']
+        },
         handler: function (request, reply) {
 
-            Api.posts.read(request, function (err, results) {
-                reply(err ? err : results);
-            });
+            Api.requestHandler('stories', 'read', request, reply);
         }
     });
 
     server.route({
         method: 'DELETE',
-        path: '/api/v1/posts/{id}.json',
+        path: '/api/v1/stories/{id}.json',
         config: {
             auth: {
                 strategies: ['token', 'passport-api']
-            }
+            },
+            description: 'Remove a story.',
+            tags: ['api', 'stories', 'remove', 'auth']
         },
         handler: function (request, reply) {
 
-            Api.posts.remove(request, function (err, results) {
-                reply(err ? err : results);
-            });
+            Api.requestHandler('stories', 'remove', request, reply);
         }
     });
-
 
     // ----------------------
     // Files
@@ -137,15 +152,18 @@ module.exports = function (route) {
         method: 'POST',
         path: '/api/v1/files.file',
         config: {
+            auth: {
+                strategies: ['token', 'passport-api']
+            },
             payload: {
                 output: 'stream'
             },
-            handler: function (request, reply) {
+            description: 'Store a file to the configured filesystem and create a new asset.',
+            tags: ['api', 'files', 'store', 'auth']
+        },
+        handler: function (request, reply) {
 
-                Api.assets.storeFile(request, function (err, results) {
-                    reply(err ? err : results);
-                });
-            }
+            Api.requestHandler('files', 'store', request, reply);
         }
     });
 
@@ -153,22 +171,41 @@ module.exports = function (route) {
         method: 'PUT',
         path: '/api/v1/files/{id}.file',
         config: {
+            auth: {
+                strategies: ['token', 'passport-api']
+            },
             payload: {
                 output: 'stream'
             },
-            handler: function (request, reply) {
+            description: 'Store a file to the configured filesystem and update an existing asset.',
+            tags: ['api', 'files', 'store', 'auth']
+        },
+        handler: function (request, reply) {
 
-                Api.assets.storeFile(request, function (err, results) {
-                    reply(err ? err : results);
-                });
-            }
+            Api.requestHandler('files', 'store', request, reply);
         }
     });
 
     // ----------------------
     // Assets
 
-    // Handle multipart uploads
+    server.route({
+        method: 'GET',
+        path: '/api/v1/assets.json',
+        config: {
+            auth: {
+                strategies: ['token', 'passport-api'],
+                mode: 'try'
+            },
+            description: 'List all assets.',
+            tags: ['api', 'assets', 'list', 'auth-optional']
+        },
+        handler: function (request, reply) {
+
+            Api.requestHandler('assets', 'list', request, reply);
+        }
+    });
+
     server.route({
         method: 'POST',
         path: '/api/v1/assets.multipart',
@@ -177,30 +214,52 @@ module.exports = function (route) {
                 output: 'file',
                 allow: 'multipart/form-data'
             },
-            handler: function (request, reply) {
+            auth: {
+                strategies: ['token', 'passport-api'],
+            },
+            description: 'Create a new asset.',
+            tags: ['api', 'assets', 'list', 'auth', 'multipart']
+        },
+        handler: function (request, reply) {
 
-                Api.assets.create(request, function (err, results) {
-                    reply(err ? err : results);
-                });
-            }
+            Api.requestHandler('assets', 'create', request, reply);
         }
     });
 
-    // Handle JSON asset provisioning
     server.route({
         method: 'POST',
         path: '/api/v1/assets.json',
         config: {
             payload: {
                 output: 'data',
-                allow: ['application/json']
+                allow: 'application/json'
             },
-            handler: function (request, reply) {
+            auth: {
+                strategies: ['token', 'passport-api'],
+            },
+            description: 'Create a new asset.',
+            tags: ['api', 'assets', 'list', 'auth']
+        },
+        handler: function (request, reply) {
 
-                Api.assets.create(request, function (err, results) {
-                    reply(err ? err : results);
-                });
-            }
+            Api.requestHandler('assets', 'create', request, reply);
+        }
+    });
+
+    server.route({
+        method: 'GET',
+        path: '/api/v1/assets/{id}.json',
+        config: {
+            auth: {
+                strategies: ['token', 'passport-api'],
+                mode: 'try'
+            },
+            description: 'Read a single asset by id.',
+            tags: ['api', 'assets', 'read', 'auth-optional']
+        },
+        handler: function (request, reply) {
+
+            Api.requestHandler('assets', 'read', request, reply);
         }
     });
 
@@ -212,12 +271,15 @@ module.exports = function (route) {
                 output: 'file',
                 allow: 'multipart/form-data'
             },
-            handler: function (request, reply) {
+            auth: {
+                strategies: ['token', 'passport-api']
+            },
+            description: 'Edit an existing asset.',
+            tags: ['api', 'assets', 'edit', 'auth', 'multipart']
+        },
+        handler: function (request, reply) {
 
-                Api.assets.edit(request, function (err, results) {
-                    reply(err ? err : results);
-                });
-            }
+            Api.requestHandler('assets', 'edit', request, reply);
         }
     });
 
@@ -227,47 +289,33 @@ module.exports = function (route) {
         config: {
             payload: {
                 output: 'data',
-                allow: ['application/json']
+                allow: 'application/json'
             },
-            handler: function (request, reply) {
+            auth: {
+                strategies: ['token', 'passport-api']
+            },
+            description: 'Edit an existing asset.',
+            tags: ['api', 'assets', 'edit', 'auth']
+        },
+        handler: function (request, reply) {
 
-                Api.assets.edit(request, function (err, results) {
-                    reply(err ? err : results);
-                });
-            }
+            Api.requestHandler('assets', 'edit', request, reply);
         }
     });
 
     server.route({
         method: 'DELETE',
         path: '/api/v1/assets/{id}.json',
+        config: {
+            auth: {
+                strategies: ['token', 'passport-api']
+            },
+            description: 'Remove an existing asset.',
+            tags: ['api', 'assets', 'remove', 'auth']
+        },
         handler: function (request, reply) {
 
-            Api.assets.remove(request, function (err) {
-                reply(err ? err : results);
-            });
-        }
-    });
-
-    server.route({
-        method: 'GET',
-        path: '/api/v1/assets/{id}.json',
-        handler: function (request, reply) {
-
-            Api.assets.read(request, function (err, results) {
-                reply(err ? err : results);
-            });
-        }
-    });
-
-    server.route({
-        method: 'GET',
-        path: '/api/v1/assets.json',
-        handler: function (request, reply) {
-
-            Api.assets.list(request, function (err, results) {
-                reply(err ? err : results);
-            });
+            Api.requestHandler('assets', 'remove', request, reply);
         }
     });
 
@@ -292,7 +340,10 @@ module.exports = function (route) {
         path: '/api/v1/tags.json',
         config: {
             auth: {
-                strategies: ['token', 'passport-api'],
+                strategies: ['token', 'passport-api']
+            },
+            payload: {
+                allow: ['application/json']
             },
             description: 'Creates a new tag, or several tags if `items` array is used.',
             tags: ['api', 'tags', 'create', 'auth']
@@ -321,8 +372,11 @@ module.exports = function (route) {
         path: '/api/v1/tags/{id}.json',
         config: {
             auth: {
-                strategies: ['token', 'passport-api'],
-                mode: 'try'
+                strategies: ['token', 'passport-api']
+                // mode: 'try'
+            },
+            payload: {
+                allow: ['application/json']
             },
             description: 'Edit an existing tag by id.',
             tags: ['api', 'tags', 'edit', 'auth']
@@ -338,8 +392,7 @@ module.exports = function (route) {
         path: '/api/v1/tags/{id}.json',
         config: {
             auth: {
-                strategies: ['token', 'passport-api'],
-                mode: 'try'
+                strategies: ['token', 'passport-api']
             },
             description: 'Remove an existing tag by id.',
             tags: ['api', 'tags', 'remove', 'auth']
@@ -354,6 +407,19 @@ module.exports = function (route) {
     // Users
 
     server.route({
+        method: 'GET',
+        path: '/api/v1/users.json',
+        config: {
+            description: 'Get a list of users.',
+            tags: ['api', 'users', 'list']
+        },
+        handler: function (request, reply) {
+
+            Api.requestHandler('users', 'list', request, reply);
+        }
+    });
+
+    server.route({
         method: 'POST',
         path: '/api/v1/users.json',
         config: {
@@ -363,12 +429,25 @@ module.exports = function (route) {
             payload: {
                 allow: ['application/json']
             },
-            handler: function (request, reply) {
+            description: 'Create a new user.',
+            tags: ['api', 'users', 'create', 'auth']
+        },
+        handler: function (request, reply) {
 
-                Api.users.create(request, function (err, results) {
-                    reply(err ? err : results);
-                });
-            }
+            Api.requestHandler('users', 'create', request, reply);
+        }
+    });
+
+    server.route({
+        method: 'GET',
+        path: '/api/v1/users/{id}.json',
+        config: {
+            description: 'Get a single user by id.',
+            tags: ['api', 'users', 'read']
+        },
+        handler: function (request, reply) {
+
+            Api.requestHandler('users', 'read', request, reply);
         }
     });
 
@@ -382,38 +461,12 @@ module.exports = function (route) {
             payload: {
                 allow: ['application/json']
             },
-            handler: function (request, reply) {
+            description: 'Edit an existing user.',
+            tags: ['api', 'users', 'edit', 'auth']
+        },
+        handler: function (request, reply) {
 
-                Api.users.edit(request, function (err, results) {
-                    reply(err ? err : results);
-                });
-            }
-        }
-    });
-
-    server.route({
-        method: 'GET',
-        path: '/api/v1/users.json',
-        config: {
-            handler: function (request, reply) {
-
-                Api.users.list(request, function (err, results) {
-                    reply(err ? err : results);
-                });
-            }
-        }
-    });
-
-    server.route({
-        method: 'GET',
-        path: '/api/v1/users/{id}.json',
-        config: {
-            handler: function (request, reply) {
-
-                Api.users.read(request, function (err, results) {
-                    reply(err ? err : results);
-                });
-            }
+            Api.requestHandler('users', 'edit', request, reply);
         }
     });
 
@@ -421,12 +474,15 @@ module.exports = function (route) {
         method: 'DELETE',
         path: '/api/v1/users/{id}.json',
         config: {
-            handler: function (request, reply) {
+            auth: {
+                strategies: ['token', 'passport-api']
+            },
+            description: 'Remove a single user by id.',
+            tags: ['api', 'users', 'remove', 'auth']
+        },
+        handler: function (request, reply) {
 
-                Api.users.remove(request, function (err, results) {
-                    reply(err ? err : results);
-                });
-            }
+            Api.requestHandler('users', 'remove', request, reply);
         }
     });
 
@@ -441,6 +497,92 @@ module.exports = function (route) {
                     reply(err ? err : user);
                 });
             }
+        }
+    });
+
+    // ----------------------
+    // Aliases
+
+    server.route({
+        method: 'GET',
+        path: '/api/v1/aliases.json',
+        config: {
+            auth: {
+                strategies: ['token', 'passport-api']
+            },
+            description: 'Get a list of aliases.',
+            tags: ['api', 'aliases', 'list']
+        },
+        handler: function (request, reply) {
+
+            Api.requestHandler('aliases', 'list', request, reply);
+        }
+    });
+
+    server.route({
+        method: 'POST',
+        path: '/api/v1/aliases.json',
+        config: {
+            auth: {
+                strategies: ['token', 'passport-api']
+            },
+            payload: {
+                allow: 'application/json'
+            },
+            description: 'Create a new alias.',
+            tags: ['api', 'aliases', 'create', 'auth']
+        },
+        handler: function (request, reply) {
+
+            Api.requestHandler('aliases', 'create', request, reply);
+        }
+    });
+
+    server.route({
+        method: 'GET',
+        path: '/api/v1/aliases/{id}.json',
+        config: {
+            description: 'Get a single alias by id.',
+            tags: ['api', 'aliases', 'read']
+        },
+        handler: function (request, reply) {
+
+            Api.requestHandler('aliases', 'read', request, reply);
+        }
+    });
+
+    server.route({
+        method: 'PUT',
+        path: '/api/v1/aliases/{id}.json',
+        config: {
+            auth: {
+                strategies: ['token', 'passport-api']
+            },
+            payload: {
+                allow: 'application/json'
+            },
+            description: 'Edit an existing alias.',
+            tags: ['api', 'aliases', 'edit', 'auth']
+        },
+        handler: function (request, reply) {
+
+            Api.requestHandler('aliases', 'edit', request, reply);
+        }
+    });
+
+    server.route({
+        method: 'DELETE',
+        path: '/api/v1/aliases/{id}.json',
+        config: {
+            auth: {
+                strategies: ['token', 'passport-api']
+            },
+            description: 'Remove a single alias by id.',
+            tags: ['api', 'aliases', 'remove', 'auth']
+        },
+        handler: function (request, reply) {
+
+            Api.requestHandler('aliases', 'remove', request, reply);
         }
     });
 

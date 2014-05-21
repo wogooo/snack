@@ -1,17 +1,20 @@
-var Hapi = require('hapi');
-var Helpers = require('../helpers').api;
+var Hapi = require('hapi'),
+    Promise = require('bluebird'),
+    Helpers = require('../helpers').api;
 
 var requires = [
+    // 'aliases',
     'assets',
-    'base',
-    'posts',
+    'files',
+    'stories',
     'tags',
     'users'
 ];
 
 exports.init = function (server, next) {
 
-    var Snack = server.app;
+    var Snack = server.app,
+        User = Snack.models.User;
 
     var root = {};
 
@@ -31,14 +34,48 @@ exports.init = function (server, next) {
 
     Snack.api.requestHandler = function (collection, method, request, reply) {
 
-        var options = Helpers.requestHandler(method, request) || {};
-        var context = request;
+        var options = Helpers.requestHandler(method, request) || {},
+            credentials = request.user || request.auth.credentials,
+            context = {},
+            promise;
 
-        context.user = context.user || context.auth.credentials;
+        if (credentials) {
+            promise = User.get(credentials.id).run();
+        } else {
+            promise = Promise.resolve();
+        }
 
-        Snack.api[collection][method](options, context, function (err, results) {
-            reply(err ? err : results);
-        });
+        promise
+            .then(function (user) {
+
+                context.user = user;
+
+                Snack.api[collection][method](options, context, function (err, results) {
+
+                    if (err) return reply(err);
+
+                    if (method === 'remove') {
+
+                        if (results === 'destroyed') {
+                            return reply().code(204);
+                        }
+
+                        return reply().code(202);
+                    }
+
+                    if (method === 'create' || method === 'store') {
+
+                        return reply(results).code(201);
+                    }
+
+                    if (method === 'edit') {
+
+                        return reply(results).code(202);
+                    }
+
+                    reply(results);
+                });
+            });
     };
 
     next();

@@ -1,16 +1,20 @@
-var Hapi = require('hapi'),
-    Hoek = require('hoek'),
-    Promise = require('bluebird');
+var Hoek = require('hoek'),
+    Common = require('../common');
+
+for (var method in Common) {
+    exports[method] = Common[method];
+}
 
 var internals = {};
 
-internals._requestToList = function (request) {
+internals.requestToList = function (request) {
 
     var params = request.params,
         query = request.query;
 
     var options = {
-        total: true
+        total: true,
+        format: true
     };
 
     var keys, key;
@@ -50,7 +54,7 @@ internals._requestToList = function (request) {
         filters = query.filters.split(',');
         for (var f in filters) {
             filter = filters[f];
-            var flt = filter.split('|');
+            flt = filter.split('|');
             if (flt.length === 2) {
                 options.where[flt[0]] = flt[1];
             } else if (flt.length === 3) {
@@ -97,12 +101,26 @@ internals._requestToList = function (request) {
                 options.include[includes[i]] = true;
             }
         }
+
+    } else {
+
+        options.include = false;
+    }
+
+    if (query.hasOwnProperty('format')) {
+
+        options.format = !(query.format === 'false');
+    }
+
+    if (!options.format) {
+
+        options.total = false;
     }
 
     return options;
 };
 
-internals._requestToRead = function (request) {
+internals.requestToRead = function (request) {
 
     var params = request.params,
         query = request.query;
@@ -119,22 +137,22 @@ internals._requestToRead = function (request) {
 
             if (p === 'id') {
 
-                options.where = options.where || {};
-
                 if (param === 'bykey' && query.key && query[query.key]) {
 
                     // EXAMPLE: api/v1/posts/bykey?key=path&path=foo/bar
+                    options.where = options.where || {};
                     options.where[query.key] = query[query.key];
 
                 } else if (param === 'byalias' && query.alias) {
 
                     options.through = {};
                     options.through.aliases = {
-                        id: query.alias
+                        key: query.alias
                     };
 
                 } else {
 
+                    options.where = options.where || {};
                     options.where.id = param;
                 }
             }
@@ -154,19 +172,21 @@ internals._requestToRead = function (request) {
                 options.include[includes[i]] = true;
             }
         }
+
+    } else {
+
+        options.include = '*';
     }
 
     return options;
 };
 
-internals._requestToCreate = function (request) {
+internals.requestToCreate = function (request) {
 
-    var payload = request.payload,
-        headers = request.headers;
+    var query = request.query,
+        payload = request.payload;
 
     var options = {};
-
-    options = internals._requestToRead(request);
 
     if (payload) {
         options.payload = payload;
@@ -175,7 +195,7 @@ internals._requestToCreate = function (request) {
     return options;
 };
 
-internals._requestToEdit = function (request) {
+internals.requestToEdit = function (request) {
 
     var payload = request.payload,
         headers = request.headers,
@@ -183,7 +203,7 @@ internals._requestToEdit = function (request) {
 
     var options = {};
 
-    options = internals._requestToRead(request);
+    options = internals.requestToRead(request);
 
     if (payload) {
         options.payload = payload;
@@ -191,25 +211,33 @@ internals._requestToEdit = function (request) {
 
     if (query.clearQueue) {
         options.clearQueue = true;
-        options.jobId = parseInt(query.clearQueue, 10);
+        options.jobId = +query.clearQueue;
     }
 
     if (query.version) {
         options.version = version;
     }
 
-    options.checkDirty = ['name', 'description'];
+    if (query.finalize === 'true') {
+        options.finalize = true;
+    }
+
+    if (query.checkDirty) {
+        options.checkDirty = query.checkDirty.split(',');
+    }  else {
+        options.checkDirty = ['name', 'description'];
+    }
 
     return options;
 };
 
-internals._requestToRemove = function (request) {
+internals.requestToRemove = function (request) {
 
     var query = request.query;
 
     var options = {};
 
-    options = internals._requestToRead(request);
+    options = internals.requestToRead(request);
 
     if (query.destroy === 'true' || query.destroy === '1') {
         options.destroy = true;
@@ -218,14 +246,14 @@ internals._requestToRemove = function (request) {
     return options;
 };
 
-internals._requestToStore = function (request) {
+internals.requestToStore = function (request) {
 
     var headers = request.headers,
         payload = request.payload;
 
     var options = {};
 
-    options = internals._requestToRead(request);
+    options = internals.requestToRead(request);
 
     if (payload) {
         options.payload = payload;
@@ -239,11 +267,15 @@ internals._requestToStore = function (request) {
 
         if (headers['x-file-size']) {
             options.file = options.file || {};
-            options.file.bytes = headers['x-file-size'];
+            options.file.bytes = +headers['x-file-size'];
         }
 
         if (headers['content-type'] && options.file) {
             options.file.mimetype = headers['content-type'];
+        }
+
+        if (options.file) {
+            options.file.createdAt = new Date();
         }
     }
 
@@ -254,32 +286,29 @@ internals._requestToStore = function (request) {
     Valid API methods here:
     list, read, create, edit, remove, store
 */
-
-internals.requestHandler = function (method, request) {
+exports.requestHandler = function (method, request) {
 
     if (method === 'list') {
-        return internals._requestToList(request);
+        return internals.requestToList(request);
     }
 
     if (method === 'read') {
-        return internals._requestToRead(request);
+        return internals.requestToRead(request);
     }
 
     if (method === 'create') {
-        return internals._requestToCreate(request);
+        return internals.requestToCreate(request);
     }
 
     if (method === 'edit') {
-        return internals._requestToEdit(request);
+        return internals.requestToEdit(request);
     }
 
     if (method === 'remove') {
-        return internals._requestToRemove(request);
+        return internals.requestToRemove(request);
     }
 
     if (method === 'store') {
-        return internals._requestToStore(request);
+        return internals.requestToStore(request);
     }
 };
-
-module.exports = internals;

@@ -1,6 +1,6 @@
-var Async = require('async');
-var Hapi = require('hapi');
-var Hoek = require('hoek');
+var Hapi = require('hapi'),
+    Hoek = require('hoek'),
+    Helpers = require('../helpers').api;
 
 var internals = {};
 
@@ -9,172 +9,150 @@ function Users(options) {
     this.server = options.server;
     this.models = options.models;
     this.config = options.config;
-    this.api = options.api;
-    this.hooks = options.config().hooks;
+    this.check = options.snack.permissions.check;
 }
 
-Users.prototype.list = function (args, done) {
+Users.prototype.list = function (options, context, done) {
 
     var Models = this.models,
-        Api = this.api,
-        query = args.query,
-        options = query,
-        list;
+        User = Models.User;
 
-    options.modelName = 'User';
-    var get = Api.base.listParams(options);
-    var where = Hoek.clone(get.where);
+    User.find(options)
+        .then(function (userList) {
 
-    Models.User.all(get, function (err, users) {
+            done(null, userList);
+        })
+        .caught(function (err) {
 
-        if (err) return done(err);
-
-        Models.User.count(where, function (err, count) {
-
-            if (err) return done(err);
-
-            list = {
-                type: 'userList',
-                sort: get.order.split(' ')[1].toLowerCase(),
-                order: get.order.split(' ')[0],
-                offset: get.skip,
-                limit: get.limit,
-                total: count,
-                count: users.length,
-                items: users
-            };
-
-            done(null, list);
+            done(err);
         });
-    });
 };
 
-Users.prototype.create = function (args, done) {
+Users.prototype.read = function (options, context, done) {
 
     var Models = this.models,
-        Api = this.api,
-        payload = args.payload;
+        User = Models.User;
 
-    var user = new Models.User(payload);
+    User.findOne(options)
+        .then(function (user) {
 
-    user.save(function (err) {
+            if (!user) {
+                throw Hapi.error.notFound();
+            }
 
-        if (err) return done(err);
+            done(null, user);
+        })
+        .caught(function (err) {
 
-        Api.base.processRelations(user, null, function (err) {
-
-            Api.base.enqueue(user, 'user.created', function (err) {
-
-                done(err, user);
-            });
+            done(err);
         });
-    });
 };
 
-Users.prototype.read = function (args, done) {
+Users.prototype.create = function (options, context, done) {
 
     var Models = this.models,
-        Api = this.api;
+        User = Models.User,
+        Check = this.check;
 
-    var get = Api.base.readParams(args);
+    var data = options.payload,
+        user = context.user;
 
-    if (!get) {
-
+    if (!data) {
         return done(Hapi.error.badRequest());
     }
 
-    Models.User[get.method](get.params, function (err, user) {
+    Check(user)
+        .create
+        .user()
+        .then(function (allowed) {
 
-        if (err) return done(Hapi.error.badImplementation(err.message));
-        if (!user) return done(Hapi.error.notFound());
-
-        Api.base.loadRelations(user, get.relations, function (err) {
-            done(err, err ? null : user);
-        });
-    });
-};
-
-Users.prototype.edit = function (args, done) {
-
-    var Models = this.models,
-        Api = this.api,
-        query = args.query,
-        version = query.version,
-        params = args.params,
-        payload = args.payload,
-        clearQueue = false,
-        jobId;
-
-    if (query.clearQueue) {
-        clearQueue = true;
-        jobId = parseInt(query.clearQueue, 10);
-    }
-
-    Models.User.find(params.id, function (err, user) {
-
-        if (err) return done(err);
-
-        if (!user) {
-            return done(Hapi.error.notFound());
-        }
-
-        // Simple version control
-        if (version && user._version_ !== version) {
-
-            // Return conflict if version (timestamp) doesn't match
-            return done(Hapi.error.conflict());
-        }
-
-        if (clearQueue) {
-
-            // Pass in the private queue clearing flag
-            user.__data.clearQueue = jobId;
-        }
-
-        user.updateAttributes(payload, function (err, user) {
-
-            if (!clearQueue) {
-
-                Api.base.processRelations(user, payload, function (err) {
-
-                    Api.base.enqueue(user, 'user.updated', function (err) {
-                        done(err, !err ? user : null);
-                    });
-                });
-
-            } else {
-
-                done(err, !err ? user : null);
+            if (!allowed) {
+                throw Hapi.error.unauthorized();
             }
+
+            return User.create(data, { upsert: true });
+        })
+        .then(function (user) {
+
+            return user.enqueue('created');
+        })
+        .then(function (user) {
+
+            done(null, user);
+        })
+        .caught(function (err) {
+
+            done(err);
         });
-    });
 };
 
-Users.prototype.remove = function (args, done) {
+Users.prototype.edit = function (options, context, done) {
 
     var Models = this.models,
-        Api = this.api,
-        query = args.query,
-        params = args.params;
+        User = Models.User,
+        Check = this.check;
 
-    Models.User.find(params.id, function (err, user) {
+    var data = options.payload,
+        user = context.user;
 
-        if (err) return done(err);
+    Check(user)
+        .edit
+        .user(options.where)
+        .then(function () {
 
-        if (!user) {
-            return done(Hapi.error.notFound());
-        }
+            return User.update(data, options);
+        })
+        .then(function (user) {
 
-        // A true destructive delete
-        user.destroy(function (err) {
-            Api.base.enqueue(user, 'user.destroyed', function (err) {
-                var results = {
-                    message: 'Destroyed'
-                };
-                done(err, results);
-            });
+            if (!options.clearQueue) {
+                return user.enqueue('edited');
+            }
+
+            return user;
+        })
+        .then(function (user) {
+
+            done(null, user);
+        })
+        .caught(function (err) {
+
+            done(err);
         });
-    });
+
+};
+
+Users.prototype.remove = function (options, context, done) {
+
+    var Models = this.models,
+        User = Models.User,
+        Check = this.check;
+
+    var user = context.user;
+
+    // Users are always destroyed.
+    Check(user)
+        .remove
+        .user(options.where)
+        .then(function (allowed) {
+
+            if (!allowed) {
+                throw Hapi.error.unauthorized();
+            }
+
+            return User.destroy(options);
+        })
+        .then(function (user) {
+
+            return user.enqueue('destroyed');
+        })
+        .then(function (user) {
+
+            done(null, 'destroyed');
+        })
+        .caught(function (err) {
+
+            done(err);
+        });
 };
 
 module.exports = function (root) {

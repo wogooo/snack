@@ -1,11 +1,10 @@
 var Hapi = require('hapi'),
-    Async = require('async'),
     Promise = require('bluebird');
 
 function Enqueue(options) {
 
     this.server = options.server;
-    this.config = options.config;
+    this.config = options.server.app.config;
 }
 
 Enqueue.prototype._apiEndpoint = function (type, id) {
@@ -48,7 +47,7 @@ Enqueue.prototype._enqueue = function (hook, item, done) {
 
     var self = this;
 
-    var Server = this.server;
+    var server = this.server;
     var Config = this.config;
 
     var endpoint = this._apiEndpoint(item.type, item.id);
@@ -75,7 +74,7 @@ Enqueue.prototype._enqueue = function (hook, item, done) {
         task.data.dirty = JSON.stringify(item.dirty);
     }
 
-    Server.methods.queue('createJob', task, function (err, job) {
+    server.methods.queue('createJob', task, function (err, job) {
 
         if (err) return done(err);
 
@@ -96,27 +95,29 @@ Enqueue.prototype._enqueue = function (hook, item, done) {
     });
 };
 
-Enqueue.prototype._enqueueItem = function (model, hook, next) {
+Enqueue.prototype._enqueueItem = function (doc, hook, next) {
 
     var destroyed = false;
 
     var queueItem = {
-        type: model.type,
-        id: model.id,
+        type: doc.type,
+        id: doc.id,
         cleanup: true
     };
 
-    if (model.__dirty) {
+    var dirty = doc.getPrivate('dirty');
+
+    if (dirty) {
 
         // Check private data for dirty fields
-        queueItem.dirty = model.__dirty;;
+        queueItem.dirty = dirty;
     }
 
-    if (hook.search('.destroyed') > -1) {
+    if (hook.search('destroyed') > -1) {
 
-        // When destroying, embed the model and no
+        // When destroying, embed the doc and no
         // cleanup required.
-        queueItem.obj = model;
+        queueItem.obj = doc;
         queueItem.cleanup = false;
         destroyed = true;
     }
@@ -125,62 +126,31 @@ Enqueue.prototype._enqueueItem = function (model, hook, next) {
 
         if (err) return next(err);
 
-        if (job && destroyed) {
-            queued.start();
-            return next();
-        }
-
-        // Job is queued, and in delayed state
-        if (job) {
-
-            // Place latest queue item at top, for easy reference
-            model._queue_.unshift({
-                id: job.id,
-                path: job.path
-            });
-
-            next(null, job);
-
-            // Persist to db
-            model.save()
-                .then(function () {
-
-                    // Finally start the job
-                    job.start();
-                    next();
-                })
-                .catch(function (err) {
-                    next(err);
-                });
-
-            return;
-        }
-
-        next();
+        next(null, job);
     });
 };
 
-Enqueue.prototype.add =  function (model, event) {
+Enqueue.prototype.add =  function (doc, event) {
 
     var self = this,
         Config = this.config,
         hooks = Config().hooks,
-        hook = model.type + '.' + event;
+        hook = doc.type + '.' + event;
 
     if (!hooks[hook]) {
 
         // This hook is not enabled.
-        return Promise.resolve(model);
+        return Promise.resolve();
     }
 
     var promise = new Promise(function (resolve, reject) {
 
-        self._enqueueItem(model, hook, function (err) {
+        self._enqueueItem(doc, hook, function (err, job) {
 
             if (err) {
                 reject(err);
             } else {
-                resolve(model);
+                resolve(job);
             }
         });
     });

@@ -1,16 +1,20 @@
-var Async = require('async');
-var Prompt = require('prompt');
+var Hoek = require('hoek'),
+    Async = require('async'),
+    Promise = require('bluebird'),
+    Prompt = require('prompt'),
+    GeneratePassword = require('../../helpers').models.generateRandomPassword;
 
 var internals = {};
 
 internals.seed = {
-    users: [{
+    apiUser: {
         "displayName": "Snack Machine",
         "username": "snackMachine",
-        "_api_": true
-    }],
+        "status": "active",
+        "kind": "api"
+    },
 
-    posts: [{
+    stories: [{
         "headline": "Sample Post",
         "body": "Simple starter post.",
         "language": "en_US"
@@ -34,6 +38,9 @@ internals.seed = {
     tags: [{
         "name": "Getting Started",
         "description": "Your very first tag."
+    }, {
+        "name": "Kittens",
+        "description": "And another."
     }],
 
     roles: [{
@@ -48,17 +55,17 @@ internals.seed = {
     }],
 
     permissions: [{
-        "name": "Edit posts",
+        "name": "Edit stories",
         "action": "edit",
-        "actionFor": "post"
+        "actionFor": "story"
     }, {
-        "name": "Remove posts",
+        "name": "Remove stories",
         "action": "remove",
-        "actionFor": "post"
+        "actionFor": "story"
     }, {
-        "name": "Create posts",
+        "name": "Create stories",
         "action": "create",
-        "actionFor": "post"
+        "actionFor": "story"
     }, {
         "name": "Edit users",
         "action": "edit",
@@ -102,8 +109,10 @@ exports.getTasks = function (snack) {
 
     var Snack = snack,
         Models = Snack.models,
+        Api = Snack.api,
         seed = internals.seed,
-        users = seed.users;
+        apiUser = seed.apiUser,
+        adminUser = {};
 
     var tasks = [];
 
@@ -139,7 +148,13 @@ exports.getTasks = function (snack) {
         };
 
         Prompt.get(userSchema, function (err, user) {
-            users.unshift(user);
+
+            apiUser.email = user.email;
+            apiUser.password = GeneratePassword();
+
+            adminUser = user;
+            adminUser.status = 'active';
+
             next(err);
         });
     });
@@ -148,36 +163,55 @@ exports.getTasks = function (snack) {
 
         console.info("#blue{Creating users...}");
 
-        var userIndex = 0;
+        var tasks = [
+            Models.User.create(adminUser),
+            Models.User.create(apiUser)
+        ];
 
-        var createUser = function (u, cb) {
-            Models.User.create(u, function (err, user) {
-                if (err) return cb(err);
+        var apiKey = apiUser.username;
+        var apiSecret = apiUser.password;
 
-                users[userIndex] = user;
-                userIndex++;
+        Promise
+            .all(tasks)
+            .then(function (users) {
 
-                cb();
+                adminUser = users[0];
+                apiUser = users[1];
+
+                console.info("#green{\u2713 Users created}");
+
+                console.info("\n#blue{Snack Machine:}\
+                              \n#grey{API key:} #bold{%s}\
+                              \n#grey{API secret:} #bold{%s}\
+                              \n", apiKey, apiSecret);
+
+                next();
+            })
+            .catch(function (err) {
+
+                next(err);
             });
-        };
-
-        Async.eachSeries(users, createUser, function (err) {
-            console.info("#green{\u2713 Users created}");
-            next(err);
-        });
     });
 
     tasks.push(function seedRoles(next) {
 
         console.info("#blue{Creating roles...}");
 
-        var createRole = function (role, cb) {
+        var createRole = function (data, cb) {
 
-            role.createdById = users[0].id;
-
-            Models.Role.create(role, function (err) {
-                cb(err);
+            data = Hoek.merge(data, {
+                createdBy: adminUser,
+                updatedBy: adminUser
             });
+
+            Models.Role
+                .create(data)
+                .then(function (role) {
+                    cb();
+                })
+                .catch(function (err) {
+                    cb(err);
+                });
         };
 
         Async.eachSeries(seed.roles, createRole, function (err) {
@@ -190,18 +224,38 @@ exports.getTasks = function (snack) {
 
         console.info("#blue{Creating permissions...}");
 
-        var createPermission = function (perm, cb) {
+        function createPermission(data, cb) {
 
-            perm.createdById = users[0].id;
-
-            Models.Permission.create(perm, function (err, permission) {
-                if (err) return cb(err);
-                Models.Role.findBy('name', 'administrator', function (err, role) {
-                    if (err) return cb(err);
-                    permission.roles.add(role, cb);
-                });
+            data = Hoek.merge(data, {
+                createdBy: adminUser,
+                updatedBy: adminUser
             });
-        };
+
+            Models.Permission
+                .create(data)
+                .bind({})
+                .then(function (permission) {
+
+                    this.permission = permission;
+                    return Models.Role.findOne({
+                        name: 'administrator'
+                    });
+                })
+                .then(function (role) {
+
+                    this.permission.add('roles', role);
+                    return this.permission.saveAll();
+                })
+                .then(function (permission) {
+
+                    cb();
+                })
+                .catch(function (err) {
+
+                    cb(err);
+                });
+        }
+
         Async.eachSeries(seed.permissions, createPermission, function (err) {
             console.info("#green{\u2713 Permissions created}");
             next(err);
@@ -214,66 +268,114 @@ exports.getTasks = function (snack) {
 
         var blessUser = function (user, cb) {
 
-            Models.Role.findBy('name', 'administrator', function (err, role) {
-                if (err) return cb(err);
-                user.roles.add(role, function (err) {
-                    cb(err);
-                });
-            });
+            return Models.Role
+                .findOne({
+                    name: 'administrator'
+                })
+                .then(function (role) {
+
+                    user.add('roles', role);
+                    return user.saveAll();
+                })
         };
 
-        Async.eachSeries(users, blessUser, function (err) {
-            console.info("#green{\u2713 Users blessed}");
-            next(err);
-        });
+        var tasks = [
+            blessUser(adminUser),
+            blessUser(apiUser)
+        ];
+
+        Promise
+            .all(tasks)
+            .then(function (users) {
+
+                console.info("#green{\u2713 Users blessed}");
+                next();
+            })
+            .catch(function (err) {
+
+                next(err);
+            });
     });
 
     tasks.push(function seedTags(next) {
 
         console.info("#blue{Creating tags...}");
 
-        var createTag = function (tag, cb) {
+        var createTag = function (data, cb) {
 
-            // tag.createdById = users[0].id;
-
-            // Models.Tag.create(tag, function (err) {
-                // cb(err);
-            // });
-
-            Models.Tag.create(tag).then(function (){
-                cb();
-            }).catch(function (err) {
-                cb(err);
+            data = Hoek.merge(data, {
+                ownedBy: adminUser,
+                createdBy: adminUser,
+                updatedBy: adminUser
             });
+
+            Models.Tag
+                .create(data)
+                .then(function (tag) {
+
+                    return tag.createAlias();
+                })
+                .then(function (tag) {
+
+                    return tag.saveAll();
+                })
+                .then(function (tag) {
+                    cb();
+                })
+                .catch(function (err) {
+                    cb(err);
+                });
         };
 
         Async.eachSeries(seed.tags, createTag, function (err) {
             console.info("#green{\u2713 Tags created}");
             next(err);
         });
-
-
     });
 
-    tasks.push(function seedPosts(next) {
+    tasks.push(function seedStories(next) {
 
-        console.info("#blue{Creating posts...}");
+        console.info("#blue{Creating stories...}");
 
-        var createPost = function (post, cb) {
+        var createStory = function (data, cb) {
 
-            post.createdById = users[0].id;
-
-            Models.Post.create(post, function (err, post) {
-                if (err) return cb(err);
-                // Models.Tag.findBy('key', 'tag/getting-started', function (err, tag) {
-                //     if (err) return cb(err);
-                //     post.tags.add(tag, cb);
-                // });
+            data = Hoek.merge(data, {
+                ownedBy: adminUser,
+                createdBy: adminUser,
+                updatedBy: adminUser
             });
+
+            Models.Story
+                .create(data)
+                .bind({})
+                .then(function (story) {
+
+                    this.story = story;
+
+                    return this.story.createAlias();
+                })
+                .then(function (story) {
+
+                    return Models.Tag.findOne({
+                        name: 'Getting Started'
+                    });
+                })
+                .then(function (tag) {
+
+                    this.story.add('tags', tag);
+
+                    return this.story.saveAll();
+                })
+                .then(function (story) {
+                    cb();
+                })
+                .catch(function (err) {
+                    cb(err);
+                });
         };
 
-        Async.eachSeries(seed.posts, createPost, function (err) {
-            console.info("#green{\u2713 Posts created}");
+        Async.eachSeries(seed.stories, createStory, function (err) {
+            console.info("#green{\u2713 Stories created}");
             next(err);
         });
     });

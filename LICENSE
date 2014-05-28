@@ -1,6 +1,6 @@
 The MIT License (MIT)
 
-Copyright (c) 2014 Mansueto Ventures, LLC.
+Copyright (c) 2014 Michael Shick.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 Portions of this project are based on:
 
+snack, Copyright (c) 2014 Mansueto Ventures, LLC (https://github.com/fastcompany).
 hapi, Copyright (c) 2011-2014, Walmart (https://github.com/spumko/hapi)
 Ghost, Copyright (c) 2013-2014 Ghost Foundation (https://github.com/TryGhost/Ghost)
 
